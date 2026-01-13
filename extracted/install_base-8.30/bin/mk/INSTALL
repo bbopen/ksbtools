@@ -1,0 +1,34 @@
+# $Id: INSTALL,v 5.3 2008/08/06 15:49:34 ksb Dist $
+
+You will need the mkcmd tool, and msrc to build this.
+
+Prereq: the msrc package (for msrc, xapply, dicer.c that we import).
+
+0/ Pick a test host
+	TEST_HOST=nostromo
+
+1/ Change the default template path, BIN, and -Dtunes in Makefile.host
+	vi Makefile.host
+   if you have (sturct resource) and machine.h is wrong.
+	CDEFS=-DRESOURCE
+   If BIN is wrong
+	BIN=/opt/ksb/bin
+
+2/ make the mk binary, and install it (plug in your msrc options):
+	msrc ... make source all install
+   or
+	mmsrc make all install   # I'm not going to show version mmsrc below
+
+3/ install the templates (see ../../lib/mk for details)
+	(cd ../../lib/mk && msrc ... make source install clean)
+
+4/ test it if you like
+	msrc ... make test 
+
+5/ clean up the source directory
+	msrc ... make clean
+
+Send bugs to mk@ksb.npcguild.org (KSBraunsdorf)
+
+--
+ksb, July 2008

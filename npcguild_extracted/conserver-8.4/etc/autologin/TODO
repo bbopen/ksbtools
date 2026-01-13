@@ -1,0 +1,6 @@
+# $Id: TODO,v 2.0 1997/01/02 15:50:26 kb207252 Exp $
+
+The console server wants -C for the planned -A option.  Explain in the
+manual page more about how to use this.
+
+ksb, Jan 1997

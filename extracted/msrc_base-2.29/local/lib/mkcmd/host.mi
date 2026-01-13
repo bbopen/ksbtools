@@ -1,0 +1,5 @@
+/* $Id: host.mi,v 8.3 2004/12/15 22:20:18 ksb Exp $
+ * C forward for host data type in mkcmd -- ksb
+ */
+
+%extern struct hostent *%K<host_cvt>1v()%;

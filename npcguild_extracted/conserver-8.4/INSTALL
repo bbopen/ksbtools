@@ -1,0 +1,19 @@
+# $Id: INSTALL,v 8.2 1999/03/06 15:19:13 ksb Exp $
+
+See the INSTALL files in the subdirectories.
+
+This application allows you to monitor and interact with serial
+devices in your machine room from home.  It can save a lot of
+drive-time.
+
+It is used all over the place.  Greg Becker and KS Braunsdorf are
+still working on it, comments to ksb@sa.fedex.com.  As far as we
+know it is fully Y2K ready.
+
+
+Fair warning: you will need mkcmd-8.6 or better to build this, and
+you're going to have to learn msrc to make your life Happy again.
+
+--
+"Sweet surrender is all I have to give." -- Sarah
+ksb, Mar 1999

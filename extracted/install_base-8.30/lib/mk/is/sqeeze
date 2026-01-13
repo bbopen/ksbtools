@@ -1,0 +1,16 @@
+# squeezed data								(ksb)
+# $Id: sqeeze,v 5.0 1996/09/09 21:05:58 kb207252 Exp $
+
+$Display(*):	${unsqueeze-unsqueeze} <%f | ${PAGER-${more-more}} %s
+$Display(*):	${unsqueeze-unsqueeze} <%f | ${PAGER-${more-more}}
+
+$Info(*):	${echo-echo} "squeezed data"
+$Info(*):	${echo-echo} "squeezed `${unsqueeze-unsqueeze} <%f >%P && %b %o -m%m -d%s %P && rm -f %P`"
+$Info(*):	${echo-echo} "squeezed `${unsqueeze-unsqueeze} <%f >/tmp/MW$\$%F && %b %o -m%m -d%s /tmp/MW$\$%F && rm -f /tmp/MW$\$%F`"
+$Info(*):	${echo-echo} "squeezed `${unsqueeze-unsqueeze} <%f >%P && %b %o -m%m %P && rm -f %P`"
+$Info(*):	${echo-echo} "squeezed `${unsqueeze-unsqueeze} <%f >/tmp/MW$\$%F && %b %o -m%m /tmp/MW$\$%F && rm -f /tmp/MW$\$%F`"
+
+$*(*):		${unsqueeze-unsqueeze} <%f >%P && %b %o -m%m -d%s %P && rm -f %P
+$*(*):		${unsqueeze-unsqueeze} <%f >/tmp/MW$\$%F && %b %o -m%m -d%s /tmp/MW$\$%F && rm -f /tmp/MW$\$%F
+$*(*):		${unsqueeze-unsqueeze} <%f >%P && %b %o -m%m %P && rm -f %P
+$*(*):		${unsqueeze-unsqueeze} <%f >/tmp/MW$\$%F && %b %o -m%m /tmp/MW$\$%F && rm -f /tmp/MW$\$%F

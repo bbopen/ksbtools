@@ -1,0 +1,3 @@
+/* $Id: util_saveservent.mi,v 1.1 1999/06/13 18:10:13 ksb Exp $
+ */
+%extern struct servent *%K<util_saveservent>1v(/* struct servent * */)%;

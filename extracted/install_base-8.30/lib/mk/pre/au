@@ -1,0 +1,12 @@
+# sun audio file (made with {x_,}soundtool)				(ksb)
+# $Id: au,v 5.0 1996/09/09 20:17:13 kb207252 Exp $
+
+$*(*):	%!/.snd/%#4%cb/%.   quit if wrong magic number
+
+$Compile(*): Play%h
+
+$Info(*): ${echo-echo} %<%~/map/au-width> audio data, %<%~/map/au-encoding>, %#@16%dl Hz
+$Info(*): ${echo-echo} 'audio data: %#80@24%sb'%;
+
+$Play(*): ${play-play} %s %f%;
+$Play(*): ${play-play} %f%;

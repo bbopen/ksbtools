@@ -1,0 +1,11 @@
+# $Id: Distfile,v 4.1 1996/07/14 19:03:14 kb207252 Exp $
+#
+`( . ) -> ( 'HOST` )
+	install ${INTO};
+
+( bin lib README ) -> ( 'HOST` )
+	install -w ${INTO} ;
+
+( @Make.host@ ) -> ( 'HOST` )
+	install -b ${INTO}/Makefile ;
+'dnl

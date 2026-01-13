@@ -1,0 +1,92 @@
+# $Id: gumby.cf,v 1.12 2000/03/04 00:42:18 root Exp $
+# gumby F pod
+# dpcp hosts
+catbert.zmd
+dilbert.zmd
+dizzy.zmd
+# ExpressNet FTP (forced interface due to dual ZMD)
+ec1.zmd 199.81.87.200
+ec2.zmd 199.81.87.201
+ec3.zmd 199.81.87.202
+ec4.zmd 199.81.87.203
+ec5.zmd 199.81.87.204
+ec6.zmd 199.81.87.205
+ectest1.zmd 199.81.87.206
+# sso
+sso1.zmd
+sso2.zmd
+sso3.zmd
+sso4.zmd
+sso5.zmd
+sso6.zmd
+sso7.zmd
+sso8.zmd
+ssotest1.zmd
+# ebp application
+vips1.zmd
+vips2.zmd
+vipstest1.zmd
+# ediint fxnet hosts
+ediint1.zmd
+ediint2.zmd
+ediinttest1.zmd
+# 4500 class WWW servers
+www40.zmd
+www41.zmd
+www42.zmd
+www43.zmd
+www44.zmd
+www45.zmd
+www46.zmd
+www47.zmd
+%%status -- The CGI status report
+   Report   Host      Load  Status
+@ %{@:r} %{@:h} %{@:l} %{@:x} %{@:f}
+%%ec -- FedEx Net FTP/HTTP/HTTPS Service
+        ec1.zmd %{ec1.zmd:X} %{ec1.zmd:}
+        ec2.zmd %{ec2.zmd:X} %{ec2.zmd:}
+        ec3.zmd %{ec3.zmd:X} %{ec3.zmd:}
+        ec4.zmd %{ec4.zmd:X} %{ec4.zmd:}
+        ec5.zmd %{ec5.zmd:X} %{ec5.zmd:}
+        ec6.zmd %{ec6.zmd:X} %{ec6.zmd:}
+    ectest1.zmd %{ectest1.zmd:X} %{ectest1.zmd:}
+%%sso -- FedEx Web Login Single Sign-on
+       sso1.zmd %{sso1.zmd:X} %{sso1.zmd:}
+       sso2.zmd %{sso2.zmd:X} %{sso2.zmd:}
+       sso3.zmd %{sso3.zmd:X} %{sso3.zmd:}
+       sso4.zmd %{sso4.zmd:X} %{sso4.zmd:}
+       sso5.zmd %{sso5.zmd:X} %{sso5.zmd:}
+       sso6.zmd %{sso6.zmd:X} %{sso6.zmd:}
+       sso7.zmd %{sso7.zmd:X} %{sso7.zmd:}
+       sso8.zmd %{sso8.zmd:X} %{sso8.zmd:}
+   ssotest1.zmd %{ssotest1.zmd:X} %{ssotest1.zmd:}
+%%dpds -- Data Protection Corp. Projects CA Service
+    catbert.zmd %{catbert.zmd:X} %{catbert.zmd:}
+    dilbert.zmd %{dilbert.zmd:X} %{dilbert.zmd:}
+      dizzy.zmd %{dizzy.zmd:X} %{dizzy.zmd:}
+%%vips -- Pilot Site Application Servers
+      vips1.zmd %{vips1.zmd:X} %{vips1.zmd:}
+      vips2.zmd %{vips2.zmd:X} %{vips2.zmd:}
+  vipstest1.zmd %{vipstest1.zmd:X} %{vipstest1.zmd:}
+%%ediint -- FxNet EDI INT Servers
+    ediint1.zmd %{ediint1.zmd:X} %{ediint1.zmd:}
+    ediint2.zmd %{ediint2.zmd:X} %{ediint2.zmd:}
+ediinttest1.zmd %{ediinttest1.zmd:X} %{ediinttest1.zmd:}
+%%www -- 4500 class WWW servers
+      www40.zmd %{www40.zmd:X} %{www40.zmd:}
+      www41.zmd %{www41.zmd:X} %{www41.zmd:}
+      www42.zmd %{www42.zmd:X} %{www42.zmd:}
+      www43.zmd %{www43.zmd:X} %{www43.zmd:}
+      www44.zmd %{www44.zmd:X} %{www44.zmd:}
+      www45.zmd %{www45.zmd:X} %{www45.zmd:}
+      www46.zmd %{www46.zmd:X} %{www46.zmd:}
+      www47.zmd %{www47.zmd:X} %{www47.zmd:}
+%%motd -- the message of the day
+This is one way to track clients and servers.  The code is from
+	ksb@sa.fedex.com
+The programs are labd, labc, labwatch, and labstat.  The configuration is in
+labwatch.cf (in /usr/local/lib or /root).
+
+	-- ksb
+%%version -- the version of this configuration file
+$Id: gumby.cf,v 1.12 2000/03/04 00:42:18 root Exp $

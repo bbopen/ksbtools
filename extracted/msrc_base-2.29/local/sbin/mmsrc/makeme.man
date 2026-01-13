@@ -1,0 +1,113 @@
+.\" $Id: makeme.man,v 4.8 2010/07/08 15:30:58 ksb Exp $
+.\" $Compile: Display%h
+.\" $Display: groff -Tascii -man %f | ${PAGER:-less}
+.\" $Display(*): groff -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man8/makeme.8
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt][18]/makeme.8*
+.TH MAKEME 8L LOCAL
+.SH NAME
+makeme, mbuild \- fake the master source build sequence for the local machine
+.SH SYNOPSIS
+\fBmakme\fP [\fImmsrc-opts\fP] [\fImake-opts\fP] \fItargets\fP
+.br
+\fBmakeme\fP \fB\-V\fP
+.br
+\fBmbuild\fP [\fB\-arv\fP] [\fB\-C\fP\~\fIdb\fP] [\fB\-m\fP\~\fIpath\fP]
+[\fIsite\fP] [\fIproducts\fP]
+.br
+\fBmbuild\fP \fB\-h\fP
+.br
+\fBmbuild\fP \fB\-V\fP
+
+.SH DESCRIPTION
+.I Makeme
+is the utility for boot-strapping ksb's master source environment
+(version 1).
+Often called from \fImbuild\fP or from a package build.
+.PP
+.I Mbuild
+is the dependency manager for \fImakeme\fP, it tries to download
+and build the master source tool suite in the correct order with
+some help from the installer.
+
+
+.SH OPTIONS
+All options to \fImakeme\fP are passed to make(1), unless the only parameter
+on the command line is "\fB\-V\fP".  \fIMbuild\fP takes these options:
+.TP
+.B \-a
+Auto-install a tool when it builds successfully.  When run as
+the super-user this is a real time saver.  When run as a mortal
+user the driver must type root's password for each tool.
+In the default case \fImbuild\fP makes the driver \fBsu\fP
+and type "makeme install"
+for every tool, which is a safety feature -- but tedious.
+.TP
+\fB\-C\fP \fIdb\fP
+Specify the dependency database as \fIdb\fP.
+Any existing local file is used in preference to a file from
+the \fIsite\fP provided.
+.TP
+\fB\-m\fP \fItop\fP
+Specify a top directory for the cached platform source code, some tools use
+the source code from others as part of their source (for the build process).
+The order declared in the \fIdb\fP file assures the correct build order,
+but the code must be staged under \fItop\fP until all the tools
+required are installed (then it may be deleted).
+.TP
+.B \-r
+Remove any old source for each product as it is updated.
+.TP
+.B \-v
+Be verbose when building the prerequisite dependency list.
+This gives the driver some idea of what to build to reach the
+tools they are after.
+.TP
+.B \-V
+Output the standard version information.
+.TP
+\fIsite\fP
+A URL in the form \fIfetch\fP(1) processes indicating the \fIsite\fP
+where the gzip'd tar archives for each tool may be found (viz. \fBftp:\fP
+or \fBhttp:\fP) or an \fBrsync:\fP style URL to force the use of \fIrsync\fP,
+or a \fBfile:\fP URL to force the use of \fBcp\fP for locally cached copies.
+
+.SH EXAMPLES
+.TP
+\fImakeme\fP install
+Commonly used to fake a push from a "master" to the local
+machine, when no master is enabled.  This is how one builds
+a local master, of course.  This will chain down to \fImmsrc\fP
+if the local directory looks like a \fImsrc\fP source directory
+rather than an older \fIdistrib\fP-based one.
+.TP
+\fImbuild \-v -m /usr/msrc/local ftp://ftp.npcguild.org/pub/ksb
+Walk the tool chain looking for things to install.  When all goes
+well \fImbild\fP drops you into an interactive shell in each
+build directory.  Look around and install as you like (you might
+have to \fBsu\fP or \fBsudo\fP to install each one).
+.TP
+\fImbuild \-va -m /usr/msrc/local ftp://ftp.npcguild.org/pub/ksb sbp
+Locate the \fBsbp\fP package from \fBnpcguild.org's\fP ftp service
+and all the prerequisites needed to install it.  When run as
+root this pretty quickly installs most products.
+.TP
+\fImbuild \-r -m /usr/msrc/local ftp://ftp.npcguild.org/pub/ksb mkcmd
+Upgrade mkcmd to the latest release.
+
+.SH BUGS
+Some packages (like \fBentomb\fP) require a login to be created.
+There is no mechanism here to warn you, or take the neccessary
+\fBadduser\fP actions (yet).  The FreeBSD ports/packages system
+or RPM, or the like can be wrapped around these packages to
+take such platform specific actions.
+.PP
+This should know more about symbolic release names, and will.
+
+.SH AUTHOR
+KSB Braunsdorf, Non-Player Character's Guild,
+.br
+makeme no-spam-at ksb.npcguild.org
+
+.SH SEE ALSO
+fetch(1), make(1), rsync(1), and m4(1), mmsrc(8), msrc(8), efmd(8)

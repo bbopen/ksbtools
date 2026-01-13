@@ -1,0 +1,29 @@
+`# $Id: Makefile.host,v 1.14 2010/12/06 15:54:55 ksb Exp $
+# platform Makefile for searching through host ips
+LIB= ${DESTDIR}/usr/local/lib/sac
+BIN= ${DESTDIR}/usr/local/bin
+MAN1= ${DESTDIR}/usr/local/man/man1
+MAN3= ${DESTDIR}/usr/local/man/man3
+Q=''`
+
+SOURCE=	./lib/HXMD.pm
+
+all:  Makefile.made
+	make -f Makefile.made 
+
+install: all
+	make -f Makefile.made install
+
+Makefile.made: ${SOURCE}
+	perl Makefile.PL FIRST_MAKEFILE=Makefile.made INSTALLARCHLIB=${LIB}/ INSTALLSITEARCH=${LIB}/ INSTALLVENDORARCH=${LIB}/ INSTALLPRIVLIB=${LIB}/ INSTALLSITELIB=${LIB}/ INSTALLVENDORLIB=${LIB}/ INSTALLBIN=${BIN}/ INSTALLSITEBIN=${BIN}/ INSTALLVENDORBIN=${BIN}/ INSTALLSCRIPT=${BIN}/ INSTALLSITESCRIPT=${BIN}/ INSTALLVENDORSCRIPT=${BIN}/ INSTALLMAN1DIR=${MAN1}/ INSTALLSITEMAN1DIR=${MAN1}/ INSTALLVENDORMAN1DIR=${MAN1}/ INSTALLMAN3DIR=${MAN3}/ INSTALLSITEMAN3DIR=${MAN3}/ INSTALLVENDORMAN3DIR=${MAN3}/ 
+
+clean: FRC
+	rm -f Makefile Makefile.Made *.o a.out core errs lint.out tags blib/lib/HXMD.pm 
+
+source: ${SOURCE}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

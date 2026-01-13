@@ -1,0 +1,8 @@
+# $Id: TODO,v 1.1 1999/07/31 18:14:29 ksb Exp $
+
++ an option to syslog every 2^n'th requests a MARK so
+  if we loose the state file we can just create one 2^n*(k+1)
+  scope to recover.
+
+--
+ksb

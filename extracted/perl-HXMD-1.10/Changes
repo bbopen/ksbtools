@@ -1,0 +1,15 @@
+# $Id: Changes,v 1.8 2008/09/29 15:13:26 ksb Exp $
+
+Revision release history for HXMD read/write perl module.
+
+1.8	2008/09/29 ksb
+	More notes to the wise, better perl module packaging.
+
+1.7	2008/07/23 ksb
+	Working on the WriteDB function and better docs.
+
+1.4	2008/03/18 anderson
+	This works for read.
+
+1.1	2008/03/18 ksb
+	Initial draft.

@@ -1,0 +1,178 @@
+.\" $Id: hostlint.man,v 1.18 2012/09/06 15:30:59 ksb Exp $
+.\" by Kevin Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: ${nroff-groff} -Tascii -man %f | ${PAGER:-less}
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man8/hostlint.8
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]8/hostlint.8*
+.TH HOSTLINT 8 LOCAL
+.SH NAME
+hostlint - scan this host for configuration errors
+.SH SYNOPSIS
+.ds PN "hostlint
+\fI\*(PN\fP [\fB\-N\fP] [\fB\-p\fP\~\fIport\fP] [\fIrepo\fP] [\fIsite-options\fP]
+.br
+\fI\*(PN\fP \fB\-S\fP [\fB\-p\fP\~\fIport\fP] [\fIrepo\fP] [\fImodules\fP]
+.br
+\fI\*(PN\fP \fB\-h\fP
+.br
+\fI\*(PN\fP \fB\-V\fP
+
+.SH DESCRIPTION
+This is a wrapper that \fBrsync\fP's a program from a local \fBrsync\fP
+repository and runs it.
+That program \fBclaims\fP to screen the local host for common configuration
+errors.  In fact that program could do anything.  Do not run this
+program without a clear understanding of this trust relationship.
+
+.P
+The downloaded program is executed with the privileges of the
+login that ran \fI\*(PN\fP.
+
+.P
+The output is usually sent to a reporting agent to
+notify the Administrator of errors or inconsistent information found on
+the host.
+
+.SH PROTOCOL
+
+The repository must present  an anonymous  module named "hostlint".
+That entire module is downloaded to a temporary directory
+on the local machine.
+The module must have a node named "site" that is either:
+.TP
+A directory with an executable program named for
+the \fBdistrib\fP HOSTTYPE recorded for the host.
+In which case that program is executed.
+.TP
+A file with the execute bit set for the owner
+In which case that file is executed.
+.TP
+A file with no execute permission for the owner
+In which case it is sourced into the Korn shell environment of
+the running \fI\*(PN\fP.
+
+.SH OPTIONS
+When additional parameters are presented to \fI\*(PN\fP they
+are passed, as-is, to the site process.
+.TP
+\fB\-h\fP
+Print a help message.
+.TP
+\fB\-N\fP
+Output the name of the repository, if (and only if) a site policy
+could be obtained from it (just the "site" node is requested,
+not the whole module).  Otherwise exit non-zero with no output.
+.TP
+\fB\-p\fP \fIport\fP
+Passed on to \fBrsync\fP to specify a port.  This is mostly used to
+forward a port from the policy repository to hosts that otherwise
+could not make an outgoing network connection to that host (or port).
+.TP
+\fB\-S\fP
+Sometimes a single module from the local policy is all that is
+required.  This options lets the local Admin pull a single module
+from site policy (or an interactive shell to run them ad hoc).
+.TP
+\fB\-V\fP
+Show version information.
+
+.SH EXAMPLES
+.TP
+.nf
+echo /usr/local/libexec/hostlint | at teatime
+.fi
+Run \fI\*(PN\fP at 16:00 today.
+.TP
+.nf
+echo /usr/local/libexec/hostlint | at + $((RANDOM%58+2)) minutes
+.fi
+A \fBksh\fP fragment one might use to run \fI\*(PN\fP from
+\fBkicker\fP's queue between 01:00 and 02:00, assuming it is
+installed in the 01 spool. N.B. we add 2 to prevent errors from \fBat\fP(1)
+.TP
+.nf
+/usr/local/libexec/hostlint \-V
+.fi
+.nf
+hostlint: $\&Id: hostlint.m4,v 1.\fIx\fP 2004/02/15 16:22:30 ksb ...
+hostlint: default rsync repository: perfect
+hostlint: HOSTTYPE: FREEBSD
+.fi
+.TP
+.nf
+/usr/local/libexec/hostlint \-\- \-\- \-V
+.fi
+Ask the local site policy to report its revision.  The first "\-\-"
+ends the option list for \fI\*(PN\fP, the next skips the \fIrepo\fP
+parameter, the remaining \fB\-V\fP is passed to the downloaded \fBsite\fP
+script.
+.TP
+.nf
+/usr/local/libexec/hostlint \-S \-\- \-\-  versions
+.fi
+Ask for \fBjust\fP the \fIversions\fP module from the local
+site policy.  After the whole policy is downloaded just the versions
+module (version.hlc) is executed.  This is also used as a way to
+run an alternate policy for any unique hosts.
+.TP
+.nf
+/usr/local/libexec/hostlint \-S
+.fi
+Start an interactive shell (viz. ``${SHELL} \-i'') in the recently
+downloaded copy of the site policy code.  This allows the local
+policy implementor easy access to debug a policy conflict or code issue.
+.TP
+.nf
+2 23 * * *	op hostlint
+.fi
+A \fBcrontab\fP line to run \fBhostlint\fP in a controlled
+environment.  This might be run as a system login which has access an
+\fBop\fP(1) escalation rule to produce the correct environment.
+With this escalation \fBhostlint\fP may be able to check resources that
+a mortal user could not.  Another way to do this is to
+use \fBop\fP in some modules to escalate individual checks.
+.TP
+.nf
+ssh \-nR 5873:policy:873 agt@target /usr/local/libexec/hostlint \-p 5872 localhost
+.fi
+Forward the localhost policy \fBrsync\fP port to the target host on
+port 5872 to process this scan.
+
+.SH ENVIRONMENT
+The environment of the site policy process \fI\*(PN\fP starts
+contains 4 additional environment variables.
+.TP
+$REPO
+This contains the name of the policy repository used to
+download the site policy directory.  It is presented to allow
+the site program to download more files, as needed.
+.TP
+$rPORT
+The port specified in the command-line under \fB\-p\fP, or the one
+listed in \fB/etc/services\fP, or 873 by default.
+.TP
+$DISTRIB_HOSTTYPE
+This contains the \fBdistrib\fP HOSTTYPE macro associated
+with the target host when \fI\*(PN\fP was installed, or
+the value dot (``.'') if \fBdistrib\fP and \fBauto.cf\fP both
+didn't provide a value.
+.TP
+$DB_HL_VERSION
+The RCS revision number for the running version of \fI\*(PN\fP.
+This might be used by \fBsite\fP to check for sanity.
+
+.SH BUGS
+This program about as long as the manual page.
+.P
+There is an explicit trust relationship between the repository of
+site policy and the client: we download code, then run it locally with
+almost no sanity check at all.  That implies a lot of trust.
+.\" OpenBSD probably won't even put this in ports ... heh.
+
+.SH AUTHORS
+Kevin Braunsdorf, Pete Fritchman
+.br
+lint at ksb.npcguild.org, petef@databits.net
+
+.SH "SEE ALSO"
+sh(1), rsync(1), op(1l), distrib(8l), hxmd(8l), scdpn(8l), mk(1l)

@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Present credentials to another process</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: Cred
+<BR>
+Authors: C Stephen Gunn, KSB Braunsdorf
+<BR>
+Mail: csg@waterspout.com, ksb@npcguild.org
+<BR>
+Version: 6.1
+<BR>
+Bugs: None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+Modern UNIX operating systems allow passing a secure description of
+a processes credentials (viz. uid, gid, and pid data) to another,
+perhaps unrelated, process via a UNIX domain socket pair.  This
+module presents a portable abstraction to send and receive these
+messages.
+
+<H1>Configuration</H1>
+
+<DL>
+<DT>#define <I>HOSTTYPE</I>
+<DT>#define <I>HOSTOS</I>
+<DD>
+Define SUN5, HPUX11, FREEBSD, LINUX, IBMR2, or some other OS name.
+Also define the "base 100" release of the OS, for example SunOS 5.10.0
+is "51000", the result of ((5*100)+10)*100)+0.
+<DT>#define HAVE_STRERROR
+<DD>
+Defined to be 1 if the local system include files define
+<CODE>strerror</CODE>(3).
+
+<DT>#define CRED_TOKEN	"<I>short-string</I>"
+<DD>
+Optionally the implementor may define a token to assure that
+the same version of the abstraction is on both sides of the
+protocol.  The default is a 4 character alpha-numeric string.
+This is intended to prevent incompatible versions from corruption
+of exchanges (nothing more).
+</DL>
+
+<H1>Synopsis</H1>
+<BLOCKQUOTE><PRE><CODE>include &lt;sys/types.h&gt;
+#include &lt;sys/param.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;sys/uio.h&gt;
+#include &lt;errno.h&gt;
+
+#include "machine.h"
+#include "cred.h"
+</CODE></PRE></BLOCKQUOTE>
+
+<H1>Description</H1>
+
+This modules is used to present credentials to the <CODE>acld</CODE>
+access control deamon.
+
+<H1>Provides</H1>
+<DL>
+<DT><CODE>extern int SendCred(int fd);</CODE>
+<DD>
+Send our credentials a peer process.
+<P>
+The peer process should be calling <TT>RecvCred</TT> on the other
+end of <CODE>fd</CODE>.
+<P>
+This is exploded under <TT>-u send</TT>.
+
+<DT><CODE>#define CRED_TYPE	<I>...</I></CODE>
+<DD>
+This is defined in "cred.h" for use in any application that uses
+the interface.  It depends on <CODE>sys/socket.h</CODE> to define
+either <CODE>SCM_CREDENTIALS</CODE> or <CODE>SCM_CREDS</CODE>.
+This set which of (struct ucred) or (struct cmsgcred) is sent by
+the kernel.
+
+<DT><CODE>extern int RecvCred(int fd, CRED_TYPE *pCred);</CODE>
+<DD>
+Waits for a peer process to send her credentials on
+file descriptor <CODE>fd</CODE>.  The credentials presented (by the kernel)
+are copied into the buffer provided.
+<P>
+See <TT>/usr/include/sys/socket.h</TT> for the definition of
+<CODE>CRED_TYPE</CODE> (on most systems).
+<P>
+This is exploded under <TT>-u recv</TT>.
+
+<DT><CODE>extern void DumpCred(CRED_TYPE *pCred);</CODE>
+<DD>
+Output a (CRED_TYPE) in a easy to read format.
+This is exploded under <TT>-u dump</TT>.
+</DL>
+
+<H1>EXAMPLE</H1>
+See the test driver embedded in the module, via:
+<BlOCKQUOTE>
+explode -s cred.h
+<BR>
+explode -u test cred.c
+<BR>
+more credtest.c
+</BlOCKQUOTE>
+
+<H1>Diagnostics</H1>
+None.
+
+<H1>See Also</H1>
+sendmsg(2), recvmsg(2)
+
+<H1>To Do List</H1>
+In the test driver we do not check all the groups in the grouplist.
+<HR><PRE>
+$Id: cred.html,v 1.8 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

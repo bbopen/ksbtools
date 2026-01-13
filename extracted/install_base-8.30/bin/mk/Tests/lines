@@ -1,0 +1,8 @@
+# $Id: lines,v 5.1 2003/09/17 01:49:09 ksb Exp $
+$Compile: MK=-t/dev/null %b -a%C%I%N%V -mLines -l 3 %f
+$Lines(1): true
+# one dry line
+# two 
+# three
+# four, we just lost under -l3 so we won't fail on the next line
+$Lines(2): false

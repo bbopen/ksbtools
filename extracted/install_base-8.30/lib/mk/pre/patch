@@ -1,0 +1,17 @@
+# file to install a patch, by default					(ksb)
+# $Id: patch,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+$Compile(*):	${patch-patch} -p0 %s %F <%f
+$Compile(*):	${patch-patch} -p0 %F <%f
+$Compile(*):	${patch-patch} -p0 %s <%f
+$Compile(*):	${patch-patch} -p0 <%f
+
+$Patch(*):	${patch-patch} -p0 %s %F <%f
+$Patch(*):	${patch-patch} -p0 %F <%f
+$Patch(*):	${patch-patch} -p0 %s <%f
+$Patch(*):	${patch-patch} -p0 <%f
+
+$Clean(*):	${rm-rm} %s -f %F.orig %F.rej
+$Clean(*):	${rm-rm} -f %F.orig %F.rej
+
+$Info(*):	${echo-echo} "diff output, patch input"

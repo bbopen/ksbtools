@@ -1,0 +1,63 @@
+.\" $Id: qrm.man,v 1.2 1997/01/06 02:28:25 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH QRM 1L LOCAL
+.SH NAME
+qrm \- remove waiting jobs from a queue system queue
+.SH SYNOPSIS
+.ds PN "qrm
+\fI\*(PN\fP [\-\fBn\fP\fBv\fP] [\-\fBd\fP \fIdir\fP] \fIjids\fP
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.sp
+.SH DESCRIPTION
+.PP
+Jobs waiting for execution in any queue system queue may be removed by their
+owner (or the superuser).
+Use \fIqstat\fP(1L) to find job identifiers (\fIjids\fP) for the jobs
+to remove.
+.PP
+Jobs running under the queue system may be expunged fron the system
+with \fIqrm\fP: provide the process-id rather than a job identifier.
+\fIQrm\fP uses \fIqkill\fP to send a SIGTERM (15) to each process in
+the subtree created by the job.
+.PP
+Process not running under the queue system my be shot with \fIqkill\fP
+directly.  This is very very dangerous.
+.SH OPTIONS
+.TP
+.BI \-d dir
+Which queue to manipulate.
+.TP
+.BI \-h 
+Print a breif help message.
+.TP
+.BI \-n 
+Just output a trace of commands run.
+.TP
+.BI \-v 
+Be verbose.
+.TP
+.BI \-V 
+Show version information.
+.SH EXAMPLES
+.TP
+qrm k01
+Remove job 1 for ``ksb''; this job is lost forever.
+.TP
+qrm \-d hot 1235
+Remove process \fI1235\fP from the ``hot'' queue.  The next
+job in the queue is released.
+.SH BUGS
+None known.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Group
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+qstat(1L), qadd(1L), qmgr(8L), qkill(8L)

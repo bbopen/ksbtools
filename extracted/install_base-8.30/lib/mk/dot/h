@@ -1,0 +1,10 @@
+# a C header file							(ksb)
+# $Id: h,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(perl):	${h2ph-h2ph} %f
+$Compile(*):	: 'ignore header files'
+
+$Info(*):	${echo-echo} "C header file"
+
+$*(*):	: 'extender %x on %f? do not know how to %m(%s) it.'
+$*(*):	: 'extender %x on %f? do not know how to %m it.'

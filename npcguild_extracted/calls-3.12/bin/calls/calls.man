@@ -1,0 +1,239 @@
+.\" $Id: calls.man,v 3.4 1997/04/14 02:44:50 ksb Exp $
+.\"
+.\" $Compile: ${nroff-nroff} -man %f | ${PAGER-${more-more}}
+.\" $Laser: ${ltroff-ltroff} -man %f
+.\" Kevin Braunsdorf, comments by Matt Bradburn and Mark Senn (all Purdue)
+.TH CALLS 1u UNSUP
+.SH NAME
+calls \- print out calling pattern of a C program
+.SH SYNOPSIS
+\fBcalls\fP [\-\fBaehirotTvVx\fP] [-\fBD\fP \fIname\fP[=\fIdef\fP]]
+[-\fBf\fP \fIfunction\fP] [-\fBF\fP \fIfunction\fP[\fI/file.c\fP]]
+[-\fBI\fP \fIdir\fP] [-\fBl\fP \fIdepth\fP] [-\fBU\fP \fIname\fP]
+[-\fBw\fP \fIwidth\fP] [\fIfilenames\fP]
+.SH DESCRIPTION
+.I Calls
+analyzes the flow of a C program by laying out the
+functions in one of two hierarchical graphs.
+.I Calls
+invokes the C preprocessor on the named C source files,
+and prints the analyzed calling graph on standard output.
+All filenames given will have their calling sequences combined into
+one graph.
+A filename of \- is taken as standard input (listed in the graph as
+\*(lqstdin\*(rq).
+.P
+Functions called but not defined within the source file are shown as:
+.br
+.RS
+function
+.RE
+.P
+While functions defined in the source files are listed with the file they
+are declared in brackets, as shown:
+.br
+.RS
+function [main.c(1009)] , or
+.br
+function [static in main.c(527)]
+.RE
+or if the function is not being described
+.RS
+function [see also %d] , or
+.br
+function [see below]
+.br
+function
+.RE
+.P
+Recursive references are shown as:
+.br
+.RS
+function <<< recursive >>>
+.RE
+.br
+or, if the function is called only by itself, as:
+.RS
+function <<< isolated recursion >>>
+.RE
+.SH OPTIONS
+.TP
+.BI \-a
+Normally only the first call to a function is recorded for any
+given function, under this option all calls are recorded.
+This may
+make the output for some large programs very verbose and these are
+normally not needed to show the calling structure of a program.
+.TP
+\fB\-D\fP\fIname\fP or \fB\-D\fP\fIname=def\fP
+Define the
+.I name
+for the preprocessor, as if by #define.
+If no definition is given, the name is defined as 1.
+.TP
+.BI \-e
+Normally an index listing does not contain the external
+functions called in the program, under this option these are also listed.
+Note this option also turns on the indexing option, \fB\-i\fP.
+.TP
+.BI \-f function
+The named function will be printed as the root of a calling graph.
+.TP
+\fB\-F\fP \fIfunction\fP\[/\fIfile\fP\]
+The named static \fIfunction\fP (in the given \fIfile\fP)
+is used as the base of a calling graph, as above.
+This allows closer examination of sources such
+as that of dbx(1) that have many static functions with the same name.
+.TP
+.BI \-h
+Display a brief help message.
+.TP
+.BI \-i
+This option produces an index of all the functions declared in the
+processed files.
+Optionally all functions mentioned can be output;
+see \fB\-e\fP above.
+.TP
+.BI \-I dir
+Change the path for searching for #include files whose names do not
+begin with `/' to look in
+.I dir
+before looking in the directories on the standard list.
+.TP
+.BI \-l depth
+Limit the output graph depth to \fIdepth\fP.
+This option may prevent some recursion from being detected by \fBcalls\fP.
+.TP
+.BI \-o
+Do not output any defined functions that were not present
+in any of the output trees.
+Note this also turns on the index option (\fB\-i\fP above).
+For a list of all functions called
+by 'missle' one might examine the index output of
+.br
+	calls \-ot \-f missle *.c
+.TP
+.BI \-r
+This option reverses the direction of the calling graph.
+Under this option the output graph shows who calls the described
+function, not who the function calls.
+.TP
+.BI \-t
+This option instructs
+.I calls
+not to display graphs that were
+not explicitly asked for on the command line.
+Using this option as well as the index option one can produce just
+a list of the functions declared in a file.
+.TP
+.BI \-T
+The function graph output is suitable input for \fItsort\fP(1).
+.TP
+.BI \-U name
+Remove any initial definition of
+.I name
+in the preprocessor.
+.TP
+.BI \-v
+Be more verbose in the graph.
+This option inserts more English
+words in the output and repeats some useful information (such as
+the file a function came from).
+.TP
+.BI \-V
+Also provide the variables used in the output graph.
+This option forces \fIcalls\fP to put ``()'' after functions
+to disambiguate them from the variables.
+.TP
+.BI \-w width
+Set the max indentation width to \fIwidth\fP.
+The default is 96 columns.
+.TP
+.BI \-x
+Do not show external functions in the output graphs.
+.TP
+.BI \-z
+Sort the descendant calls in alpha (a to z) order.
+.SH EXAMPLE
+Given the file
+.B prog.c
+.br
+.RS
+.nf
+main() {
+	abc();
+	def();
+}
+abc() {
+	ghi();
+	jkl();
+}
+static mno() { }
+ghi() {
+	abc();
+	def();
+	mno();
+}
+dead() { }
+.fi
+.RE
+.sp
+Executing \*(lqcalls prog.c\*(rq will produce:
+.sp
+.RS
+.nf
+    1	dead [prog.c(15)]
+
+    2	main [prog.c(1)]
+    3		abc [prog.c(5)]
+    4			ghi [prog.c(10)]
+    5				abc <<< recursive >>>
+    6				def
+    7				mno [static in prog.c(9)]
+    8			jkl
+    9		def
+.fi
+.RE
+.sp
+Executing \*(lqcalls -r prog.c\*(rq will produce:
+.RS
+.nf
+    1	abc [prog.c(5)]
+    2		main [prog.c(1)]
+    3		ghi [prog.c(10)]
+    4			abc <<< itself >>>
+
+    5	mno [static in prog.c(9)]
+    6		ghi see line 3
+
+    7	dead [prog.c(15)]
+.fi
+.RE
+.SH EXAMPLES
+.TP
+.I calls -l 2 main.c misc.c bop.c mop.c
+Show a graph for the given files, but limit the depth to 2 levels.
+.TP
+.I calls -rV *.c
+Show all the which routines use which variables in the given C source files.
+.TP
+.I calls -rtf yylex parser.c
+Show which routines call yylex in parser.c.
+.SH BUGS
+Static functions must be declared (in full) 
+.I before
+used to work properly.
+.sp
+Variables include typedef names, goto labels, structure members and
+struct/union tags.
+This might be a feature too.
+.sp
+Output width checking is only done on the first character on a new line.
+.SH AUTHOR
+Originally from the net.  Enhanced at Purdue University, still maintained
+by Kevin S. Braunsdorf Federal Express, ksb@fedex.com
+.SH SEE ALSO
+cpp(1), cc(1), ctags(1)
+.sp 1.5
+.ce
+NOT SUPPORTED BY PUCC

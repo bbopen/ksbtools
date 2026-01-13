@@ -1,0 +1,214 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Chop up strings with a common shorthand</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: Dicer
+<BR>
+Authors: KSB Braunsdorf
+<BR>
+Mail: dicer@ksb.npcguild.org
+<BR>
+Version: 6.1
+<BR>
+None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+This is the arc-function of printf(3): the input is a well formatted line
+of text, the expression describes a location in that text where the
+desired result can be found, the output is that string.
+
+<H1>Configuration</H1>
+
+<DL>
+<DT><CODE>#define DICER_START	'['</CODE>
+<DD>
+Change the character the application uses to start a Dicer expression.
+
+<DT><CODE>#define DICER_END	']'</CODE>
+<DD>
+You can force define DICER_END to a character constant to replace
+the right square bracket as the closing marker.  I would let all
+dicer expression use square brackets if I had a vote.
+
+<DT><CODE>#define MIXER_RECURSE	'('</CODE>
+<DD>
+Change the default recursive expression token for the Mixer.
+Redefine in <code class="path">machine.h</code> to override.
+
+<DT><CODE>#define MIXER_END	')'</CODE>
+<DD>
+Change the default end character for the Mixer.
+
+<DT>require "dicer-dicer.c" "dicer.h"
+<DD>
+The <code class="sh">mkcmd</code> spell to include just the dicer directly from
+the explode repository.
+</DL>
+
+<H1>Synopsis</H1>
+<BLOCKQUOTE><PRE><CODE>
+#include "dicer.h"
+</CODE></PRE></BLOCKQUOTE>
+
+<H1>Description</H1>
+
+See <code class="sh">xapply</code>'s description of the square bracket expander.
+Briefly we split a string on a character (like ":" or "/") then
+select a field from that list to either keep or remove.  The result
+of that selection might be returned as is, or processed again.
+<P>
+For example the string "/home/662/ksb" is my home directory.
+If I want to pull out "662" I can write that as "[/3]" (spilt on "/"
+and take the third item  (think  "" / "home" / "662" / "ksb").
+If I want to remove "/ksb" I can write "[/-$]" (split on "/"
+and remove the last item).
+
+<P>
+This is a lot more useful than it sounds to specify parts of an
+input record (like /etc/passwd lines or login@host pairs).
+
+<P>
+By adding the Mixer in we can reformat fields character by character.
+For example, when <code class="markup">%p</code> would expand to "8005551212"
+the expresions <code class="markup">(%(p,1-3")"4-6"-"7-$)</code> expands to
+"(800)555-1212".
+
+<H1>Provides</H1>
+<DL>
+<DT><CODE>extern char *Dicer(char *pcDest, unsigned *puMax, char *pcTemplate, char *pcData);</CODE>
+<DD>
+Since the output can never be longer than the input make sure that
+pcDest points to at least strlen(pcData)+1 characters.  The pcTemplate
+paramter picks up <strong>after</strong> the leading bracket, and
+any work you do to slected the string to process.  We return a
+character pointer to the character after the close bracket.
+<P>
+In no case should the Dicer write beyond Max characters, or the strlen of
+Dest if puMax is a NULL pointer.  The value left in puMax is the length
+of the data copied into Dest (aka the strlen).
+
+<DT><code>extern char *Slicer(char *pcDest, unsigned *puMax, char *pcTemplate, char **ppcList);</code>
+<DD>
+This is a common (although largely unsafe) usage for the Dicer.
+It splices together a string from a vector of substrings drawn from
+ppcList (%1 is the first, %2 the next, and so on to the first (char *)0).
+The template may contain %N, %{NN}, or %[NN<i>...</i>], where N is a single
+digit number, NN maybe a multiple digit number, and "<i>...</i>" represents a
+valid Dicer expression.
+
+<P>
+This is very much like <code class="libc">printf</code>.  The destination buffer
+could be overflowed by a poorly chosen template and list combination.
+In most errors the code returns (char *)0, a successful call results
+in an empty string (""), other errors return the part of the template
+that remains to be applied.
+<P>
+The puMax parameter uses the same convention as Dicer's does, then
+the Mixer is applied if the dicer expression is surrounded by %( ... mixer).
+
+
+<DT><CODE> extern char *Mixer(char *pcInplace, unsigned *puMax, char *pcExpr, int cExit); </CODE>
+<DD>
+This function implements the optional character selection feature.
+Not every program that supports access to the Dicer needs to allow
+access to the Mixer.  The input string Inplace is rewritten to only
+include the characters selected by Expr.  The selection is done in the
+style of the Dicer, integer positions numbered from 1 to the length of
+the string are specified by decimal numbers, dollar ('$') [the last
+character], or star (*) [the whole range].  A range (start-end)
+is allowed to select a substring.
+Any index is taken from the end of the end of the string
+if it is introduced with a tildle (~).   This makes dollar a shorthand
+for <code class="markup">~1</code> (or, more verbosely <code class="markup">(~1-~1)</code>).
+
+<P>
+Ranges are separated with a comma (,), or a blank.
+<!-- tabs are allowed, but don't depend on it -->
+Any leading (or extra) separators are silentlty ignored.
+Ranges may also be separated by literal strings, in either double ("...")
+or <code class="sh">m4</code> (`...') quotes.
+The characters in the string are appended to the
+current result (as space allows).
+Thus <code class="markup">%(1,1`-'$)</code> expands to the
+first character of the first word followed
+by a dash (-) then the last character.
+<P>
+A Mixer expression can be positioned after a term to furthur process
+the selected value.  For example in <code class="markup">(17-$)(1,$-4,1-3`,'1)</code>
+all three references to "1" in the second term select character 17 from
+the previous term, and the last comma is a literal.
+<P>
+The expression ends at the first unquoted occurance of the Exit character.
+This allows the caller to change the outer expression boundry at run-time.
+<P>
+The output ends after *puMax characters, if that is not a NULL pointer,
+otherwise the length of the input string is assumed (including the end
+of string '\000').
+<P>
+Note that reversed ranges work to output the string from
+the right to the left.
+The expression <code class="markup">$-1</code> reverses the Inplace string.
+<P>
+Normally the expression is bracketed in parenthesis ('(' and ')'), and
+recursive expressions are allowed.  The suggested syntax is (dicer,mixer).
+This allows the dicer to select a large string, then the mixer limits that
+to the desired substring.  For example <code class="markup">%({10},$)</code> is
+the last character in the tenth input word.
+The compositional form <code class="markup">%(4,($-2)($-2))</code>
+removes the first and last character from the fourth parameter,
+through a bit of chicanery.  (I would prefer <code class="markup">%(4,2-~2)</code>.)
+Some expander's uses angle brackets in place of parenthesis,
+because parenthesis already had a special meaning.
+<P>
+The return value is the expression which remains after consumption
+up to and including the Exit character.
+A (char *)0 return value indicates a syntax error, range errors largely
+result in the empty string.
+</DL>
+
+
+<H1>EXAMPLE</H1>
+See the test driver embedded in the module (which requires
+gcc's <code class="opt">-fwritable-strings</code> to run), via:
+<bLockquote class="file"><code>
+explode -s dicer.h
+<br>
+explode -s dicer.c
+</code></bLockquote>
+<P>
+Build it with:
+<blockquote class="file"><code>
+mk dicer.c
+</code></blockquote>
+<P>
+Run with:
+<blockquote class="file"><code>
+./dicer
+</code></blockquote>
+No output is good.
+
+
+<H1>Diagnostics</H1>
+None.
+
+<H1>See Also</H1>
+strcpy(3), strcat(3), scanf(3)
+
+<H1>To Do List</H1>
+<DL>
+<DT>Document the apply form, if we decide to keep it.
+<DD>After a dicer's separator we may select all
+the fields created with commercial at (@),
+then continue with a new separator and field selector.
+The result is the catenation of the resulting strings,
+separated by the original separator.
+</DL>
+
+<HR><PRE>
+$Id: dicer.html,v 6.15 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

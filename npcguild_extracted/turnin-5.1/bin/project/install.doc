@@ -1,0 +1,53 @@
+# $Id: install.doc,v 4.6 1993/02/09 11:34:04 ldv Exp $
+
+$ project -i
+project: initialize user tst for a course
+
+Project allows other users to put files in your account.
+If you do not know what you are doing, stop now.
+Send mail to enroll-info if you have questions or need help.
+
+Are you sure you want to do this? [ny] y
+
+Have you ever used project to administer electronic submissions before? [ny] y
+
+A long name for a course might be something like 
+        Programming in Mud
+
+What is the long name of this course? This is a test
+
+A short name for a course might be something like 
+        cs200
+
+What is the short name of this course? test
+
+All submitted files will be under a special subdirectory in your account.
+This directory will be world readable.
+What name would you give the submission directory? [submit] 
+
+The submitted files will not be group readable, but should have an
+appropriate group none the less.  For most people the default is fine.
+
+Which group should the submitted files be in ? [staff] system
+
+Division/section identifiers separate large classes into
+many smaller parts for grading.
+Examples might be
+        morning
+        afternoon
+Or:
+        d1s1
+        d2s1
+
+Enter the divisions/sections of your course one per line.
+Use a dot (`.') on a line by itself to stop.
+div/section [d1s1] > one
+div/section [d1s2] > two
+div/section [d1s3] > .
+
+Lastly, if you would like to be notified by phone when this is done
+Please enter a phone number now: [No, Thanks] 
+
+Mail has been sent to a superuser to finish the configuration.
+You will be contacted via email or telephone when your account
+is ready for use.

@@ -1,0 +1,196 @@
+`# Copyright 1990 Purdue Research Foundation, West Lafayette, Indiana
+# 47907.  All rights reserved.
+#
+# Written by Kevin S Braunsdorf, ksb@cc.purdue.edu, purdue!ksb
+#
+# This software is not subject to any license of the American Telephone
+# and Telegraph Company or the Regents of the University of California.
+#
+# Permission is granted to anyone to use this software for any purpose on
+# any computer system, and to alter it and redistribute it freely, subject
+# to the following restrictions:
+#
+# 1. Neither the authors nor Purdue University are responsible for any
+#    consequences of the use of this software.
+#
+# 2. The origin of this software must not be misrepresented, either by
+#    explicit claim or by omission.  Credit to the authors and Purdue
+#    University must appear in documentation and sources.
+#
+# 3. Altered versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 4. This notice may not be removed or altered.
+#
+# Makefile for instck							(ksb)
+#
+# $Id: Make.host,v 8.17 2000/06/19 16:43:50 ksb Exp $
+#
+
+ETC=	${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/etc',`/usr/local/etc')`
+LIB=	${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/lib',`/usr/local/lib')`
+MROOT=	${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/man',`/usr/local/man')`
+PROG=	instck
+SHELL=/bin/sh
+
+# where is the source code for install(1L)?
+#INSTALLD= ../install.d
+INSTALLD= ../../bin/install.d
+
+PURGED= ../purge
+
+# do we have symbolic links?
+#  N.B. without symbolic links the source for install must be on
+#	this file system.
+#LN=ln
+LN='ifelse(HOSTTYPE,`V386',`ln',`ln -s')`
+
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE= 
+DEBUG=	-O
+CDEFS=  -DVINST=0 -DINSTCK=1 -D'HOSTTYPE`'ifelse(
+HOSTTYPE,`SUN5',` -DHAVE_QUOTA=0 -DBSD=43 -DDEFOWNER=\"bin\" -DDEFGROUP=\"bin\"',
+HOSTTYPE,`NETBSD',` -DDEFOWNER=\"root\" -DDEFGROUP=\"bin\"',
+HOSTTYPE,`FREEBSD',` -DDEFOWNER=\"bin\" -DDEFGROUP=\"bin\"',
+HOSTTYPE,`EPIX',` -systype bsd43',
+HOSTTYPE,`SUN4',` -DDEFGROUP=\"bin\"')` -DCONFIG=\"${LIB}/install.cf\"
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	'ifelse(MKCMD,`no',`main.h ')`instck.h magic.h maxfreq.h \
+	gen.h old.h backups.h links.h path.h
+SRC=	'ifelse(MKCMD,`no',`main.c ')`instck.c magic.c maxfreq.c \
+	gen.c old.c backups.c links.c path.c
+LINKH=	configure.h install.h machine.h special.h special.i syscalls.h
+LINKC=	syscalls.c special.c
+LINK=	${LINKH} ${LINKC}
+LINKPH=	filedup.h
+LINKPC=	filedup.c
+LINKP=	${LINKPH} ${LINKPC}
+EXP=	scandir.c
+GENC=	'ifelse(MKCMD,`no',`',`main.c ')`${LINKC} ${LINKPC}
+GENH=	'ifelse(MKCMD,`no',`',`main.h ')`${LINKH} ${LINKPH}
+DEP=	${SRC} ${GENC}
+GEN=	${GENC} ${GENH} ${EXP}
+OBJ=	main.o instck.o maxfreq.o magic.o syscalls.o special.o path.o \
+	gen.o filedup.o old.o backups.o links.o 'ifelse(
+HOSTTYPE,`SUN5',` scandir.o')`
+MAN=	instck.man
+OTHER=	README instck.m
+SOURCE=	Makefile ${HDR} ${SRC} ${MAN} ${OTHER}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}'ifelse(
+HOSTTYPE,`SUN5',` -lelf',
+HOSTTYPE,`V386',` -L/usr/local/lib -lsocket -lbsd',
+HOSTTYPE,`IRIX5',` -lelf',
+HOSTTYPE,`IRIX6',` -lelf',
+HOSTTYPE,`EPIX',` ',
+HOSTTYPE,`ETA10',` -lbsd')`
+
+links: ${LINK} ${LINKP}
+
+${LINK}:
+	${LN} ${INSTALLD}/$@ ./$@
+
+${LINKP}:
+	${LN} ${PURGED}/$@ ./$@
+
+${EXP}:
+	explode $@
+
+main.h: main.c
+
+main.c: instck.m
+	PATH=$$PATH:/usr/sbin:/sbin:/etc mkcmd instck.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} *.o a.out core errs tags
+
+depend: ${HDR} ${SRC} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${ETC}
+
+distrib: source FRC
+	distrib -c ${ETC}/${PROG}
+
+install: all dirs FRC
+	install -cs ${PROG} ${ETC}/${PROG}
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat -r${MROOT} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+/ ${ETC}:
+	install -d -r $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+bacups.o: backups.c backups.h configure.h install.h instck.h links.h main.h \
+	machine.h path.h special.h syscalls.h
+
+instck.o: configure.h install.h instck.c instck.h main.h path.h special.h \
+	machine.h syscalls.h
+
+links.o: links.c configure.h install.h instck.h links.h main.h machine.h \
+	path.h special.h syscalls.h
+
+maxfreq.o: configure.h gen.h machine.h main.h maxfreq.c maxfreq.h
+
+main.o: configure.h install.h instck.h machine.h main.c main.h special.h \
+	syscalls.h
+
+path.o: configure.h install.h instck.h machine.h main.h path.c path.h \
+	special.h
+
+gen.o: configure.h filedup.h gen.c gen.h install.h instck.h machine.h main.h \
+	maxfreq.h path.h special.h syscalls.h
+
+syscalls.o: configure.h install.h machine.h main.h syscalls.c
+
+special.o: configure.h install.h machine.h instck.h main.h special.c \
+	special.h special.i syscalls.h
+
+filedup.o: filedup.c filedup.h machine.h
+
+scandir.o: scandir.c
+
+old.o: backups.h configure.h install.h old.c instck.h machine.h main.h path.h \
+	special.h syscalls.h
+
+magic.o: configure.h machine.h magic.c instck.h magic.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

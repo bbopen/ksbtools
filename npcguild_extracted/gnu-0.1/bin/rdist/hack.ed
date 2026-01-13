@@ -1,0 +1,5 @@
+$i
+#define _PATH_RDISTD "/opt/fedex/support/bin/rdistd"
+.
+w
+q

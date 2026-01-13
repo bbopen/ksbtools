@@ -1,0 +1,35 @@
+# $Id: TODO,v 8.3 2000/01/30 23:49:48 ksb Exp $
+
+Bugs!
+svr6.dscm 0 /tmp/t 22   cd OLD
+svr6.dscm 0 /tmp/t/OLD 23   install -H thing it ..
+install: source `../OLD/it' will be renamed before installation
+install: no `../it' to back up
+install: link: ../it to thing: No such file or directory
+svr6.dscm 0 /tmp/t/OLD 24   ls -las
+total 4
+   2 drwxr-xr-x   2 ksb      dspd        1024 Aug 19 21:07 ./
+   2 drwxr-xr-x   3 ksb      dspd        1024 Aug 19 21:07 ../
+
+
+Add the FreeBSD chflags option
+	-f flags
+
+and support flags in instck's last column
+	/kernel	-rwxr--r--	root:*	schg,nostrip
+
+Change the letter "n", "l", "s" to "nostrip", "ranlib", "strip" as
+pseudo flags
+
+see g05.sa:/usr/src/bin/ls/stat_flags.c for clues
+
+Also make instck -G generate them.
+
+
+
+Question: does install check the link count on the source file before it
+unlinks it?  If the link count is >1 maybe we should NOT remove it?
+
+
+--
+kayessbee

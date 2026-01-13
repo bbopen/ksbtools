@@ -1,0 +1,124 @@
+.\" $Id: purge.man,v 8.6 2010/08/13 19:11:25 ksb Exp $
+.\" by Kevin Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: ${groff-groff} -Tascii -tbl -man %f | ${PAGER:-less}
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man8/purge.8
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]8/purge.8*
+.TH PURGE 8L LOCAL
+.SH NAME
+purge \- remove outdated backup copies of installed programs
+.SH SYNOPSIS
+\fBpurge\fP [\-\fBASnv\fP] [\-\fBd\fP\~\fIdays\fP] [\-\fBu\fP\~\fIuser\fP] [\fIdirs\fP|\fIfiles\fP]
+.br
+\fBpurge\fP \fN-h\fP
+.br
+\fBpurge\fP \fN-V\fP
+.br
+.SH DESCRIPTION
+.PP
+\fIPurge\fP removes backup files that are more than \fIdays\fP old from
+OLD directories created by \fIinstall\fP(1L).  \fIPurge\fP locates the
+OLD directories by recursively descending \fIdirs\fP selecting directories
+named \*(lqOLD\*(rq that the invoker owns.
+.PP
+\fIPurge\fP does not remove backup files with multiple hard links if it
+cannot find all the links.
+This is an indication that a product was installed without
+regard for multiple names (\fIinstall\fP warns the installer in
+such cases, but the error message may have been inadvertently ignored).
+\fIPurge\fP directs the maintainer to run \fIinstck\fP(1L)
+to correct any such problems.
+.PP
+In the case where a single target file has been \fIinstall\fPed so
+many times that the backup files are an issue the \fIfiles\fP parameter
+may be specified as the target file's path.  In this case \fIpurge\fP
+only removes likely backups of each of those files.  Actually \fIfiles\fP
+and \fIdirs\fP may be intermixed.
+.PP
+In another corner case \fIpurge\fP may read \fIstdin\fP for a list
+of \fIdirs\fP, this is deprecated in favor of using \fIxapply\fP or
+\fIxargs\fP to process the stream.
+.\" with a dir of dash
+.SH OPTIONS
+.TP
+.BI \-A
+Allow OLD directories owned by any user to be searched for out of date backup files.
+.TP
+.BI \-d days
+Days to keep backup files (default 14).
+Older versions of \fIpurge\fP
+expected this parameter in place of \fIdirs\fP, which was a botch.
+.TP
+.BI \-h 
+Print a help message.
+.TP
+.BI \-n 
+Do not really execute commands, output what would be done (see \-\fBv\fP).
+.TP
+.BI \-S 
+Run as if we are the superuser.
+In combination with \-\fBn\fP this allows a system administrator to
+see what \fIpurge\fP would do when run as root.
+.TP
+.BI \-u user
+OLD directories may (also) be owned by this user.
+.TP
+.BI \-v 
+Be verbose by showing approximate actions as shell commands.
+.TP
+.BI \-V 
+Show version information.
+.SH EXAMPLES
+.TP
+purge -v -d7 $HOME/bin
+Remove any backup files from my bin which are older than one week.
+.TP
+purge -Sn /bin/OLD
+Show which files purge would remove from /bin's OLD directory.
+.TP
+purge -u news -u uucp -u adm -u lp /
+When run as root, purge all system OLD directories on this machine.
+.TP
+purge -Sn /bin/OLD
+Show which files \fIpurge\fP would remove from /bin's OLD directory.
+.TP
+purge -Sn -d0 /etc/group
+Show all files \fIpurge\fP would remove as backups of \fB/etc/group\fP.
+.TP
+purge -V
+Output \fIpurge\fP's version information, eg.:
+.sp 1
+.nf
+purge: $\&Id: purge.c,v 8.6 2007/02/15 16:25:00 ksb Exp $
+purge: default superuser login name: root
+purge: backup directory name: OLD
+purge: valid backup directory owner: root
+.fi
+.SH BUGS
+.PP
+\fIPurge\fP does not cross mount points.
+.PP
+This version of \fIpurge\fP is slightly incompatible with the shell script.
+.PP
+The code to process backups for a single target could removed files
+of another target in some cases, but it much safer than \fIrm\fP with
+a star-based glob expression.  Any backup file must match by name, mode,
+and not exist as a potential target file.
+.PP
+There is no way to safely remove an OLD directory, as one might race
+with a running copy of \fIinstall\fP, \fIinstallus\fP or \fIvinst\fP,
+or fail to remove multiply linked or busy files.
+This is a close as we can get:
+.RS
+.nf
+purge -d0 $OLD
+rmdir $OLD
+.fi
+.RE
+
+.SH AUTHOR
+David L Stevens, Purdue UNIX Group (original script version)
+.br
+Kevin Braunsdorf, Purdue UNIX Group, purge@ksb.npcguild.org
+.SH "SEE ALSO"
+install(1L), instck(1L), rm(1), sh(1), installus(1L), vinst(1L)

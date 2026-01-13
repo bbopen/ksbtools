@@ -1,0 +1,13 @@
+# a valid(1L) input file						(ksb)
+# $Id: valid,v 5.0 1996/09/09 20:59:59 kb207252 Exp $
+
+$Compile(*): ${valid-valid} -mCompile,Run,Diff,Clean -aClean -o%s -C %f >%f.out 2>%f.log\nFAILED=$?\ncase $FALIED in\n\t0) echo "Validation completed successfully" ;;\n\t1) echo "One Test Failed" ;;\n\t*) echo $FAILED "Tests Failed" ;;\nesac
+$Compile(*): ${valid-valid} -mCompile,Run,Diff,Clean -aClean -C %f >%f.out 2>%f.log\nFAILED=$?\ncase $FALIED in\n\t0) echo "Validation completed successfully" ;;\n\t1) echo "One Test Failed" ;;\n\t*) echo $FAILED "Tests Failed" ;;\nesac
+
+$Valid(*): ${valid-valid} -mCompile,Run,Diff,Clean -aClean -o%s -C %f >%f.out 2>%f.log\nFAILED=$?\ncase $FALIED in\n\t0) echo "Validation completed successfully" ;;\n\t1) echo "One Test Failed" ;;\n\t*) echo $FAILED "Tests Failed" ;;\nesac
+$Valid(*): ${valid-valid} -mCompile,Run,Diff,Clean -aClean -C %f >%f.out 2>%f.log\nFAILED=$?\ncase $FALIED in\n\t0) echo "Validation completed successfully" ;;\n\t1) echo "One Test Failed" ;;\n\t*) echo $FAILED "Tests Failed" ;;\nesac
+
+$Clean(*):	${rcsclean-rcsclean} %s *
+$Clean(*):	${rcsclean-rcsclean} *
+
+$Info(*):	${echo-echo} "test suite description for valid"

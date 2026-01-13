@@ -1,0 +1,19 @@
+/* $Id: getopt.mi,v 8.10 2000/05/31 13:16:24 ksb Exp $
+ */
+
+%#if %K.3v || %K.2v || %K<getopt_shared>1v
+/* IBMR2 (AIX in the real world) defines
+ * optind and optarg in <stdlib.h> and confuses the heck out
+ * of the C compiler.  So we use those externs.  I guess we will
+ * have to stop using the old names. -- ksb
+ */
+%%K<getopt_shared>2v int
+%	%K<getopt_switches>1v = 1%;		/* index into parent argv vector	*/
+%%K<getopt_shared>2v char
+%	*%K<getopt_switches>2v%;		/* argument associated with option	*/
+
+#endif /* only if we use them */
+%#if %K.3v
+%%K<getopt_shared>2v int
+%	%K<getopt_switches>3v%;			/* character checked for validity	*/
+#endif

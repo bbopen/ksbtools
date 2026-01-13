@@ -1,0 +1,17 @@
+#  Device independant Output file				(nuspl)
+#  $Id: dvi,v 5.0 1996/09/09 21:05:58 kb207252 Exp $
+
+$Clean(*):	${rm-rm} -i %F.ps
+
+$Info(*):	${echo-echo} "%f:  Device Independant Output file"
+
+$Laser(*):	${lpr-lpr} -d -P${LASER-${PRINTER-%s}} %f
+$Laser(*):	${lpr-lpr} -d %f
+
+$Display(*):	: 'on $DISPLAY'\n\t${xdvi-xdvi} %f
+
+$Ps(*):		${dvi2ps-dvi2ps} %s %f >%F.ps
+$Ps(*):		${dvi2ps-dvi2ps} %f >%F.ps
+
+$*(*):		${echo-echo} "%f: %m(%s) is ambiguous for a DVI file"
+$*(*):		${echo-echo} "%f: %m is ambiguous for a DVI file"

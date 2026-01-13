@@ -1,0 +1,67 @@
+`#	$Id: Make.host,v 8.1 1997/10/27 11:26:45 ksb Exp $
+#
+#	Makefile for mkcmd package master source
+#
+
+SUBDIR= lib/mkcmd bin/mkcmd lib/explode bin/explode
+OTHER= README
+SOURCE=	Makefile ${OTHER}
+
+LOOP=	-for i in ${SUBDIR}; do\
+		echo $$i:;\
+		(cd $$i;\
+		[ -f Makefile ] || co -q Makefile;\
+		make ${MFLAGS} DESTDIR="${DESTDIR}" INTO="${INTO}/$$i" P="$P" $@;\
+		cd ..;\
+		)\
+	done
+
+all: ${SOURCE} FRC
+	${LOOP}
+
+calls: FRC
+	echo "Too much output and CPU usage."
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs lint.out tags
+	${LOOP}
+
+deinstall: FRC
+	echo "Unsafe to deinstall a whole binary directory."
+	false
+
+depend: FRC
+	${LOOP}
+
+dirs: FRC
+	${LOOP}
+
+distrib: FRC
+	${LOOP}
+
+install: FRC
+	${LOOP}
+
+lint: FRC
+	${LOOP}
+
+mkcat: FRC
+	${LOOP}
+
+print: FRC
+	echo "Too much output."
+
+source: ${SOURCE}
+	${LOOP}
+
+spotless: FRC
+	${LOOP}
+
+tags: FRC
+	${LOOP}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

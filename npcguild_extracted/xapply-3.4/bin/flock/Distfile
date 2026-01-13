@@ -1,0 +1,9 @@
+# $Id: Distfile,v 2.0 1996/11/14 18:16:01 kb207252 Exp $
+#
+`( . ) -> ( 'HOST` )
+	except_pat ( /RCS /Makefile /Distfile /Make\\.host );
+	install ${INTO} ;
+
+( @Make.host@ ) -> ( 'HOST` )
+	install -b ${INTO}/Makefile ;
+'dnl

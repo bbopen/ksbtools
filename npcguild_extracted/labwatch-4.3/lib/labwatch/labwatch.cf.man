@@ -1,0 +1,166 @@
+.\" $Id: labwatch.cf.man,v 1.1 1994/03/08 01:26:22 bj Exp $
+.\" by Ben Jackson
+.TH LABWATCH.CF 5L LOCAL
+
+.SH NAME
+labwatch.cf \- configuration file for \fIlabwatch\fP
+
+.SH DESCRIPTION
+This file consists of two sections:  a list of machines \fIlabwatch\fP
+expects to report (one per line) and blocks of text that are used by
+\fIlabstat\fP to
+display maps.  Lines starting with `#' and blank lines are ignored
+in the first section.  The beginning of the second section is marked
+by the first map header line.  A map is formed as follows:
+.sp 1
+.nf
+.RS 4
+%%\fImapname\fP -- \fIdescription\fP
+\fImap-text\fP
+.RE
+.fi
+.IP \fImapname\fP 13
+This is the name of the map which will show up in lists (the map command
+on the \fIlabwatch\fP client interface, or \fIlabstat\fP \-m).  Since
+labstat uses `,' to delimit map names, the names themselves should not
+contain commas.  Usually the name is the location of the lab, formed
+by concatenating the four-letter building abbreviation and the room
+number.  A ``map'' which has server information is usually called `server',
+and a map of staff workstations is usually called `staff'.  If there is
+a message associated with that particular group of maps, it is usually
+called `motd' (although it is not handled differently than any other map).
+.IP \fIdescription\fP 13
+A short line of text which describes the map.  Usually this includes
+the location and/or purpose of the lab(s) shown in the map.  This
+description is used when the user requests a list of maps (\fIlabstat\fP \-m).
+.IP \fImap-text\fP 13
+This is the text of the map.  \fIlabstat\fP reads this text from the
+server and displays it for the user after doing substitutions on
+special escapes.  These escapes are replaced by information about each
+machine (see below).
+.PP
+Within the \fImap-text\fP, \fIlabstat\fP does subsitutions on escape
+sequences before displaying the map.  These sequences are formed
+as follows:
+.sp 1
+.RS 4
+%{\fImachine\fP[:\fIletter\fP]}
+.RE
+.IP \fImachine\fP 9
+The machine whose information is used.
+.IP \fIletter\fP 9
+An optional :\fIletter\fP specifies what piece of information to substitute.
+If only %{\fImachine\fP} is used, the user can decide (on the \fIlabstat\fP
+command line) what to display.  Specifying a letter forces a specific
+substitution.  Currently, the following letters are valid:
+.RS
+.IP \fBb\fP 3
+Boot time.
+.IP \fBB\fP 3
+Same as \fBb\fP but unseen machines are marked UNSEEN.
+.IP \fBc\fP 3
+Console user.
+.IP \fBC\fP 3
+Same as \fBc\fP but idle users are marked IDLE.
+.IP \fBf\fP 3
+Last letter of each mounted filesystem, sorted.
+.IP \fBh\fP 3
+Hostname.
+.IP \fBl\fP 3
+Load average (x.xx).
+.IP \fBL\fP 3
+Same as \fBl\fP but 0.00 is not considered uninteresting (see below).
+.IP \fBn\fP 3
+Number of unique users.
+.IP \fBN\fP 3
+Same as \fBn\fP but 0 unique users is not considered uninteresting (see below).
+.IP \fBr\fP 3
+The last report time.
+.IP \fBR\fP 3
+Same as \fBr\fP but unseen machines are marked NEVER.
+.IP \fBu\fP 3
+The next connected, unidle user (this may be specified many times to
+form a table of connected users).
+.IP \fBx\fP 3
+The machine's status (DEAD, UNSEEN).  This is determined by \fIlabstat\fP
+and may not reflect the status shown on the \fIlabwatch\fP operator interface.
+.IP \fBX\fP 3
+Same as \fBx\fP but machines which are not dead or unseen are marked OK.
+.IP \fBz\fP 3
+Console users logged on more than a certain number of minutes (specified
+on the \fIlabstat\fP command line, default is 2 hours).
+.RE
+.PP
+Unless otherwise noted, the capital version of a listed letter does the same
+thing as the lowercase version.  Letters not in the list substitute
+``error''.  Anything which would evaluate to an empty string, and
+numbers which evaluate to 0 (these values are considered uninteresting)
+are replaced by the hostname if \fIlabstat\fP is given \fB\-L\fP.
+The result is truncated/centered in 8 characters.
+
+Dates (for last report, boottime, etc) are displayed as ``ddd hh:mm''
+for dates within one week, ``mmm dd'' for dates within the last 6
+months, and ``yyyy mmm'' for dates older than 6 months.
+.PP
+The end of a map is marked by the beginning of the next map or the end
+of file.  The order of maps is not important, as the list will be alphabetized
+by \fIlabwatch\fP when the configuration file is read.
+
+.SH EXAMPLE
+Most \fIlabwatch.cf\fP files look very similar.  This is part
+of a configuration
+file from the NeXT lab in the basement of the Mathematical Sciences building
+at Purdue University (yes, the carrels don't line up).  The ``$Compile''
+token is for a local DWIM program \fImk\fP, so startup is usually
+done with ``mk /root/labwatch.cf''.  ``mathnx'' is a laser printer.
+.sp 1
+.nf
+.cs 1 22
+.RS 4
+# $Com\
+pile: labwatch -C %f -n -w 860
+#
+symphony
+ballad
+cantata
+concerto
+fugue
+march
+minuet
+prelude
+rock-opera
+sonata
+toccata
+waltz
+%%mathb22 -- math B22, the public NeXT lab
+ D O O R      +--------+--------+
+              |%{concerto}|%{ballad}|
+s
+t              |%{cantata}|%{minuet}|
+o              +--------+--------+----------+
+r              |%{waltz}|%{symphony}| mathnx
+a
+g                |%{rock-opera}|%{toccata}|%{march}|
+e                +--------+--------+--------+
+                 |%{fugue}|%{sonata}|%{prelude}|
+
+  D O O R
+%%staff -- Staff NeXT workstations
+           %{le}   %{scotty}
+
+%{hartley}                       %{wonderland}            MATH G175
+
+           %{vic}   %{jms}
+.RE
+.cs 1
+.fi
+
+.SH AUTHORS
+Ben Jackson & Kevin Braunsdorf
+.br
+bj@cc.purdue.edu & ksb@cc.purdue.edu
+.br
+PUCC UNIX Group
+
+.SH "SEE ALSO"
+labstat(1L), mk(1L), labwatch(8L), labd(8L)

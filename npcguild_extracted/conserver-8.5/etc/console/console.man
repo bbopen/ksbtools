@@ -1,0 +1,235 @@
+.\" $Id: console.man,v 8.2 2000/08/02 18:37:55 ksb Exp $
+.TH CONSOLE 8L "Local"
+.SH NAME
+console \- console server client program
+.SH SYNOPSIS
+.ds PN "console
+\fI\*(PN\fP [\-\fBa\fP|\fBA\fP | \-\fBf\fP|\fBF\fP | \-\fBs\fP|\fBS\fP] [\-\fBr\fP\fBv\fP] [\-\fBe\fP \fIattn\fP] [\-\fBM\fP \fImaster\fP] \fImachine\fP
+.br
+\fI\*(PN\fP \-\fBu\fP|\fBU\fP|\fBw\fP|\fBW\fP|\fBx\fP|\fBX\fP [\-\fBv\fP] [\-\fBM\fP \fImaster\fP]
+.br
+\fI\*(PN\fP \-\fBq\fP|\fBQ\fP [\-\fBv\fP] [\-\fBM\fP \fImaster\fP]
+.br
+\fI\*(PN\fP \-\fBd\fP|\fBD\fP|\fBp\fP|\fBP\fP [\-\fBv\fP] [\-\fBM\fP \fImaster\fP]
+.br
+\fI\*(PN\fP \-\fBY\fP [\-\fBv\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.SH DESCRIPTION
+.PP
+.B Console
+is used to manipulate console terminals remotely or poll running
+\fIconserver\fP(8L) daemons for status information.
+.PP
+.B Console
+queries the user for an access password before
+granting interactive access to a console (on a non-trusted system)
+since such a session may provide single-user access.
+This password may be the superuser's password or a password installed
+for a limitted number of devices.
+.PP
+Any default (\fB\-a\fP) connection is dropped to spy mode if
+someone else is attached read-write.
+Force this spy mode connection to read write with the ``f'' command
+below.
+.PP
+In the non-interactive mode
+.B console
+exits after it outputs the requested information.
+.SH OPTIONS
+.TP
+.B \-a
+Access a console with a two-way connection (this is the default).
+The uppercase varient (\-\fBA\fP) of this option forces a replay command into
+the negotiated connection after it is established.
+.TP
+.B \-d
+Display daemon versions.  The \fIconsole\fP client connects to each
+server to request its version information.
+The uppercase varient (\-\fBD\fP) of this option only requests
+only the primary server's version.
+.TP
+.BI \-e esc
+Set the initial two character escape sequence to
+those represented by \fIesc\fP.
+Any of the forms output by \fIcat\fP(1)'s \-\fBv\fP option
+are accepted.  The default value is ``^Ec'' (control-e lowercase-c)
+read as ``escape conserver''.
+.TP
+.B \-f
+Same as
+.I \-a
+except it will force any existing read/write connection into spy mode.
+Uppercase (viz. \-\fBF\fP) forces a replay command.
+.TP
+.B \-h
+Display a brief help message.
+.TP
+.BI \-M master
+The \fIconsole\fP client program polls \fImaster\fP as the primary server,
+rather than the hard coded default (``console.itsd.fedex.com'').
+.TP
+.B \-p
+The \fIconsole\fP client program polls all each peer console servers
+for their process id.
+The uppercase varient (\-\fBP\fP) of this option only polls the \fImaster\fP
+console server.
+.TP
+.B \-q
+The \fIconsole\fP client requests the server daemon quit (shutdown).
+A password is sent in the protocol stream, if none is required for
+the local host to shutdown the server just press return.
+The uppercase varient (\-\fBQ\fP) of this option just acts on
+the \fImaster\fP server.
+.TP
+.B \-r
+Request a raw connection to the group control virtual console,
+this is only useful for learning the protocol used by the
+non-interactive sequences.
+If you think this is something you might want to try you need to
+get out a little more.
+.TP
+.B \-s
+Requests a read-only (spy mode) connection.
+If this mode all the escape sequences (below) work, or report errors,
+but all other keyboard input is discarded.
+Uppercase (viz. \-\fBS\fP) still forces a replay command.
+.TP
+.B \-u
+The \fIconsole\fP client program polls each console group for a list
+of connected users.
+Uppercase (viz. \-\fBU\fP) limits the scan to groups of the
+\fImaster\fP server.
+.TP
+.B \-V
+Output the version of the console client program.
+.TP
+.B \-v
+Be more verbose during when building the connection(s).
+Use this option in combination with any of `show' options (below)
+for added benefit.
+.TP
+.B \-w
+Show a list of all connections to all consoles.
+Uppercase (viz. \-\fBW\fP) limits the scan to groups of the
+\fImaster\fP server.
+.TP
+.B \-x
+Show a list of consoles and devices.
+Uppercase (viz. \-\fBX\fP) limits the scan to groups of the
+\fImaster\fP server.
+.TP
+.B \-Y
+Send a restart signal to the console server on the local host.
+This doesn't work across the network as it reads the process
+id from the network and sends the signal with kill(2).
+
+.SH "ESCAPE SEQUENCES"
+The connection can be controlled by a two character escape sequence, followed
+by a command.
+The default escape sequence is ``control-E c''
+(octal 005 143).
+Commands are:
+.sp
+.TS
+c l.
+a	switch to attach mode
+c	toggle flow control (don't do this)
+d	down the current console
+e	change the escape sequence to the next two characters
+f	force a switch to attach mode
+l1	send a 3 second serial line break (might halt a Sun)
+o	reopen the line to clear errors (silo overflows)
+r	replay the last 20 lines of output
+s	switch to spy mode
+u	show other users on this port
+v	show the version of the group server
+w	who is using this console
+x	examine this group's devices and modes.
+z	suspend this connection
+?	display list of commands
+^I	toggle tab expansion
+^J	continue, ignore the escape sequence
+^P	chat with the power controller
+^R	replay the last line only
+\.	disconnect
+;	provide a new login or shift to a new console
++(-)	be more (less) free with newlines
+.TE
+.sp
+.PP
+If any other character is hit after the escape sequence, all three characters
+will be discarded.
+Note that serial line breaks, line down, and power controller commands
+can only be sent from a full two-way attachment.
+To send the escape sequence through the connection one must redefine
+the outer escape sequence.
+.PP
+In the \fB\-u\fP output, the login \fB<none>\fP indicates no one is
+viewing that console, the login \fB<spies>\fP indicates that
+no one has a full two-way attachment.  When no one is attached to
+a console its output is cloned to the stdout of the server process.
+
+.SH EXAMPLES
+.TP
+console \-u
+Outputs something like:
+.sp
+.RS
+.TS
+l18 l l.
+dumb	up	<none>
+expert	up	ksb@w01.dspd
+tyro	up	<spies>
+mentor	up	<none>
+sage	up	fine@cis
+.TE
+.RE
+.sp
+The \fB<none>\fP indicates no one is viewing \fIdumb\fP or \fImentor\fP,
+the \fB<spies>\fP indicates only read-only connections exist for \fItyro\fP,
+other \fIlogin\fP@\fIhost\fP entries are the currently attached
+\fIsage\fP and \fIexpert\fP.
+.TP
+console \-w
+Outputs something like:
+.sp
+.RS
+.TS
+l l l.
+ksb@extra	on expert	Fri Feb 15 16:40:36 1991
+file@cis	on sage	Thu Feb 14  1:04:10 1991
+dmr@alice	spy tyro	Thu Feb  7 10:09:59 1991
+.TE
+.RE
+.sp
+.TP
+console \-e \*(lq^[1\*(rq lv426
+Requests a connection to the host ``lv426'' with the escape characters
+set to ``escape one''.
+
+.SH BUGS
+Connections suspended under Dynix sometimes break the kernel when
+resumed.  Suspended connections are a poor idea in general, just
+disconnect instead.
+.PP
+It is possible to create a loop of console connections, with ugly results.
+Never run \fIconsole\fP from within a console connection.
+In root's .profile set $CONSOLE with:
+.sp 1
+	 CONSOLE="-- hey 'do not run console from here'"
+.sp 1
+.PP
+The \-\fBr\fP option doesn't really help to explain how connections get built.
+
+.SH AUTHORS
+Thomas A. Fine, Ohio State Computer Science.
+.br
+Kevin Braunsdorf, Federal Express (ksb@sa.fedex.com)
+
+.SH "SEE ALSO"
+conserver.cf(5L), conserver(8L), autologin(8L), kill(2)

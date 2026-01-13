@@ -1,0 +1,23 @@
+# $Id: INSTALL,v 1.2 1997/11/24 03:52:26 ksb Exp $
+
+After you've install the basic entombing system (libtomb.a, entomb,
+unrm, preend, rmfile, untmp) you should add this package of Berkeley
+software compiled with -ltomb to enable user level entombing.
+
+I'd never tell you to replace /bin/rm or /bin/mv!  Rather build a
+directory like /usr/local/safety and install these there.  Well, you can
+replace /bin/rm but /bin/mv is STATICALLY linked on some systems for a
+reason -- use "file /bin/mv" to check and you might have to fix the
+Make.host makefile in bin/mv/Make.host.
+
+This is tricky stuff, but when it works it can save you tens of file
+restores a month on a busy (novice user) system.
+
+Play it safe, and it is _not_ my fault.
+
+Note: The FreeBSD guys added -P and -d to rm, this one doen't have it.
+They also use the nasty "errx" stuff so there code will _never_ build
+any place elese, at least mkcmd runs on most platforms.  So there.
+
+--
+ksb

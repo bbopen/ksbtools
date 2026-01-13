@@ -1,0 +1,13 @@
+# $Id: README,v 8.0 1996/07/14 17:04:33 kb207252 Dist $
+
+You might want to use instck(1L) to generate more lines for this
+file, for example all the setuid/setgid files on your system:
+
+	find / \( -perm -4000 -o -perm -2000 \) -type f -print |
+		xargs instck -GSLv
+
+You might find it offensive that install doesn't want you to install
+header files (*.h) and such with +x set.  If so take out those lines.
+I like it because it stops broken Makefiles before they make a mess.
+
+ksb@fedex.com

@@ -1,0 +1,37 @@
+# $Id: TODO,v 5.1 2008/11/26 15:11:15 ksb Exp $
+long		0x0000010b	VAX demand load format a.out object file
+long		0x00000140	old Microsoft 8086 x.out
+long		0x00000178	Bell 5.0 executable
+long		0x0000816C	apl workspace
+long		0x0000836c	PDP-11 double precision APL workspace
+long		0x0000836d	PDP-11 single precision APL workspace
+long		0x0000836e	VAX double precision APL workspace
+long		0x0000836f	VAX single precision APL workspace
+long		0x0000e805	overlay object file (z8000 a.out)
+long		0x0000e807	object file (z8000 a.out)
+long		0x0000e808	pure object file (z8000 a.out)
+long		0x0000e809	separate object file (z8000 a.out)
+byte		0x80		8086 relocatable (Microsoft)
+byte		0xf0		MS-DOS library
+
+string		.snd			audio data:
+string		!<arch>			current ar archive
+string		!<arch>\n__.SYMDEF	archive random library
+string		%!			PostScript document
+string		0x71c1			ASCII cpio archive
+string		0x71c2			ASCII cpio archive - CRC header
+string		0x71c7			ASCII cpio archive - CHR (-c) header
+string		<!OPS			Interleaf ASCII document
+string		<MIFFile		Frame Maker MIF file
+string		<MML			Frame Maker MML file
+string		<MakerFile		Frame Maker document
+string		<ar>			System V Release 1 ar archive
+string		GKSM			GKS Metafile
+string		Interpress/Xerox	Interpress document
+string		StartFont		ASCII font bits
+string		StartFontMetrics	ASCII font metrics
+string		\037\036		packed data
+string		\037\235		compressed data
+string		\377\037		compacted data
+string		snoop			Snoop capture file
+string		ELF			ELF

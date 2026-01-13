@@ -1,0 +1,12 @@
+# an X bitmap file							(ksb)
+# $Id: xbm,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	%hDisplay
+
+$Info(*):	${echo-echo} "an X bitmap image"
+
+$Display(*):	# on %{DISPLAY}\n\t${xloadimage-xloadimage} %f
+$Display(*):	# on %{DISPLAY}\n\t${xv-xv} %f
+$Display(*):	# on %{DISPLAY}\n\t${xli-xli} %f
+$Display(*):	: 'set ${DISPLAY} to %m(%s) %f'
+$Display(*):	: 'set ${DISPLAY} to %m %f'

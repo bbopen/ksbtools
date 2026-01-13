@@ -1,0 +1,18 @@
+.\" $Id: cover,v 1.1 1988/10/05 13:08:52 mjb Exp $
+.\" $Compile:	nroff -ms %f | ${PAGER-more}
+.\" $Laser:	ltroff -ms %f
+.ad l
+.LP
+Wed Oct 5, 1988
+.sp 3
+Dear Sirs:
+.sp 2
+Please accept this paper as a candidate for inclusion in the technical
+session of the 1989 Winter USENIX Conference.  I also request that
+my paper be marked as a student submission (I am an undergraduate
+student of Computer Science at Purdue University).
+.sp 3
+Thank you,
+.br
+.sp 4
+Matthew Bradburn

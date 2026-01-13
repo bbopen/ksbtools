@@ -1,0 +1,17 @@
+# RatFor source file							(ksb)
+# $Id: r,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	${ratfor-ratfor} %s %f >%P.f && %b %o %P.f && ${rm-rm} %P.f
+$Compile(*):	${ratfor-ratfor} -C %f >%P.f && %b %o %s %P.f && ${rm-rm} %P.f
+$Compile(*):	${ratfor-ratfor} -C %f >%P.f && %b %o %P.f && ${rm-rm} %P.f
+$Compile(*):	${ratfor-ratfor} %s %f >/tmp/%F.f && %b %o /tmp/%F.f && ${rm-rm} /tmp/%F.f
+$Compile(*):	${ratfor-ratfor} -C %f >/tmp/%F.f && %b %o -d%s /tmp/%F.f && ${rm-rm} /tmp/%F.f
+$Compile(*):	${ratfor-ratfor} -C %f >/tmp/%F.f && %b %o /tmp/%F.f && ${rm-rm} /tmp/%F.f
+
+$Ratfor(*):	${ratfor-ratfor} %s %f >%P.f
+$Ratfor(*):	${ratfor-ratfor} -C %f >%P.f
+
+$Clean(*):	${rm-rf} %s %P.f
+$Clean(*):	${rm-rf} -f %P.f
+
+$Info(*):	${echo-echo} "ratfor source"

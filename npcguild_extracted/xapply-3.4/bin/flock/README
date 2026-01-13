@@ -1,0 +1,32 @@
+# $Id: README,v 2.0 1996/11/14 18:16:55 kb207252 Exp $
+
+Flock applies or removes an advisory lock on the named file or file
+descriptor.  Advisory locks allow cooperating processes to perform
+consistent operations on files see flock(2).  This program is *very*
+useful on a Sequent machine; almost as useful on fast uniprocessors.
+
+Here is a case where flock(1) is very useful: on a Sequent Balance
+series machine parallel make can be used to compile many files at the
+same time.  This doesn't work for programs that use xstr(1) because
+competing processes using xstrings fails.  In the Makefile for vi one
+might use a flock on the Makefile to force (only) the xstr to be run
+sequentially:
+
+	.c.o:
+		${CC} -E ${CFLAGS} $*.c | \
+		flock Makefile sh -c "${XSTR} -c -; mv x.c $*.p.x"; \
+		sed '/rcsid\[\]/d' < $*.p.x > $*.p.c; \
+		${CC} ${CFLAGS} -c $*.p.c; \
+		mv $*.p.o $*.o; \
+		rm $*.p.x $*.p.c
+	  
+Which will start a few cpps in parallel and run only one xstr at a time,
+as soon as it can it will run the sed/cc/mv/rm allowing another process
+to begin using xstr.
+
+(I flock the Makefile by convention, because I know I always have one.
+ If more then one command set needs to work from the same Makefile I
+ flock `complie.lock', and `yacc.lock' or some such, not using Makefile
+ for either.  The clean target in the Makefile removes these files.)
+
+kayessbee (Kevin S Braunsdorf) ksb@j.cc.purdue.edu, pur-ee!ksb

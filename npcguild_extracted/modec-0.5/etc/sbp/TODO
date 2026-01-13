@@ -1,0 +1,92 @@
+# $Id: TODO,v 1.9 2000/08/05 02:12:55 ksb Exp $
+
+This product does what I needed it to do.  Bugs reports welcome.
+
+
+Document:
+---------
+ -a is a _lot_ faster than you'd think, on FreeBSD.
+ -B/-A -D/-I if we can figure out how to explain them.
+ -Hdd:bs=126b default.
+
+
+Mostly Done (but not credited or visible):
+-----------
+The -B cmd to take an action before you start a fs sync (for each
+partition). Default to no action. (Done, not shown.)
+
+The -A cmd to take some action after the sync'd partition is done.
+Default to no action or "sync".  (Done, not shown.)
+
+The -D/-I tunes to specify the recommended percent full you want
+the file-system to be with Inode/Data blocks (-j uses these).
+
+
+Todo:
+-----
+Fix -j so that the lower bound on byte-per-inode is the frag size for
+the file system (1024 or 2048 or 4096), and set the frag size and block
+size base on the bytes-per-inode and size of the disk.  This is a bit of
+a feed-back loop, but I think it can be done.  (I do it myself for stuff
+I build.)
+
+But silly newfs does strange errors for reasonable requests, and doesn't
+have any mode to check the params (or documented way to predict anything).
+
+Do we have to add "-o prop" to ask -j to diddle all of newfs's
+params?  There is so much it could do.
+
+
+Some options to "dump" (cum ufsdump) need to me HOSTTYPE specific.
+
+
+Implement the "sane" meta dump type to check the configuration.  Might
+have to be a shell script wrapper?  Should:
+	Note each primary w/o a backup,
+	Note each backup w/o a primary,
+	Make sure the backup is not mounted at boot time (noauto, "no")
+	Check each primary -> backup pair:
+		+ backup sould be same fs type as primary
+		+ backup should be same size or bigger than primary's used
+			got stuck here, how big is a device?
+			I can't tell without a mount of it
+		+ backup should not be mounted read-only in vfstab
+		? primary should not be mounted read-only (why back it up?)
+	Make sure all device's are unique and match raws (as best we can)
+		+ no mount entry (we care about) should specify the same dev
+		+ the mapping from block -> dev should look the same for all
+		+ clever check, subtract the strings, remainders match:
+			"/dev/rdsk/c0t0d0s0" - "/dev/dsk/c0t0d0s0" = "r"
+			"/dev/rsd0c" - "/dev/sd0c" = "r"
+			"/dev/raw/disk1e" - "/dev/block/disk1e" = "rbalwock"
+		  but the difference should be the same for all disks, mostly
+	Exit with a Meaningful Code (tm)
+
+Ideas:
+------
+Add a method (from ab@eas.purdue.edu) to rsync to a rsync server
+with a login and password to "backup" any dataless workstation.
+	sbp -H rput:user@host
+or some such.  One can put in fstab (cum checklist/vfstab/filesystems)
+	center.foo.com:/archive/lv426 /backup nfs ...
+to dump the stuff through NFS, but to an rsync port would be much faster.
+
+This might require reading the comments in /etc/vfstab for a clue or
+two, or taking a "noauto" "NFS" entry to pull the rsync params.
+	server.baz.com:/dumps/localname	/backup	nfs noauto 1 1
+Might mean
+	rsync /  server.baz.com:/dumps/localname
+the fstab/vfstab/checklist update would be OK, but the filesystem
+type would have to be swapped as well.  Humm.  Might be easier in
+that case to swap the mount-point?  (Or make it a wrapper.)
+
+
+Maybe implement -i.  This would ask "ynfh" (yes, no, next file system,
+help) for each command presented.  Not very useful in this program.
+Oh, and -i should (maybe) leverage Sun5 newfs's penchant for asking
+stupid questions. (As well as unsing rm -i.)  This would require a
+slight extension to the internal command table (like vi's terse messages).
+
+
+--
+ksb, June 2000

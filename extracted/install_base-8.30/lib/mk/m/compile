@@ -1,0 +1,7 @@
+# the Compile target derives the obvious excutable from the source file	(ksb)
+# $Id: compile,v 5.0 1996/09/09 21:08:18 kb207252 Exp $
+
+$Compile(*): ${make-make} %s %P.o
+$Compile(*): ${make-make} %P.o
+$Compile(*): ${make-make} %s %P
+$Compile(*): ${make-make} %P

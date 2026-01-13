@@ -1,0 +1,18 @@
+include(`../Machine.m4')dnl
+changequote(+,&)dnl
++# the Compile target here is wrong, but for historical reason we leave it
+# $Id: 1.host,v 5.1 2004/12/07 13:56:16 ksb Exp $
+
+$Compile(*):	${tbl-&TBL+} %f |${nroff-&NROFF+} -man |${PAGER-${more-more}}
+$Compile(*):	${tbl-&TBL+} %f |${nroff-&NROFF+} -man >%F.fmt
+
+$Clean(*):	${rm-rm} -f %F.fmt
+
+$Display(*):	${tbl-&TBL+} %f |${nroff-&NROFF+} -man |${PAGER-${more-more}}
+
+$Info(*):	${echo-echo} "manual page"
+
+$Laser(*):	${tbl-&TBL+} %f |${ltroff-ltroff} -man
+
+$Mkcat(*):	${tbl-&TBL+} /usr/local/lib/man/pagelen.n %f|${nroff-&NROFF+}&NROFF_TAB_OPT+ -man|&COLCRT+ &USE_NEWCOLCRT+| cat &CAT_S_OPTION+
+&dnl

@@ -1,0 +1,4 @@
+%@foreach instck_paths
+%#define BIN_%a	%D/%a/epqv
+%@endfor
+%#define BIN_ranlib	%K<instck_ranlib>?p1qv

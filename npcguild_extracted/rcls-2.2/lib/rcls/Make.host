@@ -1,0 +1,100 @@
+`# $Id: Make.host,v 2.4 2000/08/03 13:46:46 ksb Exp $
+# Build the stooges that start it all working -- ksb
+#
+# I am not sure about the -lmapmalloc below, but I think it is safer
+# that way.
+#
+# N.B. any suddirs all must share our RCS symbolic name -- mad, ksb
+
+SHELL=/bin/sh
+LIB= ${DESTDIR}/usr/local/lib/rcls
+
+I=/usr/include
+S=/usr/include/sys
+P=
+L=/usr/local/include
+M=../../libexec/rcls
+H=../../libexec/hashd
+
+SOURCE=Makefile README TODO machine.h expladdr.m expladdr.c expladdr.h \
+	class.m class-post.m \
+	sso.m sso-post.m \
+	ltester.m
+CDEFS=-D'HOSTTYPE`'ifelse(
+HOSTTYPE,`SUN5',` -fpic',` -fpic')`
+INCLUDE= -I$L -I$M
+DEBUG=
+CFLAGS=${DEBUG} ${CDEFS} ${INCLUDE}
+CC=gcc
+LDFLAGS='ifelse(
+HOSTTYPE,`SUN5',`-Bdynamic -G -lmapmalloc',
+`-G -Bdynamic -export-dynamic')`
+
+GENC= sso.c class.c main.c
+GENH= sso.h class.h main.h
+GEN= ${GENC} ${GENH} ltester prog.[ch]
+SSO=sso.o 
+CLASS=class.o
+MODS=sso.so
+LINKSO=default.so
+
+all: ${MODS} ltester
+
+sso.so: ${SSO}
+	${LD} ${LDFLAGS} ${SSO} -o $@
+
+sso.h: sso.c
+
+sso.c: sso.m
+	mkcmd -Bshared.m -I$H -I$M sso.m
+	-(cmp -s prog.c sso.c || (cp prog.c sso.c && echo sso.c updated))
+	-(cmp -s prog.h sso.h || (cp prog.h sso.h && echo sso.h updated))
+	rm -f prog.[ch]
+
+# testing only (this is not normally installed into production)
+ltester:$P main.o
+	${CC} -o $@ ${CFLAGS} main.o'ifelse(
+HOSTTYPE,`SUN5',` -lrpcsvc -lnsl ')`
+
+main.h: main.c
+
+main.c: ltester.m $M/rcls.x
+	mkcmd -I$M ltester.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f *.so *.o ${GEN} ltester
+
+depend distrib:
+	: nada
+
+dirs: ${LIB}
+
+install: dirs all
+	install -c ${MODS} ${LIB}
+	cd ${LIB} && xapply "[ -f %1 ] || ln -s sso.so %1" ${LINKSO}
+
+lint mkcat tags print:
+
+spotless: clean
+	rcsclean
+
+source: ${SOURCE}
+
+${SOURCE}:
+	co -q $@
+
+${LIB}:
+	install -dr $@
+
+FRC:
+
+sso.o: sso.c $M/rcls_callback.h
+
+class.o: class.c $M/rcls_callback.h
+
+main.o: main.c $M/rcls_callback.h
+
+'dnl

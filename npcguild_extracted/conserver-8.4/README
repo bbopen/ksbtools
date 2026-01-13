@@ -1,0 +1,30 @@
+Hi,
+
+This is the _meta_source_ distribution of the version 7.3 Gamma release of
+ksb's console server and autologin products.  This code is free for any and
+all uses -- just don't claim you wrote it and don't hold me liable if Bad
+Things happen to you.
+
+If you don't have mkcmd-7.24 or better you are not going to be able to build any
+part of this.
+
+If you don't have distrib and the meta source stuff up on your source machines
+you are hopelessly out of your element -- but I've stopped including the
+makefiles */remote.mk which *might* build a working makefile for you.  Use
+the "msrc0" package to fake it if you must.
+
+If you want distrib and the meta source stuff I'm working on a good release
+even as I type this.  If you don't have _any_ idea why you might want the meta
+source stuff you are not ready for it.  :-|
+
+Try (replace SUN5 with any of the targets after "all" in remote.mk):
+	$ cd etc/console
+	$ makeme
+	$ cd ../conserver
+	$ makeme
+	$ cd ../autologin
+	$ makeme
+
+--
+Kevin S Braunsdorf, ksb@fedex.com
+10 Jully 1997

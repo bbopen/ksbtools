@@ -1,0 +1,20 @@
+/* $Id: util_sigret.mi,v 8.23 1999/10/25 14:21:27 ksb Exp $
+ */
+#if !defined(SIGRET_T)
+#if defined(FREEBSD) || defined(SUN5) || defined(HPUX9)
+#define SIGRET_T	void
+#else
+#define SIGRET_T	int
+#endif
+#endif
+
+#if !defined(HAVE_STICKY_SIGNALS)
+/* It looks like some Solaris 2.X revs have sticky signals, but I
+ * can't find a pattern.
+ */
+#if defined(SUN5)
+#define HAVE_STICKY_SIGNALS	0
+#else
+#define HAVE_STICKY_SIGNALS	(!(defined(HPUX)))
+#endif
+#endif

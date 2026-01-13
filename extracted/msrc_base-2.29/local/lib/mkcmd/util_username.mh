@@ -1,0 +1,4 @@
+/* $Id: util_username.mh,v 8.3 2004/12/15 22:20:18 ksb Exp $
+ * We want to export the login name buffer from this interface		(ksb)
+ */
+%extern char %K<util_username>1v[%K<util_username>2v]%;

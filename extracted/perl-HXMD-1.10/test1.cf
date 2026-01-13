@@ -1,0 +1,10 @@
+# Just a test for the lexical parts --ksb
+# $Id: test1.cf,v 1.2 2008/09/29 15:40:42 ksb Exp $
+%HOST HOSTTYPE LOC
+a.example.com SUN5 `123 Main St'
+b.example.com SUN5 "67 d'Ark Blvd"
+c.example.com HPUX11 "45 d`Ambrose Way"
+w.example.com . `O\/er |_ook \/\/ay'
+x.example.com . `.'
+y.example.com HPUX11 `'
+z.example.com AIX "98 Over+\bx St."

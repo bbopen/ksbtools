@@ -1,0 +1,55 @@
+`# Makefile for mk default rules
+# $Id: Makefile.host,v 5.5 2010/04/09 15:15:56 ksb Exp $
+#	Kevin S Braunsdorf, NPC Guild
+
+SHELL=/bin/sh
+LIB=	${DESTDIR}/usr/local/lib/mk/type
+
+REAL= b c d p s
+SOURCE=Makefile ${REAL}
+
+all: source
+
+# bootstrap with makeme
+boot: install
+
+${LIB}:
+	install -d -r $@
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs tags
+
+depend: FRC
+	: "no depend"
+
+deinstall:
+	rm -rf ${LIB}
+
+dirs: ${LIB}
+
+install: all dirs FRC
+	-for templ in ${REAL} ;do \
+		cmp -s $$templ ${LIB}/$$templ || \
+		install -c -m 644 $$templ ${LIB}/$$templ ;\
+	done
+
+lint: FRC
+	: "nothing to lint"
+
+print: source FRC
+	lpr -J"mk templates" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+	: "no tags"
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+'dnl

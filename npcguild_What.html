@@ -1,0 +1,547 @@
+<HTML>
+<HEAD><TITLE>What are these?</TITLE></HEAD>
+<BODY>
+<H2>Tools for the Power UNIX Developer</H2>
+As Chris says at <A href="http://www.pundits.net/">the Pundits Web Site</A>
+we were talking about putting some of the tools and clues we use everyday
+up for others to use.  We were hoping that this would generate enough
+consulting business to allow one of us to do it full time.
+<P>
+Real life gets in the way.
+<P>
+But I do have about 125k lines of nifty C code to share with the world.
+These are the tools and a brief description of the tool.
+
+<P>
+The package numbers of are out of date, but the purpose is the same.
+
+<HR><DL>
+
+<DT>calls
+<DD>
+Programs I use to work on a product coded in C.
+
+<DT>calls/bin/calls
+<DD>
+Produce a call graph of the relations of each C routine to every other.
+Release to comp.sources.unix a long time ago.  This update includes
+changes I've gotten from the Net.
+
+<DT>calls/bin/cdecl
+<DD>
+Help a novice C programmer decode a C declatation.  I use this to teach C.
+It is also useful as an example of lex/yacc customs.
+
+<DT>calls/bin/maketd
+<DD>
+Do the work to make a makefile see all the transative dependencies.
+This is also useful to add explicit rules for building cross platfrom
+stuff.
+
+
+</DL><HR><DL>
+<DT>conserver
+<DD>
+Manage many serial line devices (servers) through a nice virtual
+console service.  Really makes life easy for the remote sysadmin,
+but it makes life better for group work as well.
+
+<DT>conserver/etc/autologin
+<DD>
+Put a login shell up on a console port (tty01, ttya or the like).
+
+<DT>conserver/etc/conserver
+<DD>
+Connect to all the serial (or pseudo) devices on a host, network to
+others.
+
+<DT>conserver/etc/console
+<DD>
+The client part that connects to
+the console server through the network to inspect a line.
+
+<DT>conserver/lib/conserver.cf
+<DD>
+A sample console server configuration.
+
+
+</DL><HR><DL>
+<DT>entomb
+<DD>
+Preserve removed files in a "tomb" so Customers can recover them.
+This package <STRONG>by itself</STRONG> doesn't help much, you
+must recompile the system programs <CODE>rm</CODE>, <CODE>mv</CODE>,
+<CODE>cp</CODE> and the like to finish the job.  My friend
+ <A href="mailto:ajk@iu.edu">Andy Korty</A> has done work in this
+see <A href="http://www.itso.iu.edu/staff/ajk/">his home page</A>
+for details.
+
+<DT>entomb/Paper
+<DD>
+A white paper on a older version of the entombing system.
+
+<DT>entomb/bin/rmfile
+<DD>
+A program to remove files with funny names.
+
+<DT>entomb/bin/unrm
+<DD>
+A program to restore deleted files.
+
+<DT>entomb/bin/untmp
+<DD>
+A program to cleanup /tmp just before a Customer does a logout.
+
+<DT>entomb/etc/preend
+<DD>
+The system tomb cleaning agent.
+
+<DT>entomb/lib/entomb
+<DD>
+The setuid part that moves a file to a tomb.
+
+<DT>entomb/lib/libtomb
+<DD>
+The API to make any old program entomb (like rm, mv, cp, and sh).
+
+
+</DL><HR><DL>
+<DT>gnu
+<DD>
+An example of how I make the GNU autoconf stuff work for me.
+
+<DT>gnu/bin/gzip
+<DD>
+GNU gzip slaved to the msrc system.
+
+<DT>gnu/bin/rdist
+<DD>
+Rdist 6.1.3 slaved to the msrc system.
+
+<DT>gnu/bin/screen
+<DD>
+GNU Screen slaved to msrc, by this point you should know how to do any.
+
+
+</DL><HR><DL>
+<DT>install
+<DD>
+A <STRONG>much</STRONG> better product installer suite.
+<P>
+These tools were the subject of a Lisa paper by Kevin Smallwood.
+They help you keep a backup path when you make changes to a host.
+It also allows normal people to maintain some products in a
+"User supported" area of you hosts (via <CODE>installus</CODE>).
+<P>
+If you like this one the new "modec" package will be good for you as well.
+
+<DT>install/bin/install.d
+<DD>
+A clone of BSD's install program, but keeps old versions in OLD/ in case
+things go badly.  Doesn't do all the things the FreeBSD one does
+because they added the -f flags stuff and didn't give me an API to
+call to do it.
+
+<DT>install/etc/installus
+<DD>
+Let Joe User install "user supported" software.
+
+<DT>install/etc/instck
+<DD>
+Check for files that are installed badly, or have the wrong modes.
+
+<DT>install/etc/purge
+<DD>
+Clean out OLD directories, like preend cleans out tombs.
+
+<DT>install/lib/install.cf
+<DD>
+An example install configuration file.
+
+
+</DL><HR><DL>
+<DT>labwatch
+<DD>
+A package to monitor many hosts in a network efficent way.
+I've used it to collect CPU load information, monitor hosts that
+might float away (in a public lab), and monitor system uptime.
+
+<DT>labwatch/bin/labstat
+<DD>
+The user agent to poll for status.
+
+<DT>labwatch/etc/labc
+<DD>
+A control agent to tune the monitor parameters.
+
+<DT>labwatch/etc/labd
+<DD>
+The host monitor (like SNMP but more UNIX aware).
+
+<DT>labwatch/etc/labwatch
+<DD>
+The console monitor, what Operations watches.
+
+<DT>labwatch/lib/labwatch
+<DD>
+A sample configuration.
+
+
+</DL><HR><DL>
+<DT>mkcmd
+<DD>
+The program that writes all my user interface code for me.
+<P>
+This is the key to all my stuff.  It contains a library of small
+components that I reuse over and over to write all this stuff.
+
+<DT>mkcmd/bin/explode
+<DD>
+Extract bits of code from the reuse library.
+
+<DT>mkcmd/bin/mkcmd
+<DD>
+Integrate user interface and reused code.
+
+<DT>mkcmd/lib/explode
+<DD>
+A reuse library for all this code.
+
+<DT>mkcmd/lib/mkcmd
+<DD>
+A user interface reuse library.
+
+
+</DL><HR><DL>
+<DT>msrc0
+<DD>
+The code to boot-strap the msrc package, needs mkcmd too.
+
+
+</DL><HR><DL>
+<DT>msrc
+<DD>
+The system I use to write all this and keep the release/version/revision
+work straight.  I have a model for software construction that I
+use to build all this and these tools make that work (for me).  It
+might even work for you.
+
+<DT>msrc/Admin/bin
+<DD>
+Some shell script prototypes to make this more automated.
+
+<DT>msrc/Admin/docs
+<DT>msrc/Admin/papers
+<DD>
+Incomplete documents on how/why.  Some are quite old.
+
+<DT>msrc/Admin/master
+<DD>
+The "master source" level, where I keep single products.
+
+<DT>msrc/Admin/meta
+<DD>
+The "meta source" level, where I keep packages of related products.
+
+<DT>msrc/Admin/platform
+<DD>
+The product on a platform level I use as an example of the old way.
+
+<DT>msrc/local
+<DD>
+Local tools that automate parts of the msrc system.
+
+<DT>msrc/local/bin/rcsvg
+<DD>
+An add-on to RCS to make getting a subtree with a common
+symbolic name a snap.
+
+<DT>msrc/local/etc/distrib
+<DD>
+An add-on to rdist (6.1.3) to help maintian a list of hosts and
+which products run there.
+
+<DT>msrc/local/etc/distrib/Scripts
+<DD>
+Prototype work for later.
+
+<DT>msrc/local/lib/distrib
+<DD>
+Sample configuration for msrc.
+
+</DL><HR><DL>
+<DT>ptyd
+<DD>
+A daemon used a Purdue's Computing Center from 1989 to 1995 to
+allocate pseudo tty (pty/tty) pairs, establish ownership, and
+provide utmp/wtmp entries.
+<P>
+This used to be #ifdef'd in <CODE>xterm</CODE> (might still be).
+The daemon (<CODE>ptyd</CODE>) lives on a UNIX domain socket and
+issues pty/tty pairs to authenticated users.
+<P>
+The library (<CODE>libpty</CODE>) has some clever API code in
+it to make talking to ptyd very easy.
+
+<DT>ptyd/etc/ptyd
+<DD>
+The system agent that allocated and cleanup pty resources.
+Genrerally started as system boot.  With the ksb version of
+inetd it can be started from inetd as well.
+
+<DT>ptyd/etc/libptyd
+<DD>
+The API to call the pseudo tty daemon.  Provides an "openpty" and
+"forkpty" which do what you'd think.
+
+<DT>ptyd/bin/script
+<DD>
+A more than slightly hacked version of BSD4.3 script.  This should
+be upgraded to a more modern script code base.  This version has
+utmp support and uses ptyd.
+
+</DL><HR><DL>
+<DT>qsys
+<DD>
+A simple UNIX job scheduler.  With modern CPU speeds it is silly,
+but it has some cool ideas in it.
+"It has a pleasing (non-root) design in any case." -- ksb
+
+<DT>qsys/bin/qadd
+<DD>
+Add a job to a job queue.
+
+<DT>qsys/bin/qrm
+<DD>
+Remove a job from a queue.
+
+<DT>qsys/bin/qstat
+<DD>
+A user agent to scan the queue.
+
+<DT>qsys/etc/qend
+<DD>
+Stop the job system.
+
+<DT>qsys/etc/qinit
+<DD>
+Build a new job queue.
+
+<DT>qsys/etc/qkill
+<DD>
+Kill a running job from the queue.
+
+<DT>qsys/etc/qlock
+<DD>
+Lock a queue, after all the current jobs are done it
+will fall idle.
+
+<DT>qsys/etc/qmgr
+<DD>
+Run jobs from a queue.
+
+<DT>qsys/etc/qstart
+<DD>
+Start the job queues on this host.
+
+<DT>qsys/lib/qcommon
+<DD>
+Common code from all the qsys parts.
+
+
+</DL><HR><DL>
+<DT>rm
+<DD>
+Layer on top of entomb to get entombing to the masses.  We don't use
+this package anymore (mostly) because the rm/mv/cp that comes with
+FreeBSD we can just rebuild (see entomb/INSTALL for details).
+
+<DT>rm/bin/cp
+<DD>
+An older BSD cp, right out of Net2 I think.
+
+<DT>rm/bin/mv
+<DD>
+An older BSD mv, right out of Net2 I think.
+
+<DT>rm/bin/rm
+<DD>
+An older BSD cp, right out of Net2 I think.
+
+
+</DL><HR><DL>
+<DT>shells
+<DD>
+Some shells you can put Customers in or build special logins for to
+make your life better.
+
+<DT>shells/etc/msh
+<DD>
+The "message shell", tells a Customer a text message a logs them out.
+
+<DT>shells/etc/remote
+<DD>
+Allows a host to proxy logins for "guests".  Lets walk-ins to a lab
+use a hard wired terminal to gateway to another host without a shell
+on the local server.  Even does XDM, and tn3270.
+
+<DT>shells/etc/tpsh
+<DD>
+Strange best to allow operators to load software upgrades.
+
+
+</DL><HR><DL>
+<DT>turnin
+<DD>
+The old Purdue Electronic Submission system.  I've updated it to
+avoid some of (not all, of course) the pit falls that it suffered
+from.  I don't think one can break root with it, but I run it
+setuid to the instructor, not root, so I don't mind.
+
+<DT>turnin/bin/project
+<DD>
+Allow instructors to turn on/off submissions and grade assignments.
+
+<DT>turnin/bin/turnin
+<DD>
+Allow students to submit work for grading.
+
+<DT>turnin/lib/turnin.cf
+<DD>
+Sample configuration.
+
+
+</DL><HR><DL>
+<DT>xapply
+<DD>
+Tools for better pipe fitting.  These are <STRONG>way</STRONG>
+powerful.
+
+<DT>xapply/bin/xapply
+<DD>
+Replacement for xargs(1) and apply(1).  A <STRONG>very</STRONG> powerful
+filter.  Will keep N jobs running in parallel, will read the list of
+items from the command line, or from stdin, or will match lines in multiple
+files to control jobs.  This is some of my best work.
+
+<DT>xapply/bin/Tee
+<DD>
+A version of tee(1) that popens as well.  You can push a large file
+though more than one <STRONG>process</STRONG> in parallel.  Great
+for moden computers with multiple CPUs.
+
+<DT>xapply/bin/curly
+<DD>
+Do or undo the csh(1) style curly brace expansion a{1,2,3}.c -> a1.c a2.3 a3.c
+and the inverse.
+(Posted to comp.sources.misc.)
+
+<DT>xapply/bin/flock
+<DD>
+Get a BSD stype file lock and execute a process.  (Posted to comp.sources.unix.)
+
+
+</DL><HR><DL>
+<DT>modec
+<DT>sbp, vinst, <FONT COLOR="ff0000">modecanon</FONT>
+<DD>
+Tools that are add-ons to install and the like.
+<DT>modec/etc/modec
+<DD>
+The "mode canon" program uses install/etc/instck to fix all the modes
+on your system with a small number of key strokes.  It has not ever
+been released because I've trashed systems with it, so I know you will.
+
+<DT>modec/etc/sbp
+<DD>
+This builds a cold backup of (some of) your disks on a host. It is
+intended to suplement backups by making an "alternate boot disk"
+available when the system boot disk is sick.  It works great, and
+I use it before I run modecanon...
+
+<DT>modec/bin/vinst
+<DD>
+A "quick wrapper" around install's <CODE>install</CODE>
+(or <CODE>installus</CODE>) to let the owner of a file use
+an editor on the file, but still make a -1 backout copy in OLD.
+Believe it or not I quite often wrap it in a shell script.
+
+
+</DL><HR><DL>
+<DT><A href="rcls-2.2.tgz">remote customer login services - 2.2</A>
+<DT>rcls, rcds, rcls-lib, rcds-lib, rc.d/rcls
+<DD>
+A RPC based login and data service for CGI support.  This package
+is not an mature as others.  It needs the Berkeley DB (3.1+) from
+SleepyCat.com to function at all.
+<DT>rcls/libexec/rcls
+<DD>
+The login service for a login CGI.  With a single RPC you get everything
+you need to know to login a web Customer.  This is meant to be called
+from the wise package's <CODE>stater</CODE>.
+
+<DT>rcls/libexec/rcds
+<DD>
+The data services for CGIs is like a very modular database.
+It can gateway to any database but the Berk DB is builtin.
+
+<DT>rcls/lib/rcls
+<DD>
+Models for Customer classes.
+
+<DT>rcls/lib/rcds
+Models the classes of data service.
+
+<DT>rcls/rc.d/rcls
+<DD>
+The system startup for the login and data services.
+
+<DT>rcls/libexec/hashd
+<DD>
+Generate a "unique uid" for 2^60th logins.
+
+</DL><HR><DL>
+<DT>wise <FONT COLOR="ff0000">Not available yet</FONT>
+<DT>stater, rico, wise_auth, wise_apply, rc.d/wise
+<DD>
+This package completes the login and data services layer on
+a stater.  It is not released yet.
+
+</DL><HR><DL>
+<DT>protect <FONT COLOR="ff0000">Not available yet</FONT>
+<DT>cgi-bin/protect, public-bin/protect, protect-bin/protect, login, logout, counter
+<DD>
+This package is an example implementation of wise aware CGIs.
+Not released yet.
+
+</DL><HR><DL>
+<DT>unity <FONT COLOR="ff0000">Not available yet</FONT>
+<DD>
+
+<DT>unity/cgi-bin/unity
+<DD>
+A CGI that makes maky web servers look like a single host to the Net.
+
+<DT>unity/libexec/tftpd
+<DD>
+A much better tftp server.
+
+<DT>unity/libexec/unityd
+<DD>
+Part of unity's off-load protocol.
+
+<DT>unity/bin/tftp
+<DD>
+A better client program to chat with tftp servers and clients.
+
+</DL>
+
+<HR>
+<PRE>
+$Id: What.html,v 1.2 1997/12/05 14:55:30 ksb Exp $
+</PRE>
+
+For up to the minute release packages see <A href="index.html">the index</A>.
+
+</BODY>
+</HTML>

@@ -1,0 +1,17 @@
+We need a host that doesn't run a conserver to use as the master
+dispatcher so it can be restarted to add hosts at will.  s01.sa.fedex.com
+might be that machine.
+
+In addition the console servers, this config goes too (V 7.5):
+
+	info.sa.fedex.com		<- should be the default conserver
+
+	chalktalk.dpd.fedex.com		<- default for lots of people
+	consit.prod.fedex.com
+	gumby.dpd.fedex.com
+	kachina.dpd.fedex.com
+	s03.sa.fedex.com
+
+and these are out of revision on the binary
+	dscm-arc1			7.0
+	pokey.dpd.fedex.com		7.1

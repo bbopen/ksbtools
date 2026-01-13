@@ -1,0 +1,22 @@
+`# $Id: Makefile.host,v 3.2 2010/08/16 15:38:24 ksb Exp $
+# platform recipe for entomb package master source 2009
+# Note that the programs from "etc" were all moved to "sbin" in this release.
+'changequote([,])dnl
+[O=`
+Q=']
+changequote(`,')dnl
+`SHELL=/bin/sh
+SUBDIR= local/lib/libtomb local/lib/entomb local/sbin/preend \
+	local/bin/unrm local/bin/untmp local/bin/rmfile
+OTHER= README LICENSE ITO.spec INSTALL
+SOURCE=	Makefile ${OTHER}
+MAKE=make
+
+all clean install: ${SOURCE} FRC
+	xapply "${MAKE} -C %1 ${MFLAGS} DESTDIR=${Q}${DESTDIR}${Q} $@" ${SUBDIR}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

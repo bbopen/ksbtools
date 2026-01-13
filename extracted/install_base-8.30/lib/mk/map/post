@@ -1,0 +1,101 @@
+# $Id: post,v 5.5 2009/10/15 22:10:15 ksb Exp $
+# mk uses this file to map uncommon extenders and common file names to
+# the apropos template. -- install@ksb.npcguild.org
+# mk's default post template is
+#	mk: -t `%<%~/map/post>'
+# which is this file
+#
+# "Sounds like typical ksb leverage.  So complicated it sounds stupid,
+#  but once you understand it, it replaces half of /bin and most of /usr/etc"
+#   -- Ben Jackson bjj@sequent.com
+
+# trap special files
+%G	^Distfile$		file/distfile
+%G	^Makefile$		file/makefile
+%G	^[Mm]src\\.mk$		file/msrc
+%G	^Valid$			file/valid
+%G	^dfile			file/kernel.conf
+%G	^Imakefile$		file/imake
+%G	^[Rr]ead[Mm]e$		file/README
+%G	^hardcopy\\.[0-9]$	file/hardcopy
+%G	^screenlog\\.[0-9]$	file/screenlog
+%G	^[Cc]akefile$		file/cakefile
+
+# we should do all the dot files (.profile...) for Info at least
+#%G	^\\.profile$		file/profile
+#%G	^\\.cshrc$		file/cshrc
+#%G	^\\.login$		file/login
+#%G	^\\.cshrc$		file/cshrc
+# .screenrc #
+# .article
+# .ccenterinit .ccenterrc .ccenteruil
+# .dayplan_data
+# .elm
+# .exrc
+# .fishrc
+# .fm
+# .glancerc
+# .history
+# .inputrc
+# .kermrc
+# .learnrc
+# .letter
+# .mailrc
+# .mosaic-global-history .mosaic-hotlist-default .mosaic-hotlist-default.html
+# .mosaic-personal-annotations .mosaiccciport .mosaicpid
+# .mushrc
+# .news_time
+# .newsrc .oldnewsrc .pnewsexpert
+# .rnlast .rnsoft
+# .plan .project
+# .profile .sh_history
+# .procmailrc
+# .rhosts
+# .rog_defs
+# .tvtwmrc .twmrc
+# .vacation.dir .vacation.msg .vacation.pag
+# .vue .vueprofile
+# .www
+# .x11startlog .xinitrc .Xauthority
+
+# text files with truncated or strange extenders
+%x	^[1-8]$			dot/man
+%x	^[1-8][a-z]$		dot/man
+%x	^bash$			dot/sh
+%x	^bpl$			dot/bcpl
+%x	^cc$			dot/C
+%x	^csh$			dot/sh
+%x	^f77$			dot/f
+%x	^F$			dot/f
+%x	^htm$			dot/html
+%x	^i$			dot/h
+%x	^ksh$			dot/sh
+%x	^m$			dot/mkcmd%=!%#/!mkcmd!
+%x	^m2$			dot/m2
+%x	^m[ems]$		dot/man
+%x	^mk$			file/makefile
+%x	^make$			file/makefile
+%x	^nro$			dot/t
+%x	^nroff$			dot/t
+%x	^pas$			dot/p
+%x	^roff$			dot/t
+%x	^tcsh$			dot/sh
+%x	^v$			file/valid
+
+# maps for text file extenders
+%x	^diff$			dot/patch
+%x	^latex$			dot/tex
+%x	^hxmd$			dot/hxmd
+%x	^texinfo$		dot/texi
+%x	^uue$			dot/uu
+# this is a reach... XXX
+%x	^u$			dot/uu
+
+# redirects based on the verb given
+%m	^cc$			dot/c
+%m	^fc$			dot/f
+%m	^pc$			dot/p
+%m	^as$			dot/s
+
+# no extender?
+%x	^$			is/no-extender

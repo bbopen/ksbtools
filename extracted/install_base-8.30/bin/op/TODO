@@ -1,0 +1,80 @@
+# $Id: TODO,v 2.57 2010/06/17 21:34:09 ksb Exp $
+
+Tiny nits.
+
+Anyplace we take "." for our original login we should take %l to be
+parallel with $l.
+
+The rtprio(2) {aka idprio} calls in FreeBSD would be nifty.
+	rtprio={0..31}[,{idle,real,nice}]
+or maybe better
+	nice=rt{0..31} | id{0..31} | [t]-20..20
+
+The -S check for trusting the inherited $PATH concludes the this is unsafe:
+	test	$f $1 ;
+		%f.path=^/usr/local/libexec/foo/[^/.]+[^/.]+[^/.]+$
+		$PATH
+		$1=^(start|stop|debug)$
+because it doesn't realize $f (%f) must start with a slash, of course that
+script is trusting $PATH transitively, which is something we might note,
+but not the point of the warning.  I'm not planning to fix it because it
+is poor form in any case.
+
+I should build example helmets, like one that parses and checks some
+standard time formats, and then removes the TIME_LIMIT from the environment.
+
+
+Ideas to continue op's evolution.
+
+Maybe allow a script-like pseudo-tty allocation.  There is a program that
+wraps sudo to log every command typed to a MAGIC_SHELL (equiv.).  We could
+do that with an open of /dev/ptmx, some rights granting, and give the
+controlling tty device to the jacket process?  Humm.  I think $m would be
+the ttyname and $M would be an open fd on the master side.  The tag
+ptmx=login would assign the owner (default to uid).
+
+Maybe allow rule options to match (not match) via %u (!u) or %g (!g)
+attributes:
+	%u.name %u.passwd %u.uid %u.gid %u.group %u.class %u.change,
+	%u.expire, %u.gecos %u.dir (aka %u.home_dir) %u.shell
+and
+	%g.name %g.passwd %g.gid %g.members %g.count (total members)
+this would make it more like %f, but I've never needed dir|gecos|shell
+matches.  And you can do it in the rare case with a helmet and $g + $u.
+
+Helmets _could_ be empowered to send access rights back to op for the
+escalated process, if you wanted to be really cool.  For example open a
+privileged TCP/IP port for Apache then send it as fd#0.  This would be easy
+to implement with my rights code in explode'd repo, but today we use
+"cache_file" to read the whole stream in from a pipe: if we move to
+recvmsg(2) we have to do a lot more work in ExtInput.
+
+An option to force a close(2) of file descriptors.  Like "fdmask=0-2" (or
+something) to force any fd greater than 2 to be closed before we run the
+new process (so Bad Guys can't leave fd's open we don't expect).  I didn't
+do this because the target program shouldn't depend on it, so there.
+Maybe we can make a jacket option to close any fd, if we do rights in
+that protocol.
+
+
+Not missing, but you might think so:
+
+Symbolic links to op with another name don't add much.  If you can't add
+"op " in front of the command you are just too lazy.  Also the crazy #!
+trick in super is not for me, just teach Customers that to `change roles'
+they use "op" so they know they are special.  Building a symbolic link to
+op from the name "sudo" is just plain funny (and I have a script "sudop"
+that is most people can't tell from sudo).
+
+The daemon option doesn't set a session id (via setsid) because we want it
+in the same process group as any jacket above it.  Putting in a signal mask
+for (e.g. for HUP, TERM) might be clever, but the new process should really
+manage that.  Plus see daemon(8) (or my version of same).
+
+I'd like %g to expand in password context to the password on the group.
+Sadly most "shadow password" systems don't shadow the group file, so most
+systems discouraged them (and "newgrp" which is sad).  We don't want to
+open ourselves to a possibly compromised password.
+
+--
+ksb, Jun 2010, install at ksb dot NPC Guild.org

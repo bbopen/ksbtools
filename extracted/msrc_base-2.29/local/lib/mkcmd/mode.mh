@@ -1,0 +1,7 @@
+/* $Id: mode.mh,v 8.3 2004/12/15 22:20:18 ksb Exp $
+ * 
+ * Pass the mode, the address of a u_MODE_CVT buffer, and the
+ * name the Customer calls the data (e.g. "option `-m'").  The converted
+ * value is in the buffer or we can't (we exit non-zero).
+ */
+%extern void %K<mode_cvt>1v(char *, u_MODE_CVT *, char *)%;

@@ -1,0 +1,893 @@
+.\" $Id: op.man,v 2.58 2010/08/13 19:14:13 ksb Exp $
+.\" $Compile: Display%h
+.\" $Display: ${groff-groff} -Tascii -man %f | ${PAGER:-less}
+.\" $Display(*): ${groff-groff} -T%s -man %
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man1/op.1
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]1/op.1*
+.TH OP 1 LOCAL
+.SH NAME
+op \- grant operator access to certain commands
+
+.SH SYNOPSIS
+.ds PN "op
+\fB\*(PN\fP [\fB\-f\fP\~\fIfile\fP] [\fB\-g\fP\~\fIgroup\fP] [\fB\-u\fP\~\fIlogin\fP] \fImnemonic\fP [\fIargs\fP]
+.br
+\fB\*(PN\fP \fB\-l\fP|\fB\-r\fP|\fB\-w\fP [\fIlogin\fP]
+.br
+\fB\*(PN\fP \fB\-S\fP [\fB\-n\fP] [\fIfiles\fP]
+.br
+\fB\*(PN\fP \fB\-h\fP
+.br
+\fB\*(PN\fP \fB\-H\fP
+.br
+\fB\*(PN\fP \fB\-V\fP
+
+.SH DESCRIPTION
+System administrators grant trusted users certain privileged
+operations (or limited \fBsuperuser\fP access) via \fIop\fP, without
+giving them access to an interactive escalated shell.
+Different sets of users may access different operations, and the
+security-related aspects of environment of each
+operation can be carefully controlled.
+.P
+Each allowed access is keyed on a short \fImnemonic\fP which represents
+(to the client user) the operation desired.  For example \fIstart-apache\fP
+or \fIstop-apache\fP might by good mnemonics for local web server control.
+That short-hand may expand to a complex shell command, or may simply call the
+implied program (e.g. \fBapachectl\fP(8)) with forced arguments.
+.P
+The fields of the entries in\fI access.cf\fP are separated by white-space.
+Each entry may span several lines and
+continues until the next alphanumeric string is found at the beginning of
+a line (which is taken to be the next \fImnemonic\fP,
+and thus the beginning of a new entry).  Comments may be embedded
+beginning with an octothorp (hash, \fB#\fP) character,
+ending at the end of line.
+.P
+Each entry in \fB\*(PN\fP's \fIaccess.cf\fP specifies a shell \fIcommand\fP to
+execute for the given \fImnemonic\fP:
+.RS
+\fImnemonic\fP	\fIcommand\fP [\fIargs\fP] \fB;\fP [\fIoptions\fP]
+.RE
+where the fields are interpreted in the following manner:
+.TP
+\fImnemonic\fP
+an alphanumeric identifier for each operator function, multiple entries
+for the same \fImnemonic\fP are differentiated by the number of arguments
+(via \fB$#\fP below) or by matching fixed arguments against regular expressions
+(via \fB$\fP\fIn\fP below).
+.TP
+\fIcommand\fP
+the full pathname of the executable to be run by \fIop\fP
+when the associated \fImnemonic\fP is selected or the string
+\fBMAGIC_SHELL\fP or an open curly brace (\fB{\fP) followed by an
+in-line shell script, see "MAGIC SHELL" below.
+.TP
+\fIargs\fP
+any arguments to \fIcommand\fP, specified as either literal words or
+dollar pseudo-variables.
+Literal arguments are simply specified directly, like specific command
+options (\fBSh0Gun\fP) or filenames (\fB/dev/rmt20\fP).  Variable arguments
+from the command-line are specified here as \fB$1, $2 ... $\fP\fIn\fP.
+The trailing arguments are given as \fB$*\fP, which includes only
+those beyond the highest number mentioned as \fB$\fP\fIn\fP.
+Also \fB$@\fP does the same thing, but allows empty parameters.
+
+.P
+Other values are available see EXPANSION below.
+.TP
+\fIoptions\fP
+are a set of optional specifications expressed as:
+.nf
+	\fIkeyword\fP\fB=\fP\fIvalue\fP
+.fi
+Where appropriate \fIvalue\fP may actually be a
+list of specific values separated by commas, but
+there may not be any white-space in any \fIvalue\fP
+as the pairs are separated by white-space.
+.P
+The sections below describe each \fIkeyword\fP.
+.P
+One of these three attributes must be matched to allow access to the rule:
+.TP
+\fBusers\fP=\fIREs\fP
+Allow any user listed here to execute this \fImnemonic\fP.
+The default is not allow any specific users.  You may user
+the regular expression \fB.*\fP to indicate that all users may use a given
+\fImnemonic\fP.
+A user may be matched by user-id with \fB#\fP\fIRE\fP, for example to
+always match the superuser:
+.nf
+	users=#^0$
+.fi
+.TP
+\fBgroups\fP=\fIREs\fP
+Allow any user who belongs to a group listed (by \fIRE\fP) here to
+execute this \fImnemonic\fP.  The default is not to allow any specific group.
+A group may be matched by group-id with \fB#\fP\fIRE\fP.
+.TP
+\fBnetgroups\fP=\fInames\fP
+Allow any login listed any specified netgroup to execute this \fImnemonic\fP.
+This is how one gets host specific access via \fI\*(PN\fP to an \fImnemonic\fP.
+The hostnames never appear in the rule, rather we indirect through
+\fB/etc/netgroup\fP, which already knows about hostnames.  We do not
+ever specify or check a \fIdomain\fP, see \fBinnetgr\fP(3).  Note that
+the netgroups are listed as literal \fInames\fP,
+\fBnot\fP as regular expressions.
+
+.P
+These attributes are used to match a command-line request to a rule:
+.TP
+\fB$#\fP=\fIvalue\fP
+Limit the number of \fIargs\fP on the command-line
+to exactly the specified integer \fIvalue\fP.
+This is one way to allow two \fImnemonic\fPs with the same name:
+when each has a different number of forced \fIargs\fP then \fB\*(PN\fP
+knows which to select.  This is also then best way to limit the number of
+matches for \fB$*\fP.
+.TP
+\fB$\fP\fIn\fP=\fIREs\fP
+The \fIn\fPth command-line argument specified must match one of
+the regular expressions listed.
+If an argument does not match any of its permitted values, then then
+next \fImnemonic\fP is tested for a match.  When none match a
+diagnostic is printed and no command is executed.
+.TP
+\fB!\fP\fIn\fP=\fIREs\fP
+The \fIn\fPth command-line argument specified cannot match any of
+the regular expressions listed.
+.TP
+\fB!\fP\fIn\fP
+When the the command-line arguments include a $\fBn\fP reject this rule.
+.TP
+\fB$*\fP=\fIREs\fP
+Used in the \fIoptions\fP section to place restriction on
+the command-line words that are not matched by any $\fIn\fP.
+Only try this rule when all of the (possibly many) command-line
+arguments match at least one of the specified REs.
+
+.TP
+\fB!*\fP=\fIREs\fP
+If any of these (possibly many) arguments match, then reject this
+as a possible matching rule.
+
+.P
+The attributes below are used to make addition access checks.
+.TP
+\fBpam\fP=\fIapplication\fP
+The specified PAM \fIapplication\fP must authenticate the requesting
+user before any access is allowed.  This option skips any password
+check when satisfied.  The value dot (\fB.\fP) is taken as the
+default application listed under \fB\-V\fP.
+Unlike some other attributes, the empty value turns off PAM authentication.
+.TP
+\fBpassword\fP=\fIusers\fP
+Queries the user for a given login's password, if there is no = part the
+users own password is asked.  The value dot (\fB.\fP) is taken as an
+affirmation of that default.  Allows \fB%u\fP for the specified \fIusers\fP
+password, and \fB%f\fP for the owner of the specified \fIfile\fP.
+This check is skipped if the \fBpam\fP specification was satisfied.
+.TP
+\fBhelmet\fP=\fIpath\fP
+This must be an absolute path to a program that is safe to run with
+escalated privileges.  It is passed a large number of arguments from
+\fI\*(PN\fP, see API below.
+The program does any additional checks the
+site policy demands for the escalation, manifest parameters for the checks
+may be set as environment variables in the specification, as the
+environment is the one proposed for the new process.
+An exit code of zero allows the access requested with the possibly
+modified environment, see below.
+.TP
+\fBjacket\fP=\fIpath\fP
+Like a \fBhelmet\fP this co-process starts before the requested
+command is executed with the same API as a \fBhelmet\fP.
+The new command will be started when \fIstdout\fP is closed in the
+\fBjacket\fP process.
+To obtain the exit code from the escalated command the \fBjacket\fP may
+then \fBwait\fP for the child using the \fIpid\fP specified under
+\fP\-P\fP (see API below).
+The \fBjacket\fP might also time the command, restart the command or log any
+additional aspects of the access required by local policy.
+
+.P
+These attributes modify the new process's environment and
+privileges:
+
+.TP
+\fB$\fP\fIVAR\fP=\fIvalue\fP
+Where \fIVAR\fP is the name of an environment variable it will be
+assigned the specified \fIvalue\fP for the new process.
+.TP
+\fB$\fP\fIVAR\fP
+The specified environment is inherited unchanged from
+the caller's shell.  Use this with care, as some variables pose
+a substantial security risk.
+.TP
+\fBenvironment\fP
+Disables the destruction of the user's environment.  Once again use this
+with care.
+.TP
+\fBenvironment\fP=\fIREs\fP
+Passes any of the user's environment variable on that match at least 1 one
+\fIRE\fP in the list.  This is used to allow access to ksb's wrappers.
+Each \fIRE\fP is inspected for a literal equal sign (\fB=\fP), if it
+contains one then it is matched against the complete string, else just
+the name of the variable.
+.TP
+\fBuid\fP=\fIlogin\fP
+Set the user id to the value specified.  The value can be numeric user
+ID or a login name.  The default is \fBroot\fP
+(really the login that owns the \fIop\fP binary).
+The special value dot (\fB.\fP) is a macro for the real user id, this
+allows a task to be run with the same uid, but a modified group list.
+The special value percent-u (\fB%u\fP) requires a command-line \fB\-u\fP
+option to specify the login name at run-time.
+The special value percent-f (\fB%f\fP) uses the owner
+of the \fIfile\fP.
+Local site policy may restrict the logins available.
+.TP
+\fBeuid\fP=\fIlogin\fP
+Set the effective user id to be different from the \fBuid\fP.
+.TP
+\fBgid\fP=\fIgroups\fP
+Add the \fIgroups\fP listed to group access list.
+Each value can be a numeric group ID or a group name.
+As for \fBuid\fP the special value dot (\fB.\fP) is taken as a macro
+for the original real group id.
+The special value percent-g (\fB%g\fP) requires a command-line \fB\-g\fP
+option to specify the group name at run-time.
+The special value percent-f (\fB%f\fP) requires a
+command-line \fB\-f\fP option to
+specify a file to set the group (by its group owner) at run-time.
+Local site policy may restrict the groups available.
+.TP
+\fBegid\fP=\fIgroup\fP
+Set the effective group id to be other than the \fBgid\fP.
+.TP
+\fBinitgroups\fP=\fIlogin\fP
+Specify the addition of supplementary groups for this command from
+the named login (e.g. \fBinitgroups\fP=vanilla).
+The special value dot (\fB.\fP) passes the current supplementary
+groups on, which will otherwise be lost.
+The special value percent-u (\fB%u\fP) uses the command-line \fIuser\fP.
+The special value percent-f (\fB%f\fP) uses the owner
+of the \fIfile\fP to select a target login (using \fBgetpwuid\fP(3) to
+reverse map the uid to a login name).
+.TP
+\fBinitgroups\fP
+Set the groups from the \fBuid\fP option, or the \fBeuid\fP option
+when that is not specified.  This is most useful as a DEFAULT option
+so as not to repeat the login specification from \fBuid\fP on every
+rule.  It is a fatal error to specify an empty \fBinitgroups\fP
+without an explicit \fBuid\fP (or \fBeuid\fP) option.
+.TP
+\fBsession\fP=\fIlogin\fP
+Setup a PAM session for the given \fIlogin\fP.  The \fIlogin\fP may also
+be specified as \fP%u\fP (under \fB\-u\fP), \fB%i\fP (the \fBinitgroups\fP
+login, or its default value), \fB%f\fP (under \fB\-f\fP), or
+original user (as \fB.\fP).
+Unlike some other attributes, the empty value turns off PAM session setup.
+.TP
+\fBcleanup\fP=\fIlogin\fP
+Undo the work \fBsession\fP did, at the cost of an additional process.
+To call \fIpam_close_session\fP(3) \fI\*(PN\fP must \fIfork\fP(2) a
+copy of itself to wait for the escalated process to exit.  The
+\fBcleanup\fP specification may be any allowed for \fBsession\fP,
+with the special form dot (\fB.\fP) interpreted to mean "the same
+specification as \fIsession\fP" (even when session is empty).
+As in the \fIsession\fP specification, the empty value turns off PAM session
+cleanup.
+.TP
+\fBdir\fP=\fIpath\fP
+Change the current working directory to the path specified.
+.TP
+\fBstdin\fP=\fIpath\fP  (also \fBstdout\fP, \fBstderr\fP)
+Force the input (output, error) channel of the new process to the
+named \fIpath\fP, or to the \fIfile\fP as \fB%f\fP.  The standard
+shell I/O redirection markups (\fB<\fP, \fB<>\fP, \fB>\fP, \fB>>\fP)
+are allowed to modify the \fBopen\fP(2) \fIflags\fP.
+.TP
+\fBbasename\fP=\fIword\fP
+Specify your own \fBargv[0]\fP for the executed command.
+.TP
+\fBchroot\fP=\fIpath\fP
+Change the root directory to the \fIpath\fP specified using \fBchroot\fP(2).
+.TP
+\fBdaemon\fP
+Push the process into the background.  In this case \fIstdin\fP,
+\fIstdout\fP, and \fIstderr\fP of the process are all
+redirected to \fB/dev/null\fP, unless otherwise redirected.
+Replacing the semicolon separator between the \fIargs\fP and \fIoptions\fP
+with an ampersand (\fB&\fP) is a synonym for this option.
+.TP
+\fBumask\fP=\fIoctal\fP
+Set the file creation umask to the \fIoctal\fP value specified.  The default
+is to set it to \fB022\fP.
+.TP
+\fBnice\fP=\fIvalue\fP
+Use \fIsetpriority\fP(2) to change the integer nice value of the new process.
+The \fIvalue\fP should be an integer from \-20 to 20.
+.TP
+\fBfib\fP=\fIinteger\fP
+Use \fIsetfib\fP(2) to change the network view to the specified one.
+This is only supported on FreeBSD at present.
+
+.P
+The attributes below match the command-line values of the
+\fB\-f\fP\~\fIfile\fP, \fB\-u\fP\~\fIlogin\fP, and \fB\-g\fP\~\fIgroup\fP:
+.TP
+\fB%f.\fP\fIattr\fP=\fIREs\fP
+Specify a list of regular expressions, one of which must match
+the named file attribute for the \fIfile\fP specified under \fB\-f\fP.
+.TP
+\fB!f.\fP\fIattr\fP=\fIREs\fP
+Specify a list of regular expressions, none of which may match
+the named file attribute for the \fIfile\fP specified under \fB\-f\fP.
+.sp
+.RS
+For both of the above \fIattr\fP token may be any field from
+a \fIstat\fP(2) structure with the leading "st_" removed.
+In that case the field is converted to a base-10 number for matching:
+\fBdev\fP, \fBino\fP, \fBnlink\fP, \fBatime\fP, \fBmtime\fP, \fBctime\fP,
+\fBbtime\fP or \fBbirthtime\fP, \fBsize\fP, \fBblksize\fP,
+\fBblocks\fP, \fBuid\fP, \fBgid\fP.
+.sp
+In the case of \fBmode\fP it is converted to a four-digit octal number.
+.sp
+The token \fBlogin\fP (\fBgroup\fP) converts the \fIuid\fP (\fIgid\fP) to
+the login name (group name) via \fIgetpwuid\fP (\fIgetgrgid\fP).
+The \fBuid\fP may also be matched by group membership (as \fB%u@g\fP does)
+with \fBlogin@g\fP: the reverse-mapped \fIuid\fP my be a member of
+at least 1 group that matches one of the provided expressions.
+.sp
+The token \fBpath\fP matched the absolute path to the \fIfile\fP.
+.sp
+The token \fBperms\fP compares to a string as \fBls\fP(1) would for the file
+permissions (e.g. "drwxr\-x\-\-\-").
+.sp
+The token \fBaccess\fP compares to a four character string based on
+the \fBaccess\fP(2) results against the invoking login's credentials:
+for example "rwxf" when all access was allowed, "---f" when the file was not
+accessible, but the name was.
+.sp
+The token \fBtype\fP may have from 1 to 3 characters: the first is the
+same as the \fBmode\fP, the next is a \fBm\fP if the type was
+\fBd\fP (directory) and that directory is a mount-point.  The next
+is an \fBe\fP if the type was \fBd\fP and the directory is empty.
+Also the second character my be set to any type-character if
+the \fIfile\fP specified is a symbolic link \fB%f.type\fP allows
+an 'l', the special type 'n' (\fBn\fP) indicates a symbolic link
+that (presently) dangles.
+.RE
+.TP
+\fB%u\fP=\fIREs\fP
+Specify a list of regular expressions, one of which must match
+the \fIlogin\fP (as a name) specified on the command-line.
+.TP
+\fB!u\fP=\fIREs\fP
+Specify a list of regular expressions, when
+the \fIlogin\fP specified under \fB\-u\fP matches any of these it
+is rejected as "black listed".
+.TP
+\fB%u@g\fP=\fIREs\fP
+Specify a list of regular expressions, one of which must match
+the name of a group in which the \fIlogin\fP is explicitly listed
+as a member.
+.TP
+\fB!u@g\fP=\fIREs\fP
+Black list a \fIlogin\fP based on membership in any group that
+matches any of the listed regular expressions.
+.TP
+\fB%g\fP=\fIREs\fP
+Specify a list of regular expressions, one of which must match
+the \fIgroup\fP (as a name) specified on the command-line.
+.TP
+\fB!g\fP=\fIREs\fP
+Specify a list of regular expressions, when
+the \fIgroup\fP specified under \fB\-g\fP matches any of these it
+is rejected as "black listed".
+.TP
+\fB%g@u\fP=\fIREs\fP
+Require that the \fIgroup\fP specified include a login matching
+at least one of the \fIREs\fP provided.  Three special expressions
+are also allowed: \fB%u\fP (match the login given under \fB\-u\fP
+as \fIlogin\fP, \fB%l\fP (match the login name of the real
+uid), \fB%e\fP (match the login name of the effective uid).
+Each of these are anchored to require an exact match.
+.TP
+\fB!g@u\fP=\fIREs\fP
+Blacklist any \fIgroup\fP with a member login that matches any \fIREs\fP.
+The same special expressions are allowed.  An offending group must be listed
+in the group file (\fI/etc/group\fP), not just as a primary login
+group.  See \fBgroup\fP(5)\fP.
+
+.SH DEFAULT
+.P
+There may also be a special entry in the file beginning at the first
+non-comment line to define default values, or to override the
+built-in defaults listed here.
+Such a declaration has the following format:
+.RS
+\fBDEFAULT\fP	\fIkeyword_options\fP
+.RE
+where \fIkeyword_option\fP is a list of \fIkeyword=value\fP string
+mentioned above under \fIoptions\fP.
+.P
+.\" Any default values may be overridden by an explicit entry.
+Note that if any regular \fImnemonic\fP entry defines its own
+\fIoption\fP, then any value given for that entry must explicitly include
+the item from the \fBDEFAULT\fP line if the default values is to be included.
+That is to say the \fIoptions\fP definitions completely override any
+defaults; they do not add to them.
+In this way a value specified on the \fBDEFAULT\fP line for \fBusers\fP
+(for example) may be "erased" without defining new limit, by an explicit
+specification of the empty value:
+.RS
+.nf
+\fBusers\fP=
+.fi
+.RE
+Such a null setting has the effect of setting the list of
+allowable users or groups to be unspecified.  For the other keywords
+(\fBuid\fP, \fBgid\fP, \fBdir\fP, and \fBchroot\fP),
+a null setting leaves that attribute as it is upon invocation of the
+\fIop\fP program, clearing any configuration specified default value.
+.P
+Each file may include a specific \fBDEFAULT\fP definition which applies to
+all of the stanzas below it (in that file).
+If the \fBfirst\fP definition in \fBaccess.cf\fP is
+a \fBDEFAULT\fP, then it applies to any stanza which doesn't have a
+specific one for every configuration file.  Thus any audit of
+a rule-base must first establish that the default in \fBaccess.cf\fP
+is acceptable.
+.P
+Default rules must never include \fB$#\fP, \fB$1\fP, \fB!1\fP, \fB$2\fP, or
+any other \fB$\fP\fIN\fP attribute as these are checked without
+consulting the in-scope \fBDEFAULT\fP rule.  Sanity (under \fB\-S\fP)
+complains bitterly if a such a rule violates this injunction.
+
+.SH OPTIONS
+.TP
+\fB\-f\fP\~\fIfile\fP
+Specify a file or directory for any \fImnemonic\fP that requires one.
+That file may be used as part of the target command-line, or just
+as part of the credential operation.
+Of course the specified \fIfile\fP must match all the \fB%f\fP and
+\fB!f\fP attributes for the selected rule.
+.TP
+\fB\-h\fP
+Provide a brief help message.
+.TP
+\fB\-H\fP
+Provide a brief help message about our configuration file syntax.
+This doesn't explain it all, but it sure helps a lot.
+.TP
+\fB\-g\fP\~\fIgroup\fP
+Specify a group for a \fImnemonic\fP that uses \fB%g\fP, \fB$g\fP. or \fB$G\fP.
+When a rule needs a \fB\-g\fP option it must be specified, there
+is no default value.
+The value specified must match any \fB%g\fP and \fB!g\fP attributes for the
+selected rule.
+.TP
+\fB\-l\fP [\fIlogin\fP]
+List all the rules available to the current login as they might
+be expressed from the command-line.  Site policy
+may not a allow this option, in which case \fI\*(PN\fP exits
+with EX_UNAVAILABLE, see \fBsysexits\fP(3).  The superuser list
+may include items commented with an octothorp (hash, #) which
+are rules that are forbidden to the superuser, but may be available to
+some others.  Mortal logins only see their allowed rules, while
+the superuser gets to see the output for any listed \fIlogin\fP.
+.TP
+\fB\-r\fP|\fB\-w\fP [\fIlogin\fP]
+The same rules are displayed as under \fB\-l\fP, but \fI\*(PN\fP reports
+an approximation of the command template that will be run.
+Under \fB\-w\fP \fI\*(PN\fP displays which credential allows
+the access in square brackets.
+.TP
+\fB\-n\fP
+Do not consult the existing rule-base for the sanity check we
+are about to run.  This is really useful to install an updated rule-base
+when the old one is not quite sane.
+.TP
+\fB\-S\fP [\fIfiles\fP]
+Output a sanity report.  Various configuration options and the
+path to each \fIcommand\fP are checked for lint errors.
+A non-zero exit code indicated serious issues with the configuration, but some
+trivial errors only output a comment to \fIstderr\fP.  When \fIfiles\fP
+are specified they are added to the existing configuration, and all
+checks are run as the original user.
+.TP
+\fB\-u\fP\~\fIlogin\fP
+Specify a login for a \fImnemonic\fP that uses \fB%u\fP, \fB$u\fP or \fB$U\fP.
+When a rule needs a \fB\-u\fP option it must be specified on
+the command-line.
+The parameter may also be in the form \fIlogin\fP\fB:\fP\fIgroup\fP,
+in which case the suggested group is applied as if \fB\-g\fP had been,
+but doesn't prevent execution when \fB%g\fP is not required,
+so it is otherwise ignored.
+The value specified must match any \fB%u\fP and \fB!u\fP attributes for the
+selected rule.
+.TP
+\fB\-V\fP
+Provide the version of \fIop\fP installed as well as
+the path to the configuration file and any compile-time options set.
+
+.SH "MAGIC SHELL"
+When the \fIcommand\fP for a \fImnemonic\fP is the word
+\fBMAGIC_SHELL\fP that word is discarded from the \fIcommand\fP, then
+\fIop\fP processes the positional parameters to
+build the new \fIcommand\fP from the \fIargs\fP differently.
+.P
+First when the \fIcommand\fP has no other words \fB\*(PN\fP constructs a
+new one.
+When there are positional parameters on the command-line it uses:
+.RS
+\fB$S \-c $*\fP
+.RE
+When there are no command-line parameters is uses:
+.RS
+\fB$S\fP
+.RE
+If the SHELL specified for \fB$S\fP is \fBperl\fP(1) then the "-c" is
+changed to a "-e" in the positional parameter case.
+.P
+To form the target command \fBop\fP then consolidates all
+the parameters above the last number
+specified in the \fIargs\fP to into the last parameter.  This allows
+the \fIcommand\fP to group them as a single argument to a shell, or
+other application as \fB$*\fP.
+Note that all sence of how they were originally quoted is lost.
+.P
+The default shell is \fB/bin/sh\fP.  An explicit specification of
+\fB$SHELL\fP overrides this.
+The users $SHELL environment variable is consulted when
+\fBenvironment\fP set or when \fB$SHELL\fP mentioned to allow it to
+be read.
+.P
+An in-line script is similar to the above: in-place of \fIcommand\fP
+in the rule configuration a lone open curly (\fB{\fP) starts an in-line
+script.  The script ends at the first following line that begins with
+a close curly (\fB}\fP) as the first nonwhite-space character on the line.
+No compression of \fB$*\fP is undertaken for an in-line script.
+The in-line script is replaced with the token sequence:
+.nf
+	$S \-c $s
+.fi
+where \fB$s\fP is the in-line script with the delimiting curly braces
+removed.  Any parameters after the script are taken as parameters to
+the in-line script by the shell.  The shell may be \fBperl\fP, in which
+case the "-c" is replaced with "-e".
+.P
+The use of in-line scripts should be a last resort: usually it is
+far better to call a well documented program than to
+create \fIad-hoc\fP scripts with little security review.
+The magic shell and in-line script forms are mutually exclusive.
+
+.SH API
+The \fBhelmet\fP and \fBjacket\fP processes are passed a very
+complete description of the credentials used to grant the proposed
+access as a UNIX shell command-line.  The usage for that
+command-line is:
+.RS
+\fIpath\fP [\fB\-P\fP\~\fIpid\fP] [\fB\-u\fP\~\fIuser\fP]
+[\fB\-g\fP\~\fIgroup\fP] [\fB\-f\fP\~\fIfile\fP]
+[\fB-R\fP\~\fIroot\fP] \fB\-C\fP\~\fIconfig\fP
+\fB\-\-\fP\~\fImnemonic\fP \fIprogram\fP \fIeuid\fP:\fIegid\fP
+\fIcred_type\fP:\fIcred\fP
+.RE
+.P
+The options \fB\-u\fP, \fB\-g\fP, and \fB\-f\fP are only passed
+when they were specified on the \fI\*(PN\fP command-line.
+This allows more checks on their values, one \fI\*(PN\fP could not
+understand, for example being sure the target \fIuser\fP is
+presently frozen in LDAP, has valid Kerberos context, or
+is running an ssh agent.
+.P
+The option \fB-R\fP is only presented when a chroot is in effect
+(in fact it has already been applied, so we are in that environment).
+.P
+The option \fB\-P\fP is only presented to the \fIjacket\fP to tell
+it which child process is the key one (since any process might have
+children it didn't \fBfork\fP).  This difference would allow the same
+program to be used as both a \fIhelmet\fP and a \fIjacket\fP.
+.P
+The \fB\-C\fP option will always be present to
+tell which \fI\*(PN\fP configuration file included the proposed command.
+.TP
+\fImnemonic\fP \fIprogram\fP
+These give the \fImnemonic\fP the customer specified and the program
+\fI\*(PN\fP mapped that to.
+.TP
+\fIeuid\fP:\fIegid\fP
+These are the proposed effective user-id and group-id the process will
+have, the real user-id and group-id are not sent (for most sane
+application they are the same), but any \fBsetgroups\fP call has been
+issued so the process may inspect its own group list, see \fBgetgroups\fP(2).
+.TP
+\fIcred_type\fP:\fIcred\fP
+The \fIcred_type\fP is one of \fBgroups\fP, \fBusers\fP, or \fBnetgroups\fP
+and the \fIcred\fP is the one that matched.
+.P
+A very simple command processor is reading \fIstdout\fP from the
+process.  Four commands are available with each consuming a whole line
+of text:
+.TP
+\fB#\fP \fItext\fP
+Comments are ignored, unless \fI\*(PN\fP was compiled with \fBDEBUG\fP
+in which case they are output to \fIstderr\fP.
+.TP
+\fB$\fP\fINAME\fP=\fIvalue\fP
+The given environment variable is set to \fIvalue\fP in the
+target process, which may include white-space.
+This is the only way to get a multi-word value
+forced into the environment, as \fI\*(PN\fP's lexical analyzer is
+strongly against quotes.
+.TP
+\fB-\fP\fINAME\fP
+Remove the given environment variable from the target process's
+environment.  This is used to remove variables passed to this
+process as parameters that we don't want to show the Customer.
+.TP
+\fIexitcode\fP
+Set a non-zero (or zero if you like) forced \fBexit\fP(3) code.
+.P
+When a \fIhelmet\fP process exits it's exit code is also checked for a
+non-zero \fIexitcode\fP, which tell \fI\*(PN\fP that the process
+failed to complete the check (so it rejects the access).
+.P
+In the case of a \fIjacket\fP process a non-zero \fIexitcode\fP
+sent to \fIstdout\fP stops the access before the program is executed,
+and the exit code from the \fIjacket\fP is the exit code from
+the \fI\*(PN\fP process.
+.P
+A \fIjacket\fP process could even \fIkill\fP(2) the child process before
+it begins, but that would be poor form.  To force a graceful exit of
+the \fI\*(PN\fP process output a non-zero \fIexitcode\fP on
+\fIstdout\fP then close that descriptor.  For example
+.br
+.nf
+	echo "You are denied." 1>&2
+	echo 67
+	exec 1>&-
+.fi
+
+.SH EXPANSION
+
+.P
+The expander is very much like the shell's parameter substitution:
+dollar sign (\fB$\fP) is the only special character, quotes and
+backslashes and other (normally) special characters are only special
+in the context of a dollar expansion.
+.P
+Each of the words in the \fIargs\fP specified in the selected rule definition
+are expanded into at least one word in the argument vector of the
+new process.  The input specification is limited in that there is
+no way to quote white-space from the configuration file parser, but there
+are two ways to get white-space from the expander.
+.P
+The command-line specification the \fIlogin\fP (its uid) is available as
+\fB$u\fP (\fB$U\fP), the specified \fIgroup\fP (its gid) as \fB$g\fP (\fB$G\fP),
+the absolute path to the \fIfile\fP specified as \fB$f\fP, or
+as an open file descriptor via \fB$F\fP.
+The directory containing the \fIfile\fP as \fB$d\fP, a read-only open file
+descriptor on that directory is available as \fB$D\fP.
+.P
+From the rule definition, the \fIcommand\fP path as \fB$_\fP, the
+\fImnemonic\fP specified as \fB$0\fP, and the computed value of \fB$SHELL\fP
+for \fBMAGIC_SHELL\fP as \fB$S\fP.  The location of that definition
+with \fB$w\fP as the filename and \fB$W\fP as the line number in that file.
+.P
+In terms of the credentials: the original login name (uid) as
+\fB$l\fP (\fB$L\fP), the escalated login (uid) as
+\fB$t\fP (\fB$T\fP), the original group as
+\fB$r\fP (\fB$R\fP) and the escalated group (gid) as
+\fB$o\fP (\fB$O\fP).
+Read those as "login:real" and "to target:other".
+The original group (gid) access list as
+\fB$a\fP (\fB$A\fP), the new group (gid) list as
+\fB$n\fP (\fB$N\fP).
+The initgroups login (uid) is available as \fB$i\fP (\fB$I\fP), the
+PAM session login (uid) as \fI$p\fP (\fI$P\fP).
+.P
+The default access configuration as \fB$c\fP and the name of the
+enclosing directory as \fB$C\fP.
+The home directory of the \fB$l\fP is \fI$h\fP, while the home
+directory of \fB$t\fP is available as \fI$H\fP.  These are the only ones
+that breaks the case relationship rule, but there is no numeric
+value for either.
+.P
+The login name of the uid \fI\*(PN\fP is setuid to is available
+as \fB$e\fP, and their uid as \fB$E\fP, and home directory as \fB$~\fP.
+The group name under any setgid modes is available as \fB$b\fP,
+the gid as \fB$B\fP.
+.P
+Some extra terms are also available: literal dollar ("$") as \fB$$\fP,
+a space as \fB$\es\fP, any other single letter backslash escape \fBtr\fP(1)
+supports as \fB$\e\fP\fIc\fP, where \fIc\fP is 'a', 'b', 'f', 'n', 'r', 't', 'v', or '\e'.
+.P
+The expansion of \fB$|\fP is the empty string.  This allows \fB$1\fP
+to be abutted to a digit as \fB$1$|7\fP, which suffixes a seven on
+the end of the first parameter (note that \fB$17\fP refers to positional
+parameter seventeen).  Pass a single semicolon (\fB;\fP) or
+ampersand (\fB&\fP) a program by quoting it with
+empty expansions as \fB$|;$|\fP or \fB$|&$|\fP.
+.P
+All environment variables defined by a rule are expanded (both side
+of the assignment.  As an example:
+.nf
+	$PREV_IDENT=$l:$r
+	$PREV_HOME=$h
+	$OP_RULE_FROM=$w:$W
+	$HOME_$e=$~
+.fi
+Note that the first dollar is the clue to \fI\*(PN\fP that this is an
+environment definition, not part of the text to be expanded.  In the
+common case expect "HOME_root=/" for the last line.
+
+.SH EXAMPLES
+.TP
+.nf
+\fI\*(PN\fP \-l
+.fi
+List all the \fImnemonic\fP commands available to the current user, with
+some usage information about each.
+.TP
+.nf
+\fI\*(PN\fP \-w
+.fi
+The output of this command looks like that of \fB\-r\fP but includes
+the reason each rule is allowed.  For example "[by group membership]"
+rather than "[by login group name]".
+This tells you why your buddy cannot get to a rule may access.
+.TP
+.nf
+\fI\*(PN\fP \fI\*(PN\fP \-w ksb
+.fi
+Ask \fI\*(PN\fP to run itself as the superuser to look at "ksb"'s allowed
+\fImnemonic\fP command list.  This is a clever way to grant members of
+an admin group access to everyone's command list and why they may
+access each command.  Here is a rule that allows that access:
+.nf
+op	/usr/local/bin/op $1 $2 ;
+	groups=^wheel$,^root$,^staff$
+	uid=root
+	$1=^(-l|-r|-w)$
+	$2=^[^:]*$
+.fi
+.TP
+.nf
+\fI\*(PN\fP \-u $LOGNAME chown  $PWD/file.pl
+.fi
+Change a file in the current directory to the our ownership.  This
+might be granted in a common source repository (for example) when
+careless modes stand in the way of progress.  Below is a sample rule to
+allow anyone in group \fBsource\fP to change ownership of a file
+to anyone else in that same group.
+Note that the the negative RE match forbids using ".." to climb out
+from under "/usr/src":
+.nf
+chown	/usr/sbin/chown \-R $u:source $* ;
+	groups=^source$
+	%u@g=^source$
+	$*=^/usr/src/
+	!*=/\e.\e./
+	uid=root
+.fi
+(The use of a recursive option on the \fBchown\fP is site policy, of course.)
+.TP
+.nf
+\fI\*(PN\fP dmidecode
+.fi
+Request the human readable version of the DMI table.  Since this program
+has to read the BIOS information it must be run as root, since it also
+gives away more information that you might like it can be protected
+by \fI\*(PN\fP, rather than just setuid to the superuser.
+.nf
+dmidecode /usr/sbin/dmidecode $* ;
+	uid=root
+	groups=^staff$,^wheel$
+.fi
+Similar protections should be afforded to \fBlsof\fP(8).
+.TP
+.nf
+\fI\*(PN\fP help
+.fi
+This is a site policy script that usually outputs as much of the current
+rule-base as local policy allows.  Some sites don't implement it at all,
+some output the whole rule-set.  Most just output the list of \fImnemonic\fP
+commands and some details about what each does.
+.TP
+.nf
+\fI\*(PN\fP apache start
+.fi
+This shows off \fI\*(PN\fP's clever use of multiple words to form a human
+friendly mnemonic.  The rule to allows this may allow many "actions"
+(start, stop, restart, and the like) which are included in the on-line
+help under \fB\-l\fP.
+.nf
+apache	/usr/local/sbin/apachectl $* ;
+	groups=^webguy$,^staff$
+	$1=^(start|stop|restart|graceful|graceful-stop|startssl|sslstart|start-SSL|configtest)$
+	uid=root
+
+apache	/usr/local/sbin/apachectl $* ;
+	users=.*
+	$1=^(configtest|status|fullstatus)$
+	uid=.
+.fi
+Note that the second stanza doesn't give superuser access that is not
+needed, but allows the Customer to \fBalways\fP put "\fI\*(PN\fP" before
+the common mnemonic.  This really helps sell the escalation to support
+staff.
+
+.SH NOTES
+.P
+A comma (\fB,\fP) may be matched literally in a regular expression by
+doubling it (\fB,,\fP) to protect it from the separator code.
+.P
+Any failure to compile a regular expression is a fatal configuration error.
+When reported by a Customer these must be fixed by the administrator.
+.P
+Older versions of \fI\*(PN\fP passed the group access list to the
+new process with little or no deletions in too many cases.  This
+has been fixed since version 2.33.
+.P
+The use of substitutions in any regular expression is no longer supported.
+It was unclear to me that this was ever really useful.
+.P
+Older versions of \fB\*(PN\fP tried to use \fB\e$\fP to specify a
+literal dollar sign, but left the backslash in-place.  The double-dollar
+notation is more sane and leaves the over-used backslashes alone.
+Also older versions used backslash to escape commas (\fB,\fP) in an
+RE list, now we use double-comma (as an empty RE is not useful to us).
+.P
+Any \fBperl\fP programs used as \fIjackets\fP or \fIhelmets\fP
+are tainted, see \fIperlsec\fP(1).  This is also a feature.
+
+.SH BUGS
+.P
+Use of the \fBchroot\fP with $D or $F may cause the \fBchroot\fP(2)
+to fail if \fBkern.chroot_allow_open_directories\fP is set to 0.
+.P
+The regular expression match for any explicit users or groups matches
+really should be anchored.  For example the expression:
+.RS
+users=root
+.RE
+Also allows "notroot" to run the command.  Since \fB\*(PN\fP didn't
+traditionally force the anchors it still doesn't: but \fB\-S\fP
+complains about missing ones.  This might be true for other fields,
+but those generally don't break as bad are the primary credentials.
+.P
+\fIOp\fP should be able to redirect \fIstdin\fP, \fIstdout\fP, or
+\fIstderr\fP to a positional parameter.  You still need a script for that.
+.P
+The \fBsession\fP feature may be harder when mixed with \fBchroot\fP, as
+the pam configuration might have to be replicated under the new root
+directory.
+.\" I would use a loop-back mount, myself.
+
+.SH FILES
+/usr/local/lib/op/access.cf	the primary access description
+.br
+/usr/local/lib/op/*.cf	additional local access descriptions
+
+.SH CREDIT
+"\fBOp: A flexible Tool for Restricted Superuser Access\fP",
+by "\fITom Christiansen\fP", CONVEX Computer Corporation,
+"\fBProceedings of the Large Installation Systems Administration III Workshop\fP"
+.sp
+David Koblas reimplemented \fB\*(PN\fP from that description in 1991.
+.sp
+This is a modification of Koblas's version by KS Braunsdorf (at ksb.npcguild.org).
+KSB added the help and version options to conform to local (NPC Guild)
+conventions, and the other whacky options from Jan 1997 through Dec 2009.
+The whole idea of a helmet and jacket process was his, as well as most of
+the command line specifications (\fB\-u\fP, \fB\-g\fP, \fB\-f\fP) and
+on-line help (\fB\-H\fP, \fB\-l\fP, \fB\-r\fP, \fB\-w\fP).
+
+.SH "SEE ALSO"
+su(1), chroot(2), egrep(1), sudo(8), super(8), getpwuid(3), getgrgid(3),
+sysctl(8), innetgr(3), perl(1), group(5), passwd(5), setfib(1), pam(3)

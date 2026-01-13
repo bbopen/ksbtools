@@ -1,0 +1,124 @@
+.\" $Id: tpsh.man,v 2.0 1996/11/07 17:35:40 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH TPSH 1L LOCAL
+.SH NAME
+tpsh \- install products from tape archives
+.SH SYNOPSIS
+.ds PN "tpsh
+\fI\*(PN\fP [\-\fBn\fP\fBv\fP] [\-\fBc\fP \fIcmd\fP] [\-\fBf\fP \fIfile\fP] [\fIdir\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.SH DESCRIPTION
+.PP
+The \fItpsh\fP program is used as a login shell for the \fBtpsh\fP
+account.
+This account generally has uid 0 (which makes it the superuser) but
+a hard to guess rotating password allows only a small window
+to garner root access.
+
+.PP
+In the normal mode of operation (as a login shell), \fItpsh\fP
+reads limited commands from \fIstdin\fP.  These commands are designed
+to make it easy to extract data from a tape, with some safety in mind
+to prevent accidental anihilation of the system.
+A list of all the commands is provided below.
+
+.PP
+The main \fITpsh\fP comands is \fBload\fP.
+The  \fBload\fP command extracts a \fBtar\fP format tape from the
+default tape device then installs the contents via (usually) a shell
+script.
+This archive should contain at least this extract program
+as an executable file named ``unbundle'' (at the top level).
+It may contain a text file named ``Commands'' which is incorporated
+into the \fItpsh\fP process itself (detailed below).
+
+.PP
+These installation archives are generally created with \fBtar\fP via:
+.sp
+	tar cvf /dev/rmt/3mn .
+.br
+	mt -t /dev/rmt/3mn rew
+.sp
+
+.SH OPTIONS
+If the program is called as \fItpsh\fP then no options are forced.
+.TP
+\fB\-c\fP \fIcmd\fP
+Provide an interactive command.
+.TP
+\fB\-f\fP \fIfile\fP
+Interpret commands from named file.
+This option fopens its file with the key ``r''.
+.TP
+\fB\-h\fP
+Print this help message.
+.TP
+\fB\-n\fP
+Do not execute commands, trace only.
+.TP
+\fB\-v\fP
+Be verbose.  Trace shell commands as executed.
+.TP
+\fB\-V\fP
+Show version information.
+
+.SH COMMANDS
+.PP
+The base \fItpsh\fP command set is limited to those listed below:
+.RS
+.TS
+r l.
+backup [level]	backup the system to tape, level is a number 0-9
+commands	output a terse list of commands
+echo	output text
+eject	eject the tape from the drive
+help	output a help message
+load	load a tape
+pwd	print working directory
+quit	exit this command interpreter
+reboot	reboot this host
+rewind	rewind the tape in the drive
+source [files]	interpret files of commands
+tape	suggest a new tape device
+version	output a version string
+?	quick help
+.TE
+.RE
+
+.PP
+Other shell commands may be included as commands in the \fItpsh\fP
+interpreter if a file called ``Commands'' is included in the
+distribution archive.
+The file describes commands in the format that \fImkcmd\fP's \fBcmd_parse.m\fP
+expects them.
+.RS
+
+path argv0 [params] -- helptext
+.RE
+.PP
+For example the \fBls\fP command might be encoded as:
+.RS
+
+/bin/ls ls [-flags] -- list files in stage area
+
+.RE
+
+.PP
+Including non-root safe commands might be a Bad Idea.
+
+.SH BUGS
+N.B.: It is quite possible for \fBnon-root users to gain root access
+via the tpsh account\fP (if they know the password).
+
+.SH AUTHOR
+K S Braunsdorf
+.br
+ksb@fedex.com
+
+.SH "SEE ALSO"
+sh(1), tar(1)

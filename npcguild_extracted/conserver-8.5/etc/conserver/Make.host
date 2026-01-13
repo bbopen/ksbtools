@@ -1,0 +1,146 @@
+`#	$Id: Make.host,v 8.2 2000/06/20 14:06:09 ksb Exp $
+#
+#	Makefile for console server
+#
+# two steps (1) and (2)
+
+# (1) change ETC below to where you would like the console server installed
+# I would not change the name, you have to much with the docs then...
+SHELL=/bin/sh
+PROG=	conserver
+ETC=	${DESTDIR}/usr/'ifdef(`NEW',`new',`local')`/etc
+DOC=	${DESTDIR}/usr/local/man
+
+'define(HAVEPTYD,ifelse(HOSTTYPE,`S81',`yes',`no'))dnl
+`# if we have to PUCC ptyd daemon we can use it to get ptys, else use fallback.o
+# and change the CDEFS line below to =0
+FALLBACK='ifelse(HAVEPTYD,`yes',`',`fallback.o')`
+PUCCLIB='ifelse(HAVEPTYD,`yes',`-lpucc',`')`
+#FALLBACK='ifelse(HAVEPTYD,`yes',`fallback.o',`')`
+#PUCCLIB='ifelse(HAVEPTYD,`yes',`',`-lpucc')`
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/'ifelse(HOSTTYPE,`SUN5',`local/`include'',``include'/local')`
+P='ifelse(
+HOSTTYPE,`S81',`&',
+HOSTTYPE,`PTX2',`&',
+HOSTTYPE,`PTX4',`&')`
+
+INCLUDE=
+DEBUG='ifelse(HOSTTYPE,`V386',`',`-O')`
+CDEFS=  -D'HOSTTYPE` -DHAVE_PTYD='ifelse(HAVEPTYD,`no',`0',`1')`'ifelse(
+HOSTTYPE,`PTX2',` -DDO_VIRTUAL=0',
+HOSTTYPE,`PTX4',` -DDO_VIRTUAL=0',
+HOSTTYPE,`LINUX',` -DDO_VIRTUAL=1',
+HOSTTYPE,`SUN5',` -DDO_VIRTUAL=1',
+HOSTTYPE,`EPIX',` -systype bsd43')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+GENh=	main.h
+GENc=	main.c
+GEN=	${GENh} ${GENc}
+HDR=	cons.h \
+	access.h client.h consent.h daemon.h group.h master.h \
+	readcfg.h
+SRC=	access.c client.c consent.c daemon.c group.c master.c \
+	readcfg.c fallback.c
+DEP=	${SRC} ${GENc}
+OBJ=	access.o client.o consent.o daemon.o group.o main.o master.o \
+	readcfg.o ${FALLBACK}
+MAN=	conserver.man
+OTHER=	README Sun-serial
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ} ${PUCCLIB}'ifelse(
+HOSTTYPE,`PTX2',` -lsocket -linet -lnsl -lseq -lsec',
+HOSTTYPE,`PTX4',` -lsocket -lnsl -lseq -lsec',
+HOSTTYPE,`IRIX5',`',
+HOSTTYPE,`IRIX6',`',
+HOSTTYPE,`386BSD',` -lcrypt',
+HOSTTYPE,`NETBSD',` -lcrypt',
+HOSTTYPE,`FREEBSD',` -lcrypt',
+HOSTTYPE,`LINUX',` -lcrypt',
+HOSTTYPE,`SUN5',` -lsocket -lnsl',
+HOSTTYPE,`V386',` -lsocket')`
+
+main.h: main.c
+
+main.c: conserver.m
+	mkcmd conserver.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} prog.[ch] a.out *.o core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${ETC}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${HDR} ${SRC} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${ETC} ${LIB}
+
+distrib: FRC
+	distrib -c ${ETC}/${PROG}
+
+install: all dirs FRC
+	install -c -s ${PROG} ${ETC}/${PROG}
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC}
+	ctags -t ${HDR} ${SRC}
+
+/ ${ETC} ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+access.o: access.c access.h client.h cons.h consent.h group.h machine.h main.h \
+	readcfg.h
+
+client.o: client.c client.h cons.h consent.h machine.h
+
+consent.o: client.h cons.h consent.c consent.h machine.h main.h
+
+daemon.o: daemon.c machine.h
+
+group.o: access.h client.h cons.h consent.h group.c group.h machine.h main.h
+
+master.o: access.h client.h cons.h consent.h group.h machine.h main.h master.c \
+	master.h readcfg.h
+
+readcfg.o: access.h client.h cons.h consent.h group.h machine.h main.h \
+	master.h readcfg.c readcfg.h
+
+fallback.o: cons.h fallback.c machine.h
+
+main.o: access.h client.h cons.h consent.h daemon.h group.h machine.h main.c \
+	master.h readcfg.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

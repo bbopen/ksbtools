@@ -1,0 +1,4 @@
+%char acDumpPath[] = %K<sbp_dump>?p1qv%;
+%char acRestorePath[] = %K<sbp_restore>?p1qv%;
+%char acFstabPath[] = %K<sbp_fstab>?p1qv%;
+%char acInstallPath[] = %K<sbp_install>?p1qv%;

@@ -1,0 +1,154 @@
+.\" $Id: labwatch.man,v 3.7 1997/06/29 17:18:55 ksb Exp $
+.\" originally from jmp@mentor.cc.purdue.edu Sun Sep 19 21:57:23 1993
+.\" *extensively* modified by bj
+.TH LABWATCH 8L LOCAL
+
+.SH NAME
+labwatch \- collect labd datagrams and issue summary information
+
+.SH SYNOPSIS
+.ds PN "labwatch
+\fI\*(PN\fP [\-\fBd\fP\fBn\fP] [\-\fBc\fP \fIsecs\fP] [\-\fBC\fP \fIfile\fP] [\-\fBL\fP \fIone,five,fifteen\fP] [\-\fBN\fP \fInhosts\fP] [\-\fBT\fP \fIconsole,tty\fP] [\-\fBw\fP \fIsecs\fP] [\fIlabd-port\fP] [\fIclient-port\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.SH DESCRIPTION
+.PP
+In a large instructional lab of similar workstations \fIlabwatch\fP
+issues timely reports of reboots, offline hosts, and load changes.
+In concert with the \fIlabstat\fP user level monitor program (or
+\fItelnet\fP in a pinch) \fIlabwatch\fP supplies useful status
+diagrams and directs customers to idle (or near idle) stations.
+.PP
+When not daemonized, the
+\fIlabwatch\fP process provides an operator interface on stdin/stdout.
+Messages including status reports, special (requested) polls,
+and reassurance that all goes well are written to stdout.
+Commands typed on stdin elicit exciting responses.
+.PP
+Important messages generally begin with an all uppercase word (viz.
+``DEAD'', ``ALIVE'', ``REBOOTED'', ``UNEXPECTED'').  These should
+be given due consideration (evaluated with local lore in mind, of course).
+An empty command causes
+\fIlabwatch\fP to output a delimiter with a time stamp and
+some useful statistics.
+.PP
+Under the hood, the distributed \fIlabd\fP processes send UDP
+datagrams with status information to \fIlabwatch\fP's \fIlabd-port\fP.
+These inform \fIlabwatch\fP of changes in load or user count.
+A single UDP transmission sends any update about once every 140
+seconds (tunable on \fIlabd\fP's command line).  Clients
+with no change report every 7 minutes (3 cycles) to assure us
+that they are not down.
+\fIlabwatch\fP acknowledges each packet received, and can
+use the same mechanism to request updates for more timely information
+or to shut down the remote \fIlabd\fP process.  Superusers running \fIlabc\fP
+on a client can send acks to the local \fIlabd\fP to send messages to
+the operator console, shut it down, change the ticket status or redirect
+it to a different server.
+
+.PP
+TCP connections to \fIlabwatch\fP's \fIclient-port\fP accept a
+simple set of status/inquiry commands (viz. which ? dump long stat helo help map
+pid version authors quit) which allow customers to access the information
+accumulated by \fIlabwatch\fP.  The interface is similar to that of
+\fIsendmail\fP, \fIftpd\fP and \fInntpd\fP.
+Usually \fIlabstat\fP is used to give a more user-friendly interface.
+The \fIlabstat\fP program uses ``long'', ``map'' and ``which''
+for the most part.
+
+.PP
+\fIlabwatch\fP catches the \fIhangup\fP signal (SIGHUP) and sends an
+ACK to each of the \fIlabd\fP processes it has seen telling them to
+send a packet immediately.  This is the same as ``kick all'' from the
+operator interface (but is also available when \fIlabwatch\fP is daemonized).
+\fIlabwatch\fP also catches the \fIuser-defined signal 1\fP (SIGUSR1) and
+sends an ACK to each of the \fIlabd\fP processes it has seen telling
+them to exec(2) themselves with the same arguments they were started with.
+This is a relic of a failed effort to be able to restart all the
+\fIlabd\fP processes when a new version of \fIlabd\fP became
+available (which was all too often :).  Your milage may vary.
+
+.PP
+The parameter \fIlabd-port\fP can be used to change the UDP port
+used for listening to labd reports.
+It defaults to ``lablisten'', typically port 784.
+It needs to be a reserved
+port (less than 1024) for \fIlabd\fP to trust ACK's from it.
+The  parameter \fIclient-port\fP
+(default ``labinfo'', usually 785)
+is the port for listening to (labstat) clients.
+Both accept integers or service names.
+
+.SH OPTIONS
+.TP
+.BI \-c secs
+The time to wait before timing out on labstat client.  Any client
+with fails this timeout is closed.
+.TP
+.BI \-d 
+Run in debug mode; implies -n.  It really  writes too much output to be
+useful--don't do it unless you're really debugging.
+.TP
+.BI \-C file
+Specify a configuration file to use.  This file has a list of machines
+that are expected to report and their associated maps.  See the manpage
+\fIlabwatch.cf\fP(5L) for more information.
+.TP
+.BI \-h 
+Print a brief help message.
+.TP
+.BI \-L one,five,fifteen
+The weight of the one, five and fifteen minute loads used to decide
+the ``idleness'' of a client.
+.TP
+.BI \-n 
+Don't daemonize on startup.  This should be the default. When
+running in daemon mode the nice operator interface isn't available.
+.TP
+.BI \-N nhosts
+First guess as to how many hosts are going to report to us.
+If value is too large some additional memory is used (default 200).
+.TP
+.BI \-T console,tty
+The weight of logins on the console, other ttys used to decide
+the ``idleness'' of a client.
+.TP
+.BI \-V 
+Show version information.
+.TP
+.BI \-w secs
+The time to wait before declaring a machine dead.
+
+.SH EXAMPLES
+.TP
+\fIlabwatch\fP \-n \-w 840 \-C /root/labwatch.cf
+The normal invocation of \fIlabwatch\fP.  Run in foreground with a dead
+machine timeout of 14 minutes.  Look for the list of expected hosts and
+the map information in the file ``/root/labwatch.cf''.
+.TP
+\fIlabwatch\fP \-V
+Output a version summary and default port information.
+
+.SH BUGS
+None.  The operators' interface probably needs documentation.
+.PP
+\fIlabwatch\fP can only talk to machines occupying ONE Class B domain,
+since its IP based hash mechanism only uses the subnet and host bytes.
+There is (much nicer) code written that will allow any collection of
+hosts, but it is not yet installed.
+.PP
+The \-\fBd\fP switch should have a level parameter.
+
+.SH AUTHORS
+Ben Jackson & Kevin S Braunsdorf
+.br
+bjj@sequent.com & ksb@fedex.com
+.br
+SA UNIX Support
+
+.SH "SEE ALSO"
+labstat(1L), labwatch.cf(5L), labd(8L)

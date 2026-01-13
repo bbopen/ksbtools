@@ -1,0 +1,40 @@
+# consoles
+zveegee.sac
+groobee.sac
+minga.sac
+tara.sac
+goo.sac
+gumby.sac
+nopey.sac
+puffball.sac
+chalktalk.sac
+denali.sac
+# SAC internal
+s03.sa
+# remote servers
+#kachina.sac
+%%status -- The CGI status report
+   Report   Host      Load  Status
+@ %{@:r} %{@:h} %{@:l} %{@:x} %{@:f}
+%%consoles -- SAC Admin Console Servers
+         Host    Status   Optional   Pod
+    zveegee.sac %{zveegee.sac:X} %{zveegee.sac}  A
+    groobee.sac %{groobee.sac:X} %{groobee.sac}  B
+      minga.sac %{minga.sac:X} %{minga.sac}  C
+       tara.sac %{tara.sac:X} %{tara.sac}  D
+        goo.sac %{goo.sac:X} %{goo.sac}  E
+      gumby.sac %{gumby.sac:X} %{gumby.sac}  F
+      nopey.sac %{nopey.sac:X} %{nopey.sac}  G
+   puffball.sac %{puffball.sac:X} %{puffball.sac}  H
+  chalktalk.sac %{chalktalk.sac:X} %{chalktalk.sac}  S
+     denali.sac %{denali.sac:X} %{denali.sac} T
+         s03.sa %{s03.sa:X} %{s03.sa}  Lab
+%%motd -- the message of the day
+This is one way to track clients and servers.  The code is from
+	ksb@sa.fedex.com
+The programs are labd, labc, labwatch, and labstat.  The configuration is in
+labwatch.cf (in /usr/local/lib or /root).
+
+	-- ksb
+%%version -- the version of this configuration file
+$Id: trixie.cf,v 1.11 2000/06/20 14:16:40 ksb Exp $

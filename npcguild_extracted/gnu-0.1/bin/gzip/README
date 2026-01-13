@@ -1,0 +1,11 @@
+# $Id: README,v 1.1 1997/07/08 21:33:00 ksb Exp $
+
+Interface the GNU configured gzip tar file to the msrc system w/o
+changing the GNU part.
+
+We are going to copy the raw .tar file over to the remote end,
+unpack it in a subdir, configure it, make it and install the
+binary file it built.
+
+--
+ksb

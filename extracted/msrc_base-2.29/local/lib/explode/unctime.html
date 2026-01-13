@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Convert ctime(3) output back to a scalar time_t</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: none
+<BR>
+Authors: Kevin S Braunsdorf
+<BR>
+Mail: ksb@npcguild.org
+<BR>
+Version: 1.1
+<BR>
+Bugs: none known
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+When we want to sort text dates we need to contvert them to a form
+that is easier to compare, like seconds since the Epoch.  This code
+does just that.
+
+<H1>Configuration</H1>
+
+
+<DL>
+<DT>#define HAVE_ZONE_IN_TM
+<DD>
+Define this macro to be true (non-zero) when the local OS
+holds a timezome in a (struct tm) members (<code>char *tm_zone</code>)
+and (<code>long tm_gmtoff</code>).
+</DL>
+
+<P>
+The macro could be included in a <code class="path">machine.h</code>, or from
+the compiler command line.
+
+<H1>Provides</H1>
+
+The two functions described below.
+
+<H1>C Identifiers</H1>
+
+<DL>
+<DT>void
+<DT>unCtimeInit();
+<DD>
+Call this once to setup the timezome in the converion buffer.
+
+<DT>time_t
+<DT>unCtime(const char *pcWhen)
+<DD>
+Return the (time_t) value which when given to <code class="libc">ctime</code>
+should return the value input.  This assumes that the input string
+is well-formed <code class="libc">ctime</code> output, of course.
+
+</DL>
+
+<H1>To Do List</H1>
+Check the input string a little better for format.  The code assumes the
+string is really a ctime(3) result.
+
+<HR><PRE>
+$Id: unctime.html,v 1.6 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

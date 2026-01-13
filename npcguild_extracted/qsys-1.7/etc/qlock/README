@@ -1,0 +1,15 @@
+# $Id: README,v 1.3 1997/01/06 01:56:07 kb207252 Exp $
+
+The program may be used to lock a queue system queue, for example one might
+lock a queue that was gone.  I can't think of any other uses for it.
+
+	qlock -d short "We don't have any short jobs anymore, use long. -- Bob"
+
+Might be a kinda useful hint.  Hey, I wrote it because the Customer
+wanted it.
+
+The lock will _not_ survive a reboot because the death of the qlock process
+removes the lock.
+
+--
+ksb

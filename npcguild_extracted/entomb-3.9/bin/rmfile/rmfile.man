@@ -1,0 +1,161 @@
+.\" $Id: rmfile.man,v 2.2 1996/10/09 21:05:25 kb207252 Exp $
+.TH RMFILE 1L PUCC
+.SH NAME
+rmfile \- remove or rename files with hard to type names
+
+.SH SYNOPSIS
+\fBrmfile\fP [\fIdirectory\fP]
+.br
+\fBrmfile\fP \fB-h\fP
+.br
+\fBrmfile\fP \fB-V\fP
+
+.SH DESCRIPTION
+.I Rmfile
+interactively removes or renames the entries for one
+or more files from the current directory, or any named \fIdirectory\fP.
+.PP
+This command is useful when removing or renaming files with invisible
+characters in the name (viz. control characters, spaces,
+rubouts, and those whose most significant bit is set).
+.PP
+.I Rmfile
+lists the directory (see the
+.I list
+command), then
+prompts with a command prompt.
+Thereafter the directory is only listed on request.
+
+.SH OPTIONS
+.TP
+\fB\-h\fP
+Output a brief help message.
+.TP
+\fB\-V\fP
+Output the version of \fIrmfile\fP installed.
+
+.SH COMMANDS
+Commands may be abbreviated to as little as two characters.
+File numbers shown do not change unless the
+.I cd
+command is issued.
+The commands are as follows:
+.TP
+\fBhelp\fP
+prints a list of all commands recognized, with
+comments as to how each is used.
+If arguments are given,
+.I help
+will print just those commands that are asked for.
+.TP
+.B ?
+prints a short sorted list of the recognized commands.
+.TP
+.B cd \fIdirectory\fP
+Changes the current working directory of the
+.I rmfile
+process, reads the new current working directory,
+renumbers the files, and performs a
+.I list.
+.TP
+.B columns [\fIwidth\fP]
+sets 
+.IR rmfile 's
+notion of the width of the terminal to \fIwidth\fP.
+For example, to set it for a 40 column screen, type \*(lqcolumns 40\*(rq.
+The terminal's attributes are read from the stty rows and columns attributes
+if available.
+.TP
+\fBdelete\fP \fInumbers\fP
+Delete files by \fInumber\fP.
+The
+.I list
+command shows the number for each file.
+For example, to delete file number 7, type \*(lqdelete 7\*(rq.
+.TP
+.B exit
+Terminate
+.IR rmfile.
+The end-of-file character (usually ^D) has the same effect.
+.TP
+.B list
+displays the files and their numbers for use in
+.I delete
+and
+.I rename.
+The format of each file entry is a file number, a file type character
+and the file name, with control characters and other meta characters
+escaped as
+.I cat's
+\fB\-v\fP option does.
+File numbers are assigned when the directory is read, at start up
+and when ever the
+.I cd
+command is issued.
+.IP
+File type characters are the same as \fIls\fP's \fB\-F\fP option.
+Note that any file with it's executable permission bit set is
+considered executable.
+.IP
+If the list is too long for the screen,
+.I rmfile
+will pause asking for a newline before continuing.
+.TP
+.B pagelength [\fIrows\fP]
+Set the number of lines per page to \fIrows\fP.
+For example, to set the number of lines for a 16 line screen, type
+\*(lqpagelength 16\*(rq.
+.TP
+pwd
+Print working directory.  Runs /bin/pwd.
+.TP
+.B quit
+Terminates
+.IR rmfile .
+The end-of-file character (usually ^D) has the same effect.
+.TP
+.B rename \fInumber\fP \fInew-name\fP
+renames a file.
+The first argument is the number of the file that you wish to rename.
+The second argument is the new name that you wish the file to be called.
+For example, to rename file number 5 to the name \*(lqwhatsthis\*(rq,
+you could type \*(lqrename 5 whatsthis\*(rq.
+.IP
+You might find it necessary to rename a file so that other utilities
+can be called on to find out what is in it.
+The newly named file will keep its file number, unless it is moved out of
+the current directory.
+A subsequent
+.I cd
+command may, of course, change that number.
+.TP
+\fBentomb\fP \fInumbers\fP | \fB\-E\fP  | \fB\-V\fP 
+In the case of \fInumbers\fP the file represented are forced into the
+entombing system's tomb, then deleted.  Other options are passed to the
+libexec entomb program to gleen version information.
+
+.SH BUGS
+.PP
+Very long file names, such as are possible under Berkeley's 4.2 BSD,
+may wrap around the screen.
+The notion of pagelength is then violated.
+Few terminals are 260 columns wide.
+Fortunately, few file names are that long.
+.PP
+The list mechanism sorts across the page.
+This is best for huge directories.
+.PP
+The
+.I rename
+command will allow you to put control characters into the name, just
+as many other utilities will.
+This may be viewed as self-defeating.
+
+.SH AUTHOR
+Stephen Uitti, PUCC
+.br
+Kevin Braunsdorf, FedEx (ksb@fedex.com)
+
+.SH "SEE ALSO"
+rm(1), cat(1), ls(1), pwd(1),
+link(2), rename(2), unlink(2)

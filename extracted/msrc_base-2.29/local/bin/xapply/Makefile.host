@@ -1,0 +1,149 @@
+`# $Id: Makefile.host,v 3.24 2008/11/24 20:35:38 ksb Exp $
+# platform Makefile for xapply
+
+SHELL=/bin/sh
+PROG=	xapply
+BIN=	${DESTDIR}/usr/local/bin
+DOC=	${DESTDIR}/usr/local/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE=
+DEBUG=	
+CDEFS= -D'HOSTTYPE` -DHOSTOS='HOSTOS`'ifelse(
+HOSTTYPE,`NEXT2',` -Dpid_t=int')dnl
+changequote(+,~)dnl
++ -DNEED_CSH_PAD=`csh -c 'echo $$1' 0 1 2 2>/dev/null || echo 0`~dnl
+changequote(`,')dnl
+`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+'define(M4_NEED_SETENV,ifelse(
+HOSTTYPE,SUN5,yes,
+HOSTTYPE,HPUX9,yes,
+HOSTTYPE,HPUX10,yes,
+HOSTTYPE,HPUX11,yes,
+no))dnl
+define(M4_HAVE_BSDCRED,ifelse(
+HOSTTYPE,`FREEBSD',`yes',
+HOSTTYPE,`NETBSD',`yes',
+HOSTTYPE,`OPENBSD',`yes',
+`no'))dnl
+ifelse(HOSTTYPE,HPUX11,CC=gcc,
+HOSTTYPE,HPUX10,CC=gcc,
+HOSTTYPE,HPUX9,CC=gcc,
+HOSTTYPE,HPUX8,CC=gcc,
+CC=cc)`
+# set on the command-line to use an internal path to ptbw and xclate  --ksb
+#PATHHOOK=fullpath.m
+
+GENC=	main.c dicer.c'ifelse(
+M4_NEED_SETENV,yes,` setenv.c')` machine.c fdwrapper.c
+GENH=	main.h dicer.h'ifelse(
+M4_NEED_SETENV,yes,` setenv.h')` machine.h fdrights.h
+GEN=	${GENC} ${GENH}
+HDR=	
+SRC=	
+DEP=	${GENC} ${SRC}
+OBJ=	main.o 'ifelse(
+M4_NEED_SETENV,yes,` setenv.o')` fdwrapper.o machine.o
+MAN=	xapply.man
+OTHER=	README fullpath.m xapply.m xapply.spec
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}'ifelse(
+HOSTTYPE,`SUN5',` -lsocket -lnsl')`
+
+dicer.c dicer.h fdrights.h:
+	explode -s $@
+
+fdwrapper.c:
+	MACHINE_H="#include \"machine.h\"" explode -u explode -o - -u wrapper,recv fdrights.c >$@
+
+machine.c: ../ptbw/machine.c
+	rm -f machine.c
+	explode -o - -u unsetenv ../ptbw/machine.c >machine.c
+
+machine.h: ../ptbw/machine.h
+	rm -f machine.h
+	explode -s ../ptbw/machine.h
+
+main.h: main.c
+
+main.c: ${PROG}.m dicer.c ${PATH_HOOK}
+	mkcmd ${PATH_HOOK} ${PROG}.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+setenv.c setenv.h:
+	explode -s $@
+
+boot: all dirs FRC
+	install -c ${PROG} ${BIN}/${PROG}
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} dicer *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${BIN} ${LIB}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all dirs FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${BIN}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+main.o: main.c machine.h fdrights.h dicer.h
+
+dicer.o: dicer.c dicer.h
+
+machine.o: machine.c machine.h
+
+setenv.o: setenv.c setenv.h
+
+fdwrapper.o: fdwrapper.c fdrights.h machine.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

@@ -1,0 +1,135 @@
+`# $Id: Makefile.host,v 1.17 2009/01/22 20:49:40 ksb Exp $
+# master Makefile for hxmd, msrc 2008 version
+
+PROG=	hxmd
+BIN=	${DESTDIR}/usr/local/sbin
+EXPDIR=	${DESTDIR}/usr/local/lib/explode
+DOC=	${DESTDIR}/usr/local/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE=
+DEBUG=
+CDEFS=  -D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+'ifelse(HOSTTYPE,`HPUX9',`CC=gcc',
+HOSTTYPE,`HPUX10',`CC=gcc',
+HOSTTYPE,`HPUX11',`CC=gcc',
+`')`
+
+GENC=	main.c mkdtemp.c setenv.c
+GENH=	main.h setenv.h
+GEN=	${GENC} ${GENH}
+HDR=	machine.h
+SRC=	machine.c
+DEP=	${GENC} ${LINKC} ${SRC}
+OBJ=	main.o machine.o'ifelse(HOSTTYPE,SUN5,` setenv.o mkdtemp.o',
+HOSTTYPE,HPUX9,` setenv.o mkdtemp.o',
+HOSTTYPE,HPUX10,` setenv.o mkdtemp.o',
+HOSTTYPE,HPUX11,` setenv.o mkdtemp.o',
+HOSTTYPE,AIX,` setenv.o mkdtemp.o',
+HOSTTYPE,IBMR2,` setenv.o mkdtemp.o')`
+MAN=	hxmd.man
+OTHER=	README TODO hxmd.m hostdb.m evector.m slot.m hxmd.fig
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+all: vercmp ${PROG}
+
+vercmp: FRC
+	(xapply -V ; xclate -V)| sed -n -e "s/.* \(.*\)\.m,v \([0-9.]*\) .*/\1,\2/p" | \
+	awk -F, "/xapply/ {if (\$$2 < 3.42) { print \$$1\" too old at \"\$$2;}} \
+		/xclate/ {if (\$$2 < 2.29)  { print \$$1\" too old at \"\$$2;}}"
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}'ifelse(
+HOSTTYPE,SUN5,` -lsocket -lnsl')`
+
+main.h: main.c
+
+main.c: ${PROG}.m hostdb.m evector.m slot.m
+	mkcmd ${PROG}.m'ifelse(HOSTTYPE,SUN5,` util_fgetln.m',
+HOSTTYPE,HPUX9,` util_fgetln.m',
+HOSTTYPE,HPUX10,` util_fgetln.m',
+HOSTTYPE,HPUX11,` util_fgetln.m',
+HOSTTYPE,AIX,` util_fgetln.m',
+HOSTTYPE,IBMR2,` util_fgetln.m',
+HOSTTYPE,LINUX,` util_fgetln.m')`
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+setenv.c setenv.h cred.h:
+	explode -s $@
+
+mkdtemp.c:
+	explode -u dtemp mk.c
+
+boot: all dirs evector.m slot.m hostdb.m FRC
+	install -c ${PROG} ${BIN}/${PROG}
+	cmp -s hostdb.m ${EXPDIR}/hostdb.m || install -c -m 644 hostdb.m ${EXPDIR}/hostdb.m
+	cmp -s slot.m ${EXPDIR}/slot.m || install -c -m 644 slot.m ${EXPDIR}/slot.m
+	cmp -s evector.m ${EXPDIR}/evector.m || install -c -m 644 evector.m ${EXPDIR}/evector.m
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} ${LINK} *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} ${BIN} ${EXPDIR} FRC
+	-install -R ${BIN}/${PROG}
+	-install -R ${EXPDIR}/slot.m
+	-install -R ${EXPDIR}/hostdb.m
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} ${LINK} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${BIN} ${EXPDIR}
+
+install: all dirs evector.m slot.m hostdb.m FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+	cmp -s hostdb.m ${EXPDIR}/hostdb.m || install -c -m 644 hostdb.m ${EXPDIR}/hostdb.m
+	cmp -s slot.m ${EXPDIR}/slot.m || install -c -m 644 slot.m ${EXPDIR}/slot.m
+	cmp -s evector.m ${EXPDIR}/evector.m || install -c -m 644 evector.m ${EXPDIR}/evector.m
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	txt2ps -m 0.65 -n -PHxmd -l68 -w88 hxmd.m | lpr
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${BIN} ${EXPDIR}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+machine.o: machine.c machine.h
+
+main.o: main.c main.h machine.h
+
+mkdtemp.o: mkdtemp.c
+
+setenv.o: setenv.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

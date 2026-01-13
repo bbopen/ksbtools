@@ -1,0 +1,983 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>oue -- only unique elements filter</TITLE>
+<link rel="stylesheet" type="text/css" href="http://carrera.databits.net/~ksb/msrc/css/code.css"/>
+</HEAD> <BODY>
+<H1 id="known">To understand this document</H1>
+This document assumes you are quite familiar with the
+standard UNIX&trade; shell, <code class="sh">sh</code>(1), and
+have an understanding of the UNIX filter model (pipes,
+input/output redirection, and some specific filters.
+
+<p>
+It also assumes that you can read the manual page for any other
+example command.  It would help a little if you've used
+<code class="sh">xapply</code>(1) or some other percent-markup filter, but
+it's OK if you've not used any before.
+
+
+<h2 id="what">What is <code class="sh">oue</code>?</h2>
+
+The <A href="/~ksb/cgi-bin/manpage.cgi?oue">manual page</A> describes
+<code class="sh">oue</code> as a filter that removes duplicate
+elements from a stream much as "sort -u" would.  The main difference
+between a sort-unique operation and the unique operation this program
+provides is the lack of a delay before the next filter gets the
+first element.
+
+<p>
+The sort operation must wait to read <em>every</em> line of input
+before it may output the first line of unique data (because the
+last line might be the first in the sorted order).  The unique
+filter provided by <code class="sh">oue</code> is different in that
+the first element is output as soon as it is discovered to be unique.
+That is quite a turbo-charger when the later processing is limited
+by factors other than the CPU; for example, a network command managed
+by <A href="/~ksb/cgi-bin/manpage.cgi?xapply"><code class="sh">xapply</code></A>.
+
+<p>
+Perl programmers have used the "touch a hash element" code to find
+unique items for a long time.  In fact, <code class="sh">oue</code>
+was a perl script that looked a lot like:
+<blockquote class="file"><pre><code >perl -e 'while (&lt;&gt;) { next if $s{$_}; $s{$_} = 1; print $_;}'</code></pre></blockquote>
+before  I needed more <A href="/~ksb/cgi-bin/manpage.cgi?dicer">dicer</A> action.
+
+<p>
+In the sections below, I'll try to explain why <code class="sh">oue</code>
+is nifty enough to put in your spell book and how to use it to solve
+real problems for the real world.
+
+<h2 id="start">The simplest cases</h2>
+
+<code class="sh">Oue</code> without any options is a powerful filter.
+Say you have a way to generate a list of hosts that you want to
+visit to run a "clean-up" command.  This generator does generate all
+the hosts you need to clean-up, but sometimes it generates the same
+hostname more than once.  This is may not be a big problem.  If it
+doesn't do it often, you might just be able to ignore the duplicate
+clean-up jobs.
+
+<p>
+On the other hand, the clean-up code might take a lot of resources,
+be destructive when run multiple times, or the generator might
+produce many repetitions of a few hosts.  In any of those cases,
+building a pipeline using <code class="sh">oue</code> reduces the
+list to the unique hosts:
+<blockquote class="file"><pre><code >generator | oue | xapply -f "ssh %1 -n clean-up..." -</code></pre></blockquote>
+
+<p>
+This doesn't work if the hostname are spelled differently; for
+example, as "foo.example.com" and "foo" and "FOO.example.com" since
+<code class="sh">oue</code> doesn't know about hostnames or folding
+case.  When the case of an element is an issue, use <code
+class="sh">tr</code> to fold the case, as in:
+<blockquote class="file"><pre><code >generator | tr '[A-Z]' '[a-z]' | oue | ...</code></pre></blockquote>
+
+<h2 id="cmdline">The command-line interface</h2>
+
+<code class="sh">Oue</code> reads a stream of data from files or
+<code class="param">stdin</code> and writes results to <code
+class="param">stdout</code>; so, it stands to reason that the command
+line options would set parameters on how the filter processes the
+streams.
+
+<p>
+In the sections below, I'll introduce each option as I describe the
+use-case for each, but we'll look at the whole here:
+<blockquote>oue
+[<code class="opt">-cdlNsvz</code>]
+[-<code class="param">span</code>]
+[<code class="opt">-a</code>&nbsp;<code class="param">c</code>]
+[<code class="opt">-b</code>&nbsp;<code class="param">length</code>]
+[<code class="opt">-D</code>&nbsp;<code class="param">state</code>]
+[<code class="opt">-e</code>&nbsp;<code class="param">every</code>]
+[<code class="opt">-f</code>&nbsp;<code class="param">first</code>]
+[<code class="opt">-k</code>&nbsp;<code class="param">key</code>]
+[<code class="opt">-p</code>&nbsp;<code class="param">pad</code>]
+[<code class="opt">-r</code>&nbsp;<code class="param">memory</code>]
+[<code class="opt">-R</code>&nbsp;<code class="param">report</code>]
+[<code class="param">files</code>]
+<br><br>
+oue
+<em class="new"><code class="opt">-I</code>&nbsp;<code class="param">prev</code></em>
+<em class="new">[<code class="opt">-i</code>]</em>
+[<code class="opt">-cdlNsvz</code>]
+[-<code class="param">span</code>]
+[<code class="opt">-a</code>&nbsp;<code class="param">c</code>]
+[<code class="opt">-b</code>&nbsp;<code class="param">length</code>]
+<em class="new">[<code class="opt">-B</code>&nbsp;<code class="param">replay</code>]</em>
+[<code class="opt">-D</code>&nbsp;<code class="param">state</code>]
+[<code class="opt">-e</code>&nbsp;<code class="param">every</code>]
+[<code class="opt">-f</code>&nbsp;<code class="param">first</code>]
+[<code class="opt">-k</code>&nbsp;<code class="param">key</code>]
+[<code class="opt">-p</code>&nbsp;<code class="param">pad</code>]
+[<code class="opt">-r</code>&nbsp;<code class="param">memory</code>]
+[<code class="opt">-R</code>&nbsp;<code class="param">report</code>]
+<em class="new">[<code class="opt">-x</code>&nbsp;<code class="param">extract</code>]</em>
+[<code class="param">files</code>]
+<br><br>
+oue <code class="opt">-H</code>
+<br><br>
+oue <code class="opt">-h</code>
+<br><br>
+oue <code class="opt">-V</code>
+</blockquote>
+
+<p>
+The first set is the filter set when <code class="sh">oue</code>
+is processing data.  The <code class="opt">-h</code> usage is the
+common "ksb help" output for quick on-line reference.  The <code
+class="opt">-V</code> usage outputs a version string that is used
+to track out-dated copies of the filter.  The <code class="opt">-H</code>
+offers on-line help for the built-in percent markup.
+
+<p>
+In the implementation the <code class="opt">-I</code> is not
+actually required to specify <code class="opt">-B</code>,
+<code class="opt">-x</code>, or <code class="opt">-i</code> -- but
+they don't do anything without a <code class="param">prev</code> to
+operate against.  I removed the restriction as older versions of
+<code class="sh">oue</code> used a bundled "<code class="opt">-iI</code>" in
+the examples in documents like this one.
+
+<h2 id="opt-uD">Remember the past (<code class="opt">-D</code>&nbsp;<code class="param">state</code>)</h2>
+
+<p>
+The memory features make the other other use-cases for <code
+class="sh">oue</code> easier to explain.  <code class="sh">Oue</code>
+builds a <A href="http://www.gnu.org/software/gdbm/gdbm.html">GDBM</A>
+file from the input keys.  Each unique element is reduced to a key
+(which we'll talk about <A href="#key">later</A>), and a memory.
+That pair records the existence of the element in the GDBM file,
+which is called <code class="param">state</code> on the command
+line.  When no <code class="param">state</code> is specified on the
+command-line, <code class="sh">oue</code> builds one in a temporary
+file then removes it after the input is exhausted.
+
+<p>
+If you need to keep the <code class="param">state</code> to process
+more data, you'll have to pick a file for <code class="sh">oue</code>
+to remember the keys it has already seen.  This file is usually
+pretty compact (only growing linearly with the size of the unique
+keys).  After you're done with it, you should remove it.
+
+<p>
+We need some input files to use in the first set of examples, so
+let's build (or imagine) 2 files (1.el and 2.el):
+<blockquote class="file"><pre><code >## build 2 files to draw keys from
+$ cat &gt;1.el <<\!
+a
+b
+!
+$ cat &gt;2.el <<\!
+b
+c
+c
+!</code></pre></blockquote>
+
+<p>
+To find the unique elements (where each element is a single line),
+we would run:
+<blockquote class="file"><pre><code >## find the unique keys from both files (the union)
+$ oue 1.el 2.el
+a
+b
+c
+</code></pre></blockquote>
+Or, in reverse order:
+<blockquote class="file"><pre><code >## reverse the files order
+$ oue 2.el 1.el
+b
+c
+a</code></pre></blockquote>
+
+<p>
+If we had to process the 1.el file on Monday and the 2.el file later
+in the week, then we'd have to keep the <code class="param">state</code>
+file around between the executions:
+<blockquote class="file"><pre><code >## adding files later
+$ oue -D /tmp/keep.db 1.el
+a
+b
+
+## time passes
+$ oue -D /tmp/keep.db 2.el
+b
+c</code></pre></blockquote>
+
+<p>
+This option lets you remember the keys you've seen over a longer
+period of time.  It also provides more features in combination with
+the other options -- mostly with <code class="opt">-I</code>).
+
+<h2 id="opt-uI">Don't update with what we saw (<code class="opt">-I</code>&nbsp;<code class="param">prev</code>)</h2>
+
+In the example above, <code class="sh">oue</code> updates the
+<code class="param">state</code> GDBM file for each new unique element.
+We saw "b" on the first run, but didn't exclude processing of it the
+second time.  Let's fix that:
+<blockquote class="file"><pre><code >## start over
+$ rm /tmp/keep.db
+$ oue -D /tmp/keep.db -I /tmp/keep.db 1.el
+a
+b
+
+## time passes
+$ oue -D /tmp/keep.db -I /tmp/keep.db 2.el
+c</code></pre></blockquote>
+
+
+There are use-cases where we'd like to exclude elements, but not remember them
+between runs.  For example, we may build a file of the English words that
+use 'w' as a vowel ("cwm", and "crwth") for use in a spell check filter.
+
+<blockquote class="file"><pre><code >## build a state file for words that use w as a vowel
+$ (echo cwm ; echo crwth) | oue -D vwls.none &gt;/dev/null</code></pre></blockquote>
+
+<p>
+We don't want to add words to file with any other instance of <code
+class="sh">oue</code>, but we do want to exclude them from a list.
+So, we can consult the file with the <code class="opt">-I</code>
+option.  This includes the GDBM in the processing and, by default,
+excludes the elements from the list of unique elements.  Though, any
+updates go to <code class="param">state</code>, while no updates
+are directed to <code class="param">prev</code> (ever).
+
+<p>
+To use this in the spell checking pipe-line:
+<blockquote class="file"><pre><code > ... list-words  | oue -I vwls.none | check-unique-words
+</code></pre></blockquote>
+This has 3 nice features:
+<DL>
+<DT>We only check the spelling of each word once
+<DD>
+Since <code class="sh">oue</code> removed any duplicate words.
+<DT>We don't have to spell check words without a vowel
+<DD>
+Since <code class="sh">oue</code> removed those as previously seen keys.
+<DT>We don't have to sort the input stream
+<DD>
+Since <code class="sh">oue</code> doesn't depend on key order for
+the uniqueness checking (unlike <code class="sh">sort</code>'s
+<code class="opt">-u</code> option).
+</DL>
+
+<p>
+This is a silly example, but it shows the general case well.  More
+often I use <code class="sh">oue</code> to filter the names of
+target hosts, so I only visit each host once, and might filter out
+hosts that are known to be unavailable.
+
+
+<h2 id="opt-v">Invert the sense of <code class="param">prev</code> (<code class="opt">-v</code>)</h2>
+
+The <code class="param">prev</code> GDBM usually removes keys from
+the output, but under the <code class="opt">-v</code> switch keys
+<strong>must</strong> exist in that GDBM to be included (once) in the output
+list.  That is to say, <code class="sh">oue</code> intersects
+the keys in <code class="param">prev</code> with the input keys to
+form the output key list.
+
+<p>
+This option is named for <code class="sh">grep</code>'s inversion option.
+
+<p>
+As an example, we can intersect our first two key files --
+first building a <code class="param">state</code> from
+<code class="path">1.el</code> named
+<code class="path">state.db</code>, then using that to intersect
+<code class="path">2.el</code>
+<blockquote class="file"><pre><code >## find the keys in common (the intersection)
+$ oue -D state.db 1.el &gt;/dev/null
+$ oue -vI state.dh 2.el
+b</code></pre></blockquote>
+
+<h2 id="disjunction">Disjunction</h2>
+
+Since we can intersect and union key sets, it would complete our
+set operations if we could form a disjunction (unique element
+that are not common to 2 key lists).   We can, but we must
+form the intersection set first:
+<blockquote class="file"><pre><code >## find the keys that are non-intersection (the disjunction)
+$ oue -D state.db 1.el &gt;/dev/null
+$ oue -vI state.db 1.el | oue -D intersect.db &gt;/dev/null
+$ oue -I intersect.db a.cl b.cl
+a
+c</code></pre></blockquote>
+
+Be sure to clean up any left-overs from such an operation:
+<blockquote class="file"><pre><code >## clean up our temp space
+$ rm intersect.db state.db</code></pre></blockquote>
+
+
+<h2 id="opt-i">Reporting what we saw (<code class="opt">-i</code>)</h2>
+
+Given that we can remember keys over time, it would be cool if we
+could export those keys back into a pipeline.  The <code
+class="opt">-i</code> option specifies that the previous GDBM given
+as <code class="param">prev</code> should be included in the output.
+If we use the <code class="path">vwls.none</code> file we built in
+the last example and an empty input file (viz. <code
+class="path">/dev/null</code>), we can recover the words in it with:
+<blockquote class="file"><pre><code >## look at the current keys in vwls.none
+$ oue -iI vwls.none /dev/null
+crwth
+cwm</code></pre></blockquote>
+
+<p>
+At the end of some reporting cycle, we may have to report on
+more than just the keys we saw over the previous executions of
+<code class="sh">oue</code>.  We might have to keep some reference to
+<strong>where</strong> we saw the key (or other such data).  We need to
+learn how to put that data into a GDBM before we can talk about
+getting it back out.  But the option you want is <code class="opt">-B</code>.
+<p>
+This shows you that the default value is a lonely period ("."):
+<blockquote class="file"><pre><code >## look at the current keys and values
+$ oue -iI vwls.none -B "%k -&gt; %m" /dev/null
+crwth -&gt; .
+cwm -&gt; .</code></pre></blockquote>
+
+<h2 id="opt-k">A refined key (<code class="opt">-k</code>&nbsp;<code class="param">key</code>)</h2>
+
+In many cases, <code class="sh">oue</code> is required to pull a
+part of each input element to form the key for unique comparison.
+If <code class="sh">oue</code> only worked on whole lines, it would
+be far less useful to an application programmer.
+
+<p>
+To select part of the input element as the key, the command-line
+option <code class="opt">-k</code> specifies a <A
+href="/~ksb/cgi-bin/manpage.cgi?dicer">dicer</A> expression.  In dicer-speak,
+we call the first line in the element <code class="markup">%1</code>,
+the second input line would be <code class="markup">%2</code>, and
+so on.  Later, we'll see how to make elements span multiple input
+lines, but for now assume that there is always 1 input line in an
+element.
+
+<p>
+If you already understand the dicer from <code class="sh">xapply</code>
+or <code class="sh">mk</code>, then you can skip down a bit.
+
+<p>
+The dicer breaks lines into fields based on a character, then may
+break that result again until it extracts the required datum.  The
+usual split would be on white-space or a single character.  In
+English, I would say "from the first line of the element extract
+the second word;" in the dicer-markup, I'd spell that "<code
+class="markup">%[1&nbsp;2]</code>".
+
+<p>
+In <code class="sh">awk</code> I would say
+<code class="sh">awk -F: '{print $3;}'</code>; in the dicer, I
+would spell that "<code class="markup">%[1:3]</code>".
+The big difference is that the <code class="opt">-F</code> specification
+for <code class="sh">awk</code> applies to every record in the file,
+the dicer markup may change the separator character as often as
+required.
+
+<p>
+The <code class="path">/etc/passwd</code> file holds the login
+information for each user on a UNIX system.  The seventh field is
+the login shell.  So, to get the list of unique shells from the
+password file, we could specify a <code class="param">key</code> of
+<code class="markup">%[1:7]</code> with a shell command like:
+<blockquote class="file"><pre><code >## Find the unique shells on this host
+$ oue -k '%[1:7]' /etc/passwd
+/bin/ksh
+/usr/sbin/nologin
+/sbin/nologin</code></pre></blockquote>
+
+<p>
+In English, I might ask for "the first digit after the close-paren from line 3",
+in the dicer I would say <code class="markup">%[3(2&nbsp;1]</code> to
+get the first word after the first close paren, then use the mixer to
+pull out the first letter with:
+<code class="markup">%([3(2&nbsp;1],1)</code>.
+<blockquote class="file"><pre><code >$ (echo line1; echo line2; echo "call (000)265-1212") |oue -3 -R "%([3(2&nbsp;1],1)"</code></pre></blockquote>
+
+<p>
+Using the dicer and the mixer you should be able to get almost
+any string you can describe in English out of well formatted text.
+If you can't, just use another filter to make it easier to reach.
+This is usually done with <code class="sh">sed</code> or
+<code class="sh">perl</code>, because they can duplicate lines, strip off
+the parts that made it hard -- then <code class="sh">oue</code> scan
+parts of (or the whole of) the new line to get the required value(s).
+
+<h2 id="opt-r">Memories (<code class="opt">-r</code>&nbsp;<code class="param">memory</code>)</h2>
+
+In the last example, we selected the unique logins, but we don't
+know which login used that shell.  For example, I may want to know which
+login uses the out-dated reference to <code class="path">/sbin/nologin</code>.
+
+<p>
+In other words, we want to remember a different part of the element along
+with the key that inserted it.  The <code class="opt">-r</code> option
+specifies a dicer expression to select the part of the element to
+remember (called the <code class="param">memory</code>).
+
+<p>
+If we run the <code class="sh">oue</code> command with the <code
+class="opt">-r</code> specification, we see exactly the same output:
+<blockquote class="file"><pre><code >## Find the unique shells on this host
+$ oue -k '%[1:7]' <em class="new">-r '%[1:1]'</em> /etc/passwd
+/bin/ksh
+/usr/sbin/nologin
+/sbin/nologin</code></pre></blockquote>
+
+<p>
+That's because the result of the <code class="markup">%[1:1]</code>
+dicer specification went into the GDBM, and we removed it.  We should
+ask <code class="sh">oue</code> to output the data as it inserts it.
+Keep reading to see how to fix that.
+
+<h2 id="opt-uR">Report more than the <code class="param">key</code>
+(<code class="opt">-R</code>&nbsp;<code class="param">report</code>)</h2>
+
+To report more than the key for each element, specify a <code
+class="param">report</code> dicer expression under <code
+class="opt">-R</code>. <code class="sh">Oue</code> outputs the
+results of this dicer expression to <code class="param">stdout</code>
+for each insert into <code class="param">state</code>, or under
+<code class="opt">-i</code> for each record in <code
+class="param">prev</code>.
+
+<p>
+By adding <code class="opt">-R '%[1:1] -&gt; %[1:7]'</code> to the
+example command, we get a nifty table:
+<blockquote class="file"><pre><code >## Find the unique shells on this host
+$ oue -k '%[1:7]' -r '%[1:1]' -R '<em class="new">%[1:1] -&gt; %[1:7]</em>' /etc/passwd
+root -&gt; /bin/ksh
+daemon -&gt; /usr/sbin/nologin
+bin -&gt; /sbin/nologin</code></pre></blockquote>
+
+<p>
+It looks a little redundant to specify possibly long dicer expressions
+twice on that command-line; so, in the context of the <code
+class="param">report</code> option, you should use <code
+class="markup">%k</code> for the current key, and <code
+class="markup">%m</code> for the current memory.  This works under
+<code class="opt">-i</code>, where the current lines are not
+available.  The better command would be:
+<blockquote class="file"><pre><code >## Find the unique shells on this host
+$ oue -k '%[1:7]' -r '%[1:1]' -R '<em class="new">%m -&gt; %k</em>' /etc/passwd
+root -&gt; /bin/ksh
+daemon -&gt; /usr/sbin/nologin
+bin -&gt; /sbin/nologin</code></pre></blockquote>
+<p>
+We could use more of the environment <code class="sh">oue</code> provides
+to record the line number (<code class="markup">%n</code>) that gave
+us the fact -- but in this case we don't need it.
+The login name uniquely selects a line from the password file, we hope;
+if it doesn't, you need the next section.
+
+<h2 id="opt-d">Duplicate keys (like <code class="sh">uniq</code> <code class="opt">-d</code>) </h2>
+
+If the logins in the password file are not unique, we can
+use <code class="sh">oue</code> to find out!
+<blockquote class="file"><pre><code >$ oue <em class="new">-d</em> -k '%[1:1]' /etc/passwd</code></pre></blockquote>
+I hope that command never shows you any output.  If it did it would be
+telling you that more than 1 login had the same name, which would be
+a <strong>bad thing</strong>.  With shadow password files, on the other hand,
+almost every account has <code class="markup">x</code> as a password, so
+<blockquote class="file"><pre><code >$ oue -d -k '%[1:<em class="new">2</em>]' /etc/passwd
+x</code></pre></blockquote>
+Should only show you "x" on a line by itself, if it shows more unique
+passwords in the world accessible file you might think about an upgrade.
+
+<p id="dup">
+A more advance example, to check the HTML source to this document for
+duplicate <code class="markup">id</code> tags I used:
+<blockquote class="file"><pre><code >$ sed -n -e ': again
+	/.*[Ii][Dd]=\([^&lt;&gt;]*\)\(.*\)/{
+	h
+	s//\1/p
+	x
+	s//\2/
+	b again
+}' oue.html |tr -d '"' |oue -d</code></pre></blockquote>
+
+<h2 id="opt-c">Count of key instances (like <code class="sh">uniq</code> <code class="opt">-c</code>)</h2>
+
+<!-- This option is harder to use in combination with other options. -->
+By itself the count option (<code class="opt">-c</code>) outputs the
+unique keys prefixed by the count of the number of times the element
+occurred in the filtered input.  To do this the filter must remember
+each unique key and a counter for each one.  Because of the hash used to
+store this state the <strong>output</strong> is not in any stable
+order, by default.
+<blockquote class="file"><pre><code >$ oue -c 1.el 2.el
+2 b
+2 c
+1 a</code></pre></blockquote>
+
+<p id="opt-s">
+If the order of the input keys <strong>must</strong> be reflected in
+the output order ask <code class="sh">oue</code> for "stable output":
+<blockquote class="file"><pre><code >$ oue -c<em class="new">s</em> 1.el 2.el
+1 a
+2 b
+2 c
+$ echo "x" | oue -cs <em class="new">2.el - 1.el</em>
+2 b
+2 c
+1 x
+1 a</code></pre></blockquote>
+
+<p>
+The stable option does require another temporary file which is the
+size of all the accumulated keys.  For comparison here are the resource
+usages for some similar commands (run from /usr/share/dict), which
+make it clear that <code class="sh">uniq</code> is much faster if
+you know the input is already sorted and don't need the dicer to
+find the key:
+<blockquote><table summary="Resource comparison chart" border="1">
+<tr><th width=40%>Command</th><th width=20% align=right>&nbsp;&nbsp;real</th><th width=20% align=right>&nbsp;&nbsp;user</th><th width=20% align=right>system</th></tr>
+<tr><td>cat words</td><td align=right>0.01s</td><td align=right>0.00s</td><td align=right>0.00s</td></tr>
+<tr><td>uniq words</td><td align=right>0.28s</td><td align=right>0.27s</td><td align=right>0.00s</td></tr>
+<tr><td>oue words</td><td align=right>4.30s</td><td align=right>1.11s</td><td align=right>2.89s</td></tr>
+<tr><td>sort -u words.rnd</td><td align=right>0.75s</td><td align=right>0.53s</td><td align=right>0.00s</td></tr>
+<tr><td>uniq -c words</td><td align=right>0.80s</td><td align=right>0.62s</td><td align=right>0.01s</td></tr>
+<tr><td>oue -c words</td><td align=right>8.22s</td><td align=right>2.25s</td><td align=right>5.15s</td></tr>
+<tr><td>oue -cs words</td><td align=right>12.32s</td><td align=right>2.75s</td><td align=right>7.49s</td></tr>
+</table></blockquote>
+<p>
+But when you need to process each element to find the key, and the
+elements are not already sorted -- you can pay the 10 seconds to get
+the right answer.  Also take care when testing <code class="sh">uniq</code>,
+unlike most filters it <strong>writes</strong> on any second file specified,
+so it is really not a filter.
+
+<h2 id="opt-cd">Duplicates counted, processed, and more </h2>
+
+I selected options for <code class="sh">oue</code> that work in almost
+any combination.  It is fine to specify both
+<code class="opt">-c</code> and <code class="opt">-d</code>:
+<blockquote class="file"><pre><code >$ oue -cd 1.el 2.el
+2 b
+2 c</code></pre></blockquote>
+
+<p>
+More to the point <code class="opt">-v</code> inverts the selection logic of
+<code class="opt">-d</code>:
+<blockquote class="file"><pre><code >$ oue -cdv 1.el 2.el
+1 a</code></pre></blockquote>
+
+<p id="opt-e">
+To get even more out of <code class="sh">oue</code> you can visit
+wonderland with me.  Each key has a unique accumulator bound to it.
+This string variable allows you to record a fact (list, string, or
+dicer expression) about the elements selected for the key.  When
+you report or remember the key the markup <code class="markup">%e</code>
+expands to the accumulated value.  The option <code class="opt">-e</code>
+sets the <code class="param">every</code> dicer expression that updates
+the accumulator.
+
+<p id="opt-f">
+Any accumulator needs an initial value, which is set under
+<code class="opt">-f</code> (called <code class="param">first</code>).
+For example let's collect the place where we first found the key:
+<blockquote class="file"><pre><code >$ oue -dc -f "%f:%n" -R "%k from %e count %c" 1.el 2.el
+b from 1.el:2 count 2
+c from 2.el:2 count 2
+
+$ echo "c" | oue -dc -f "%f:%n" -R "%k from %e count %c" 1.el <em class="new">-</em> 2.el
+b from 1.el:2 count 2
+c from <em class="new">-:1</em> count 3</code></pre></blockquote>
+
+<p>
+With <code class="param">every</code> we can add each line number to
+the accumulator.  For that we need the <strong>previous</strong> value of
+the accumulator, which is markup provided by the <code class="markup">%p</code>:
+<blockquote class="file"><pre><code >$ oue -dc -f "%f" <em class="new">-e "%p,%n"</em> -R "%k from %e count %c" 1.el 2.el
+b from 1.el,2,1 count 2
+c from 2.el,2,3 count 2</code></pre></blockquote>
+
+<p>
+That last output is misleading, the line number for the second "b" is
+from 2.el -- but this is a simple example.
+(More accurate output requires a <code class="sh">sed</code> filter to
+cleanup the list of line numbers.)
+
+<p id="pup">
+The uppercase version of <code class="markup">%p</code> will not
+expand an empty previous accumulator.  Rather <code class="markup">%P</code>
+consumes charaters from the template up to the next percent character to
+remove any punctuation that would come between the empty value and the
+next expander.  Thus -e "%P,%m" makes a list of key memory values without
+a leading empty (when there was no previous value).
+
+<p id="dup2">
+Let's get crazy and expand the duplicate tags checker to output the lines with
+each duplicate anchor id:
+<blockquote class="file"><pre><code >$ sed -n -e ': again
+	/.*[Ii][Dd]=\([^&lt;&gt;]*\)\(.*\)/{
+	h
+	<em class="new">=</em>
+	s//\1/p
+	x
+	s//\2/
+	b again
+}' oue.html |tr -d '"' |oue -d <em class="new">-2 -l -k %2 -e "%p,%1" -R "%k on lines %[m,-1]"</em></code></pre></blockquote>
+Which might output something like "<i>tag</i> on lines 18,504".  Note that
+we used <code class="sh">sed</code>'s <code class="markup">=</code> command
+to output the line number before each tag, then collected them as pairs
+of lines in <code class="sh">oue</code> (via <code class="opt">-2</code>).
+
+
+<h3 id="opt-x">Setup to count more</h3>
+
+If you really want a running count across more than a single instance of
+<code class="sh">oue</code> you'll have to add the previous count to
+the present value.  Given a <code class="param">prev</code> that
+holds the last count in the value (someplace you can get to with the
+dicer) you should specify a <code class="param">extract</code> expression to
+find it.  Then a <code class="param">memory</code> to build a new
+record.
+
+<p>
+That makes it sound too easy.  Since <code class="sh">oue</code> really
+wants unique elements there is no way to make <em>it</em> update the
+previous GDBM.  It is going to record the new count in the
+<code class="param">state</code> GDBM, and it is up to you to get that
+merged with the previous; even there <code class="sh">oue</code>
+can help:
+<blockquote class="file"><pre><code >$ oue -cD count1.gb -r "%c" -R '' 1.el
+$ oue -D cur.db -R '' /dev/null
+$ xapply -a@ '(
+		oue -c -Icur.db -x %v -R %k.%t @1
+		oue -B %k.%v -iIcur.db /dev/null
+	) |oue -k %[1.-\$] -r %[1.\$] -D tmp.db -
+	mv tmp.db cur.db
+  ' 1.el 2.el
+$ oue -iI cur.db -B '%k count %v' /dev/null
+b count 2
+c count 2
+a count 1</code></pre></blockquote>
+
+<p>
+This allows as many runs of <code class="sh">oue</code> as needed to
+process various input file, formats, and functions.  I picked an
+<code class="sh">xapply</code> example, but in some scripts the loop
+is actually done with <code class="sh">hxmd</code>.
+
+<h3 id="opt-l">Expected accumulation versus quicker output (<code class="opt">-l</code>)</h3>
+
+Under <code class="opt">-d</code> (or with no other options) the accumulator
+doesn't look like it works.  That's because <code class="sh">oue</code>
+reports each key as soon as it knows it must (and has the complete count
+of under <code class="opt">-c</code>.  If you want to delay the output of
+every key until each instance has been collected you need to
+specify <code class="opt">-l</code>.
+
+<p>
+Under <code class="opt">-l</code> <code class="sh">oue</code> waits for
+the <strong>last</strong> instance of a key to output the report or update
+the <code class="param">state</code> GDMB.  For example, we only
+get a count of 2 when we
+provide 3 identical keys under <code class="opt">-d</code>:
+<blockquote class="file"><pre><code >$ (echo foo; echo foo; echo foo) |oue -d -R "%c %k"
+2 foo</code></pre></blockquote>
+<p>
+That's because 2 was enough to trigger the output, we didn't specify
+<code class="opt">-c</code> to force a complete total, so
+<code class="sh">oue</code> updated the state as soon as the
+count reached 2.  To prevent this we specify the last option:
+<blockquote class="file"><pre><code >$ (echo foo; echo foo; echo foo) |oue -d<em class="new">l</em> -R "%c %k"
+3 foo</code></pre></blockquote>
+<p>
+If you added an <code class="param">every</code> specification to the example
+(I'll let you do it) we'd see the last value of the accumulator in the output,
+rather than the second.
+
+<p>
+Of course the stable option (<code class="opt">-s</code>) fixes the order of
+the output to match the input order, if that's important to you.
+
+<h2 id="opt-uB">Summary after all the filters are done (<code class="opt">-B</code>)</h2>
+
+I think one of the best features of <code class="sh">oue</code> is
+the summary report you might generate after all the processing.
+If you've been putting aside useful information in
+the <code class="param">state</code> GDBM you can extract it under
+<code class="opt">-B</code> to build whatever report you need.
+I like to keep dates in the GDBM for some tasks (like updating software
+on a host).  In the report I might output the name of the host (the key)
+and the date we updated it (the value), then sort those and put them up on
+a status page on my admin website.
+
+<p>
+The difference between <code class="opt">-R</code> and
+<code class="opt">-B</code> is that when there are current and
+previous records with different value markup you need a way to
+separate them in the report versus replay logic.  For summary
+reports may use <code class="opt">-B</code> explicitly and use the file
+<code class="path">/dev/null</code> as <code class="param">files</code>.
+
+<p>
+As an example lets parse the group file for login names that are
+<strong>not</strong> in the password file.  First we'll make a
+list of the logins in the password file, with a value of login gid.
+<blockquote class="file"><pre><code >$ tfile=`mktemp /tmp/test$$XXXXXX`
+$ oue -D $tfile -k %[1:1] -r %[1:4] /etc/passwd &gt;/dev/null
+$ oue -B '%k login gid %m' -I $tfile /dev/null  # check our work</code></pre></blockquote>
+
+Next we should pull all the logins from /etc/group, using
+<code class="sh">oue</code> to filter out the ones we saw in the password
+file:
+<blockquote class="file"><pre><code >$ sed -e 's/^.*://' /etc/group | tr -s ',\n' '\n' | oue -I $tfile</code></pre></blockquote>
+That should output nothing on a clean host.
+
+<p id="ksb">
+We can use a similar tactic to check the other direction.  We build a
+collection of all the primary login groups mapped to the logins that require
+them.
+<blockquote class="file"><pre><code >$ rm $tfile
+$ oue -l -k %[1:4] -e '%P,%[1:1]' -r '%e' -D $tfile /etc/passwd &gt;/dev/null</code></pre></blockquote>
+Then look for non-duplicates from the group file, and map that back into
+the list of logins that requires the gid mapping:
+<blockquote class="file"><pre><code >$ oue -k %[1:3] -r %[1:1] -D $tfile.gids /etc/group &gt;/dev/null
+$ oue -B %k -I $tfile /dev/null | oue -I $tfile.gids -R '%k' |\
+  oue -dI $tfile -R 'gid %k missing from /etc/group for %v'
+<em class="error">gid 602 missing from /etc/group for charon</em>
+$ rm $tfile $tfile.gids		# cleanup</code></pre></blockquote>
+
+
+
+<h2 id="opt-a">Change the escape character from <code class="markup">%</code>
+(<code class="opt">-a</code>&nbsp;<code class="param">c</code>)</h2>
+
+Like <code class="sh">xapply</code>, <code class="sh">oue</code>
+might need to use an alternate escape character.  If that's the
+case, use <code class="opt">-a</code> to change it.  I've never
+needed to do that.  If I need to nest an <code class="sh">oue</code>
+inside another dicer-based filter I change the escape character in
+the enclosing process.
+
+<h2 id="opt-p">Multi-line elements (-<code class="param">span</code> and <code class="opt">-p</code>&nbsp;<code class="param">pad</code>)</h2>
+
+If <code class="sh">oue</code> could only work on single line
+elements, we'd have to fit programs on either side of it to compress
+records into single lines, then uncompress them.  That proves to be
+error-prone and too much work.
+
+<p>
+To read a 5 line record from a file, use a <code class="param">span</code>
+of five as <code class="opt">-5</code>.  Under that specification, the
+dicer provides <code class="markup">%1</code>,
+<code class="markup">%2</code>, <code class="markup">%2</code>,
+<code class="markup">%3</code>, <code class="markup">%4</code>,
+<code class="markup">%5</code>,  and <code class="markup">%$</code>.
+The <code class="markup">%$</code> is the last line in the element,
+which, in this case, is an alias for <code class="markup">%5</code>.
+
+<p>
+So, the dicer expression <code class="markup">%[2&nbsp;5]</code> is the fifth word on
+the second line of the record.  What if the input doesn't have five
+lines (or a multiple there-of) though?  In that case, <code
+class="sh">oue</code> pads the last element with repetitions of the
+<code class="param">pad</code> string specified under <code
+class="opt">-p</code>.
+
+<h2 id="opt-z">Process ASCII <code class="markup">NUL</code> terminated
+input (<code class="opt">-z</code>)</h2>
+
+Sometimes, you can't trust the output from a program to be
+<em>safe</em>.  For example, the output of <code class="sh">find</code>
+over a publicly write-able directory.  Someone could put files with
+newlines or spaces in them in there.
+
+<p>
+For just that reason, <code class="sh">find</code> provides the
+<code class="opt">-print0</code> option -- and  <code class="sh">oue</code>
+provides <code class="opt">-z</code> to read it.  <code
+class="sh">Oue</code> also outputs elements in the same style as
+the input; so, under <code class="opt">-z</code> the output report
+is sent on with <code class="markup">NUL</code> termination.
+
+<p>
+If you want to read under <code class="opt">-z</code> and write
+newline terminated records, put a <code class="sh">tr</code> on <code
+class="sh">oue</code>'s output (viz. <code class="markup">tr '\000' '\n'</code>).
+If you want to block until all the unique elements are gathered,
+then use <code class="opt">-D</code> to keep them in a GDBM, and
+replay it under <code class="opt">-iI</code> later.  I'd use the
+<code class="sh">tr</code> command.
+
+<p>
+A presumptious use of this would be to find the unique back-up files for
+the group file in <code class="path">/etc/OLD</code>:
+<blockquote class="file"><pre><code >$ glob '/etc/OLD/group??????' |
+	xapply -f 'printf "%1\\000" ;cat %1 ;printf "\\000" ' - |
+	oue -z -2 -k %2 -R '%1 '
+</code></pre></blockquote>
+That does assume that the group file doesn't contain any
+<code class="markup">NUL</code> characters.  The command outputs all
+the unique backup files: using that list with an inverse option creates
+a script to remove the duplicates.  How clever.
+If you <strong>don't have</strong> <code class="sh">printf</code>(1)
+installed the <code class="sh">xapply</code> might be better written with
+a <code class="sh">tr</code> to
+create the <code class="markup">NUL</code> delimiters as:
+<blockquote class="file"><pre><code >	xapply -f 'echo %1 |tr "\\n" "\\000" ; cat %1 ; echo "" |tr "\\n" "\\000" ' - |
+</code></pre></blockquote>
+
+
+<h2 id="markup">Advanced dicer expression (the mixer)</h2>
+
+Yes, you can use the mixer too, just like <code class="sh">xapply</code>.
+See <A href="../../bin/xapply/xapply.html">the <code
+class="sh">xapply</code> HTML document</A>.  The mixer is available
+as <code class="markup">%(</code><code class="param">dicer</code><code
+class="markup">)</code>.
+
+<p>
+A good example of this is the typical reformatting of a number, like
+a phone numer (or an account number) to put in dashes or other bling.
+See the dicer/mixer
+<A href="/msrc/local/lib/explode/dicer.html">HTML document</A> for
+some examples.
+
+<h2 id="dicer">Using the dicer in your own code</h2>
+
+Read the <A href="/msrc/local/lib/explode/dicer.html">dicer HTML
+document</A> which goes into more detail about the interface to the
+dicer code.
+
+<h2 id="opt-N">Unsafe GDBM updates (<code class="opt">-N</code>)</h2>
+
+If you want to leave a <code class="param">state</code> GDBM file
+unlocked while you update it, specify <code class="opt">-N</code>.
+It's your party: I hope you know what you're doing. I'd only use
+that on the default temporary file I know we're going to discard.
+
+<p>
+In fact if you don't specify <code class="opt">-D</code> then
+<code class="sh">oue</code> opens the temporary GDBM unlocked, because
+the file will be unlinked as soon as the filter is done.
+
+<h2 id="opt-b">Out of space errors (<code class="opt">-b</code>)</h2>
+
+In rare cases the processing of an element might take more resources
+than the default 10KiB per input line.  In that case <code class="sh">oue</code>
+outputs an error message like this:
+<blockquote class="file"><pre><code >oue: expansion is too large for buffer
+</code></pre></blockquote>
+
+Specify a larger value for <code class="param">length</code>.  Be aware
+the <code class="sh">oue</code> doesn't allow values smaller than 1k per line.
+<blockquote class="file"><pre><code >$ oue <em class="new">-b 400k</em> <i>...</i> huge.rec</code></pre></blockquote>
+
+<h2 id="exrw">Some real world examples</h2>
+
+<code class="sh">Oue</code> is oft used in scripts to suppress duplicates,
+be they error output, hosts, filesystems, files, process-ids, or any
+other text item.
+
+<h3 id="history">Remember to remember</h3>
+
+My operations team wants to be told about RAID controller errors.
+If a battery, disk, or controller need replacement we want to be
+told as soon as possible.  But we don't want a flood of errors to
+hide <strong>other</strong> issues in the stream.
+
+<p>
+We record all the unique errors for each day-of-year in a file.
+We filter errors through yesterday's file and todays.  We'll use
+<code class="sh">date</code> to fetch the Julian day for today
+and yesterday:
+<blockquote class="file"><pre><code >#!/usr/bin/env ksh
+# $Id: ...
+# Only show the same error every 2 days, if we can't find a place to
+# write the squelch files, just become a cat.
+# $Purge: /usr/local/sbin/kruft -A 10w <em class="error">/var/local/squelch</em>
+cd <em class="error">/var/local/squelch</em> || exec cat
+CUR=`date +%j`.db  PREV=`TZ=GMT+24 date +%j`.db
+[ -f $PREV ] || oue -D$PREV /dev/null			# assure prev exists
+exec oue -I$PREV -D$CUR</code></pre></blockquote>
+
+<p>
+That does require a cleanup job to remove the older files.  I
+use a crontab entry (or <code class="sh">kicker</code> task) to
+run <code class="sh">kruft</code> once a day:
+<blockquote><pre><code >8 21 * * * mk -smPurge <em class="error">...</em>/squelch</code></pre></blockquote>
+This leaves a trail of all the errors for the last 10 weeks in the
+squelch directory.  For admins to review (with <code class="sh">oue</code>).
+We put all the tuning parameters in the script itself for easy deployment,
+except the time the cleanup runs, which could be in there too.
+
+<p>
+Evolutions of this script may allow longer suppression of error, or
+might send recurring issues to another escallation chain.
+
+<h3 id="retire">Process log files to retire services</h3>
+I need to get a list of all
+the <acronym title="internet protocol">IP</acronym> clients connecting to
+a service we are planning to retire.  From that list I'll contact the owners of
+the client applications to help them upgrade to the replacement.  So over
+time the list of clients should drop, until I can shutdown the existing
+service and retire the supporting instances.
+
+<p>
+I have a number of log files on each instance that include the client
+information.  These roll every day, so I'm going to look at the last
+2 days of logs and find the unique clients.  The decompress command
+outputs a line that looks like:
+<blockquote class="file"><pre><code > service foo request from alien.npcguild.org (10.9.4.6) for ...</code></pre></blockquote>
+So I need a filter on each host to convert the verbose logs into a
+list of unique clients (we'll allow IPv6 as well):
+<blockquote class="file"><pre><code >#!/usr/bin/env ksh
+# $Id<i>:...revision control markup...</i> $
+find /var/puma/logs -name cli\*[0-9] -ctime -2 |
+xapply -f '<em class="error">local-decompress-command</em> -f %1' - |
+tr 'A-Z' 'a-z' | tr -s '\t  ' '  |
+sed -ne 's/^.*request from \([^ ]*\) (\([0-9.:a-f]*\)).*/\1 \2/p' |
+oue</code></pre></blockquote>
+(We drop to lowercase because some spellings of the hostnames may
+be upper or mixed case.)
+
+<p>
+If I run that on all the host (with <code class="sh">hxmd</code>) I
+can direct the output to a local <code class="sh">oue</code> which will
+unique the sum of the streams:
+<blockquote class="file"><pre><code >$ hxmd -P20 -Cpuma.cf 'ssh -n HOST <i>script-above</i>' | oue -cl</code></pre></blockquote>
+Which outputs the number of target hosts that see at least one connection
+from each client.  This makes it easy to measure the on-going progress of
+the retirement effort.  As demand declines we can consolidate load onto
+fewer instances.
+
+<p>
+If we want to know which clients connect to the most instances we could
+change the summary command slightly:
+<blockquote class="file"><pre><code >$ hxmd -P20 -Cpuma.cf 'ssh -n HOST <i>script-above</i> | sed -e "s/^/HOST:/"' |
+	oue -l -e '%P,%[1:1]' -k '%[1:-1]' -R '%k: %e' </code></pre></blockquote>
+which outputs each "host IP" followed by the list of hosts with which it
+connected.
+
+<h2 id="end">Summary</h2>
+
+<code>Oue</code> is a handy filter for compressing lists into unique
+elements and finding common (unique) elements from any number of input lists.
+<code class="sh">Oue</code> also supports records with any fixed number of
+lines in them.
+<p>
+It largely replaces the common uses of <code class="sh">comm</code>,
+<code class="sh">sort -u</code>, and
+<code class="sh">uniq</code> in most pipelines. And removes the restriction
+that their input streams must be sorted.
+It works very well with <code class="sh">find</code> and
+<code class="sh">xapply</code>, even with <code class="markup">NUL</code>
+(<code class="markup">\000</code>)
+terminated streams.
+<p>
+Multiple passes of <code class="sh">oue</code> may use a history file
+(<A href="#opt-uI"><code class="param">prev</code></A>), which allows
+processing to efficiently continue.
+Additionally <code class="sh">oue</code> may be used to build
+summary reports from saved <code class="libc">gdbm</code> files or
+directly from raw input (via accumulator logic) including occurrence counts
+and details.
+
+<HR><PRE>
+$Id: oue.html,v 1.23 2012/09/25 15:08:47 ksb Exp $</PRE></BODY></HTML>

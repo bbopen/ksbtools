@@ -1,0 +1,82 @@
+.\" $Id: implementation,v 3.0 1992/04/22 13:23:02 ksb Stab $
+.\" $Compile: nroff -ms %f | ${PAGER-more}
+.\" $Laser: ltroff -ms %f
+.LP
+.NH
+Implementation
+.LP
+The primary difficulty in the implementation of this system was
+efficiency.  The initial way we implemented the system was simply
+too slow, and quite a bit of effort was put into optimization.
+Another advantage
+we discovered to entombing files with the \fIrename\fP system call
+instead of by copying is a consistency of response time that would be
+unobtainable if the amount of time taken to entomb a file depended on
+the size of the file.
+.LP
+The first step in the process is to decide whether to entomb the
+file in question.  Basically, only regular files are entombed.  We
+also decided to
+save the overhead of entombing zero-length files, because the user
+should be able to recreate them trivially.  We provided the user with
+an environment variable which may be set to \*Qno\*U to
+prevent files from being entombed.  If no environment variable exists,
+our default is to entomb, because we suspected that people might not
+find out about the entombing system until they asked a user consultant
+how to retrieve a file, by which time it is too late to set an environment
+variable.  This is consistent with our goals of transparency and mimimum
+effort.
+.LP
+If, in fact, the file is to be entombed, the next step is to find out
+what filesystem the file should be entombed upon, and to check to see
+if there is a tomb there.  (We take the absence of a tomb as an
+indication that no files should be entombed there.)  This is difficult
+because the only identification of a filesystem comes from the device number
+in the \fIstruct stat\fP that is returned from the \fIstat\fP system call,
+given the file that is to be entombed as an argument.  However, we
+need the name of the filesystem as a character representation.  This
+can be found by reading the file \fI/etc/mtab\fP and using \fIstat\fP on
+the raw disk device entry in \fI/dev\fP to see if the device numbers match.
+Since this procedure takes the majority of the time needed to entomb a
+file, it was a candidate for optimization.  We wrote an \fIawk\fP(1) script
+to find this information at compile time, and arranged for it to be
+stored in a file.  This file must be regenerated whenever filesystems
+upon which we entomb are rearranged, and is read by the program doing
+the entombing.  In this way, the time needed to entomb a file was
+reduced by about fifty percent.
+.LP
+When implementing the part of the system responsible for keeping entombed
+files from filling our filesystems to capacity, we had the choice of
+either periodically running a job from \fIcron\fP(8) or running a program
+continuously, which might put itself to sleep intermittently.  We
+opted for the daemon, in order to avoid startup costs and to
+facilitate the observation of long term trends by the program.  Two
+advantages are provided to the daemon by the way files are stored in
+the tomb:  since dates are appended to the files' names, there is no
+need to \fIstat\fP each file in the tomb.  And since all the files in the
+tomb are owned by the same user, as is the tomb itself, this program
+(called the \*Qpreening daemon\*U) may run as that user.  If files in
+the tombs were owned by the users for whom they were entombed, this
+program would have to run as root or by each user.
+.LP
+In order to allow utilities to be made to entomb without source code
+changes, we wrote a library containing functions with the same names,
+same number and type of arguments, and which have the side effect of
+entombing the file given as an argument.  So, for instance, the
+\fIunlink\fP function we wrote checks the \*QENTOMB\*U environment
+variable to see
+if we should entomb the file in question, and \fIfork\fPs and
+\fIexec\fPs the set-UID \*Qentomb\*U if so.  The file is entombed and
+unlinked if and only if the caller has permission to unlink it.  Other
+routines
+check to see if a file would actually be destroyed before they \fIfork\fP.
+.LP
+We also wrote a very user-friendly utility, \fIunrm\fP, to aid users in
+restoring files.  It translates the
+appended timestamp to a more human-readable form, and allows the user
+to page through entombed files, to purge files from the tomb (removing
+them forever) and to restore files from the tomb.
+
+.\" Local Variables:
+.\" mode:nroff
+.\" End:

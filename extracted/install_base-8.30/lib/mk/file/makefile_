@@ -1,0 +1,17 @@
+# a Makefile								(ksb)
+# $Id: makefile_,v 5.0 1996/09/09 20:59:59 kb207252 Exp $
+# mapped from Makefile and file.mk
+
+$Compile(*):	Make%h
+
+$Make(*):	${make-make} ${cc_debug+DEBUG=$cc_debug} ${cc+CC=$cc} -f %f %s
+$Make(*):	${make-make} ${cc_debug+DEBUG=$cc_debug} ${cc+CC=$cc} -f %f
+$Make(*):	${make-make} -f %f
+
+$Clean(*):	${make-make} -f %f %s clean
+$Clean(*):	${make-make} -f %f clean
+
+$Depend(*):	${make-make} -f %f %s depend
+$Depend(*):	${make-make} -f %f depend
+
+$Info(*):	${echo-echo} "a make description file"

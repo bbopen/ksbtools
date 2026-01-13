@@ -1,0 +1,238 @@
+.\" $Id: install.cf.man,v 8.5 2010/08/13 19:01:08 ksb Exp $
+.\"
+.\" Copyright 1990 Purdue Research Foundation, West Lafayette, Indiana
+.\" 47907.  All rights reserved.
+.\"
+.\" Written by Kevin S Braunsdorf, ksb@cc.purdue.edu, ksb@npcguild.org
+.\"	       Jeff Smith, jsmith@cc.purdue.edu, purdue!jsmith
+.\"
+.\" This software is not subject to any license of the American Telephone
+.\" and Telegraph Company or the Regents of the University of California.
+.\"
+.\" Permission is granted to anyone to use this software for any purpose on
+.\" any computer system, and to alter it and redistribute it freely, subject
+.\" to the following restrictions:
+.\"
+.\" 1. Neither the authors nor Purdue University are responsible for any
+.\"    consequences of the use of this software.
+.\"
+.\" 2. The origin of this software must not be misrepresented, either by
+.\"    explicit claim or by omission.  Credit to the authors and Purdue
+.\"    University must appear in documentation and sources.
+.\"
+.\" 3. Altered versions must be plainly marked as such, and must not be
+.\"    misrepresented as being the original software.
+.\"
+.\" 4. This notice may not be removed or altered.
+.\"
+.\" $Laser: ${tbl-tbl} %f |${ltroff-ltroff} -man
+.\" $Compile: Display%h
+.\" $Display: ${groff:-groff} -Tascii -t -man %f | ${PAGER:-less}
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man5/install.cf.5
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]5/install.cf.5*
+.TH INSTALL.CF 5L PUCC
+.SH NAME
+install.cf \- a check list to confirm correct installations
+
+.SH DESCRIPTION
+.PP
+.IR Install (1L)
+allows the system administrator to update important files
+while maintaining a backup copy of any old versions.
+.I Install
+checks the actions of the superuser against a
+list of important files, to prevent careless security
+breaches.
+The \fB\-C\fP option controls which
+checklist \fIinstall\fP examines.
+.PP
+.I Install
+searches \fIinstall.cf\fP for an
+.IR sh (1)
+\fIglob\fP expression that matches
+the file to be installed.
+When it finds a matching expression it checks
+the proposed owner, group, and mode against those listed in
+the checklist; any variation causes
+.I install
+to abort.
+This mechanism is provided to protect the superuser from installing,
+for instance, the shell setuid:
+.sp 1
+	install -m7555 -o root -g wheel sh /bin
+.sp 1
+(note the extra \`5\').
+.PP
+It is important to remember that this is a \fIcross check\fP
+on the actions of the superuser, not a default database!
+The idea is to provide independent confirmation and catch
+keyboard errors, \fBnot\fP fix lazy command lines.
+Since make(1) is so easy to use, put the \fIcorrect\fP modes,
+groups, and owners in a makefile for each product.
+.PP
+Each pattern line in \fIinstall.cf\fP consists of 6 (or 2) fields;
+.br
+	a glob expression
+.br
+	a mode, in either octal or symbolic format
+.br
+	a symbolic owner
+.br
+	a symbolic group
+.br
+	a \fIstrip\fR(1) or \fIranlib\fR(1) indicator
+.br
+	an optional comment
+.br
+Blank lines and lines which begin with a pound sign (#) are ignored.
+.PP
+If the glob expression begins with a slash (\*(lq/\*(rq)
+it is matched against the full \fItarget\fP,
+otherwise it is matched against only the last component of the \fItarget\fP.
+(For the definition of \fItarget\fP see \fIinstall\fP(1L).)
+For instance, the expression
+.br
+	*.a
+.br
+will match every library (file ending in \`.a\'), while
+.br
+	/lib/*.a
+.br
+will only match libraries in \*(lq/lib\*(rq.
+.PP
+The glob notation is extended such that star-star (\*(lq**\*(rq) matches
+any number of directory levels.  And a trailing slash (\*(lq/\*(rq) matches
+only (existing) directories.
+To match, for example, \fB/usr/new\fP/anything.bmp use:
+.br
+	/usr/new/**/*.bmp	\-rw\-rw\-??\-	...
+.br
+.PP
+The mode field may be filled with either an octal number (discouraged)
+or a symbolic mode (see
+.IR ls (1)).
+Any bit specified as on \fBmust\fP be on,
+any bit specified as off (\-) \fBmust\fP be off.
+The symbolic mode may also include \`?\' to indicate an optional bit.
+For instance the mode
+.br
+	\-r?\-r\-\-r\-\-
+.br
+will match either \-rw\-r\-\-r\-\- (0644) or \-r\-\-r\-\-r\-\- (0444).
+If a setuid, setgid, or sticky bit is set without the underlying
+execute bit being set the \`s\' or \`t\' should be given in
+uppercase.
+.PP
+Some combinations of modes are not expressible in the above format,
+e.g. 0755 with an optional setgid bit.  For such modes a special
+format is allowed:
+.br
+	\fImode\fP/\fIoptional-mode\fP
+.br
+in which case all the bits in \fIoptional-mode\fP are taken as optional.
+To express our example mode one might use:
+.br
+	drwxr-xr-x/02000
+.br
+(this is a good mode for a directory under SunOS).
+.PP
+The type bit in the symbolic mode may be any of the \fIfind\fP(1) type
+bits, or an exclamation point (\*(lq!\*(rq).  The ! is used to indicate files
+that should \fBnever\fP exist, and may prefix an auxiliary file type.
+.PP
+The owner (group) column may either contain an asterisk (\*(lq*\*(rq) or
+an alphanumeric identifier, or a colon (\*(lq:\*(rq) prefixed path.
+If an asterisk is given any valid owner (group) may be used.
+No numeric user (group) identifiers are allowed, but a file may be given
+as:
+.br
+	:\fIfile-path\fP
+.br
+the owner (group) on the given file is used.
+A owner (group) name may be prefixed by an exclamation point (\*(lq!\*(rq)
+which indicates that only this owner (group) is not allowed.
+.PP
+The strip/ranlib indicator follows this table
+.RS
+.TS
+l l.
+n	do not run either \fIstrip\fP(1) or \fIranlib\fP(1)
+l	run \fIranlib\fP(1)
+s	run \fIstrip\fP(1)
+*	allows either to be run, requires neither
+-	do not open this file to check
+.TE
+.RE
+It makes no sense (to the authors) to run
+both \fIstrip\fP(1) and \fIranlib\fP(1).
+.PP
+.I Install
+displays the comment section when the file is installed.
+.PP
+A double quote (\*(rq) substitutes the entry from the previous line.
+An equals sign (=) substitutes \fIinstall\fP's default value for a field.
+.PP
+The tool \fIinstck\fP(1L) may be used to generate configuration
+files for named files (assuming the current modes are correct).
+
+.PP
+A special 2 column format is provided for hard links.  Files with more
+than one name (like
+.IR vi (1))
+have there alternate names listed in link format.
+Hard links are listed as the normal pattern and
+a colon (\*(lq:\*(rq) prefixed
+path pointing to the \*(lqreal\*(rq name of the product.
+Symbolic links are listed with a commercial at (\*(lq@\*(rq)
+prefixed to there contents.
+
+.SH EXAMPLE
+.RS
+# this file tells install(1L) what files to check as special
+.br
+.br
+.TS
+l l l l l l.
+# file	modes	owner	group	strip	comment
+# name				ranlib	for user
+/unix	\-r??r\--r\--	binary	*	n	new kernel
+/vmunix	\*(rq	\*(rq	\*(rq	\*(rq	\*(rq
+/dynix	\*(rq	\*(rq	\*(rq	\*(rq	\*(rq
+
+# setuid
+/bin/su	\-r?s?\-x?\-x	root	*	*	must setuid, not group
+/bin/df	\-r?x?\-s?\-x	root	:/dev/zd0a	*	reads the disk device
+
+/bin/sh	\-r?x?\-x?\-x	*	*	*	do not setuid
+/bin/init	\-r?x\-\-\-\-\-\-	root	*	*	no world execute
+/etc/init	\*(rq	\*(rq	*	*	no world execute
+/etc/passwd	\-r?\-r\-\-r\-\-	root	*	n	forbid world write
+/etc/group	\*(rq	\*(rq	*	n	\*(rq
+/tmp	drwxrwxrwt	binary	*	n	must be sticky at PUCC
+/usr/tmp	\*(rq	\*(rq	*	n	sticky
+/usr/ucb/eyacc	\-rwxr\-x?\-x	*	*	n	no strip
+/usr/ucb/lisp	\*(rq	\*(rq	\*(rq	\*(rq	\*(rq
+
+core	!-??-?--?--	*	*	n	a bogus core file
+
+/usr/bin/vi	\-r\-xr\-xr\-t	root	*	n
+.TE
+.TS
+l l.
+/usr/bin/e	:/usr/bin/vi
+/usr/bin/edit	:/usr/bin/vi
+/usr/bin/ex	:/usr/bin/vi
+/usr/bin/view	:/usr/bin/vi
+/usr/bin/vedit	:/usr/bin/vi
+.TE
+.RE
+
+.SH AUTHORS
+Jeff Smith, Purdue University Computing Center (jsmith at cc.purdue.edu)
+.br
+Kevin Braunsdorf, NPC Guild.org (nospam install at ksb.npcguild.org)
+.br
+Copyright \*(co 1990 Purdue Research Foundation.  All rights reserved.
+
+.SH SEE ALSO
+install(1L), instck(1L), ls(1), sh(1), strip(1), ranlib(1), make(1)

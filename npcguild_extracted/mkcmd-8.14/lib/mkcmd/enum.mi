@@ -1,0 +1,16 @@
+/* $Id: enum.mi,v 8.9 1999/06/14 14:37:48 ksb Exp $
+ */
+%extern unsigned %K<EnumCvt>1ev(/* pcIn, ppcList */)%;
+%@expand "enum.info"
+
+/* generated conversion tables
+ */
+%@foreach "enum_clients"
+%#if !defined(%K<enum_names>5ev)
+%#define %K<enum_names>5ev
+%static char *%K<enum_names>1ev[] = %{
+%	%ZxZK/ql, (char *)0
+};
+#endif
+
+%@endfor

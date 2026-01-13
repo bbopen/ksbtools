@@ -1,0 +1,17 @@
+# a yacc input file							(ksb)
+# $Id: y,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	%b %o -mYacc %f && %b %o -m%m -s%s %F.c
+$Compile(*):	%b %o -mYacc %f && %b %o -m%m -s%s y.tab.c
+$Compile(*):	%b %o -mYacc %f && %b %o -m%m %F.c
+$Compile(*):	%b %o -mYacc %f && %b %o -m%m y.tab.c
+
+$Yacc(*):	${yacc-yacc} -d ${yacc_debug} %f\n\t(${cmp-cmp} -s y.tab.c %F.c || (${cp-cp} y.tab.c %F.c && echo %F.c updated))\n\t(${cmp-cmp} -s y.tab.h %F.h || (${cp-cp} y.tab.h %F.h && echo %F.h updated))\n\t${rm-rm} -f y.tab.[ch]
+$Yacc(*):	${yacc-yacc} -d ${yacc_debug} %f
+$Yacc(*):	${yacc-yacc} ${yacc_debug} %f\n\t(${cmp-cmp} -s y.tab.c %F.c || (${cp-cp} y.tab.c %F.c && echo %F.c updated))\n\t${rm-rm} -f y.tab.c
+$Yacc(*):	${yacc-yacc} ${yacc_debug} %f
+
+$Clean(*):	${rm-rm} -f y.output y.tab.[ch] %F.[coh]
+$Clean(*):	${rm-rm} -f y.output y.tab.[ch]
+
+$Info(*):	${echo-echo} "yacc input"

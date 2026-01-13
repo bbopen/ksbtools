@@ -1,0 +1,124 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Pass access rights as file descriptors</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: Rights
+<BR>
+Authors: Ben Jackson, KSB Braunsdorf
+<BR>
+Mail: ksb@npcguild.org
+<BR>
+Version: 3.1
+<BR>
+Bugs: None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+UNIX operating systems allows passing open file descriptors between processes
+via a UNIX domain socket pair (aka a pipe, now days).  This module provides
+a portable abstraction to send and receive file descriptors.
+
+<H1>Configuration</H1>
+
+Provide a standard "<CODE>machine.h</CODE>" which defines:
+<DL>
+<DT>#define HAVE_SCM_RIGHTS
+<DD>
+Defined to be the integer <CODE>0</CODE> if the local UNIX
+flavor doesn't have the SCM_RIGHTS <CODE>cmsg_type</CODE>.
+<DT>#define HAVE_STRERROR
+<DD>
+Defined to be 1 if the local system include files define
+<CODE>strerror</CODE>(3).
+
+<DT>#define RIGHTS_TAG_LINE
+<DD>
+Optionally the implementor may define a maximum size for the
+tag-string sent with the access rights.  The default is 64 bytes,
+which is intended to be a used as a token to ensure synchronized
+exchanges (nothing more).
+</DL>
+
+<H1>Synopsis</H1>
+<BLOCKQUOTE><PRE><CODE>#include &lt;sys/types.h&gt;
+#include &lt;sys/param.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;sys/uio.h&gt;
+#include &lt;errno.h&gt;
+
+#include "machine.h"
+#include "fdrights.h"
+</CODE></PRE></BLOCKQUOTE>
+
+<H1>Description</H1>
+
+
+
+<H1>Provides</H1>
+<DL>
+<DT><CODE>extern int RightsSendFd(int fd, int *list, unsigned count, char *tag);</CODE>
+<DD>
+Send a list of file descriptors to a peer process.
+<P>
+The peer process should be calling <TT>RightsRecvFd</TT> on the other
+end of <CODE>fd</CODE>,  the <CODE>list</CODE> pointer points to a
+vector of <CODE>count</CODE> file descriptors.  The <CODE>tag</CODE>
+strings is sent in the message.
+<P>
+A <CODE>tag</CODE> of <CODE>(char *)0</CODE> sends the message "<TT>ok</TT>".
+
+<DT><CODE>extern int RightsRecvFd(int fd, int *list, unsigned count, char *tag, size_t *length);</CODE>
+<DT><CODE>extern char acRightsRecvBuf[RIGHTS_TAG_LINE];</CODE>
+<DD>
+Waits for a peer process to send <CODE>count</CODE> access rights
+on file descriptor <CODE>fd</CODE>.
+<P>The new file descriptor indexes are recorded in <CODE>list</CODE>, which
+might be large enough to hold the list sent by the peer.
+The synchronization string is copied into <CODE>tag</CODE> which
+must be at least <CODE>length</CODE> bytes long, the number of
+bytes returned is the return value of this function call.
+<P>
+When <CODE>tag</CODE> is provided as <CODE>(char *)0</CODE> the
+global buffer <CODE>acRightsRecvBuf</CODE> is used.
+
+<DT><CODE>extern int RightsWrap(int fd, char *pcSuffix, void *pvData, char *pcType);</CODE>
+<DD>
+This function is the wegde that makes <code class="sh">wrapw</code> work in advanced
+wrappers (like ksb's xclate) that work across machines (through sshw).
+This hook is what <code class="libc">divConnect</code> from mkcmd's library needs
+to "wrap-back" to a wrapw diversion on another host.  It must be
+linked with <code class="libc">RightsRecvFd</code>, since it calls that function.
+
+<DT><CODE>extern int RopenSplit(void (*)());</CODE>
+<DT><CODE>extern int ropen(char *, int , int );</CODE>
+<DD>
+An example application of this technology.  Taken from
+Steven's book and adapted to use this interface.
+</DL>
+
+<H1>EXAMPLE</H1>
+See the test driver embedded in the module, via:
+<BlOCKQUOTE>
+explode fdrights.h
+<BR>
+explode fdrights.c
+<BR>
+more fdrightstest.c
+</BlOCKQUOTE>
+
+
+<H1>Diagnostics</H1>
+None.
+
+<H1>See Also</H1>
+sendmsg(2), recvmsg(2)
+
+<H1>To Do List</H1>
+None.
+<HR><PRE>
+$Id: fdrights.html,v 3.8 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

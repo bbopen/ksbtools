@@ -1,0 +1,83 @@
+# $Id: INSTALL,v 5.1 2000/01/06 15:07:23 ksb Exp $
+
+Turnin(1L) and project(1L) provide administration of electronic
+submissions for a large number of classes.  These tools may be applied
+to any type of course (programming, art & design, word processing, etc.)
+which requires `students' to submit `projects' to an `instructor'.
+
+A `student' is any login name on a UNIX system.  Multiple logins under
+the same uid are handled correctly.  The environment variables USER and
+LOGNAME are consulted (in that order) to determine which login name is
+submitting the file.
+
+A `project' is a broad term for a group of submissions, one per login
+name, which will be collected over time.  These may then be processed
+by running a shell command for each project.   Submitted files are
+stored in a tar(1) format archive.  Large archives are kept compressed,
+but nether user nor administrator will see this detail.
+
+An `instructor' is a supervising login name.  This login is able to
+limit the collection time for any `project' and issue grade commands.
+
+The user interface to turnin(1L) is quite simple and obvious.  The user
+simply runs
+
+	$ turnin files
+
+to submit files.  If the request is ambiguous turnin will request
+information from stdin.  Command line options are provides to suppress
+such prompting.  Some profs use a simple (1 line) shell script to force
+the course option on the user.  For example cs444 might use a script
+`sub444' which reads:
+
+	#!/bin/sh
+	turnin -c cs444 "$@"
+
+to `simplify' the user environment.
+
+The user interface to project(1L) also quite simple.  The administrator
+may enable a project with the -e option:
+
+	project -e btrees
+
+would enable a project called `btrees'. Or disable a project with the
+-d option:
+
+	project -d queues
+
+After submissions for a project are complete (or even while some are
+still coming in) the instructor may use the -g option to scan the
+submitted files with a shell command.  The shell command is run once
+for each login name who has submitted files.  Some percent (%) escapes
+are substituted before the command is given to the shell.
+
+	project -g "echo %u" queues
+
+would scan the project `queues' and echo the login name of each user
+who has submitted files.
+
+Of course there are other options to project, but these three are by
+far the most common.
+
+
+Setting up the system.
+
+The superuser must install 3 files in the user-accessible portion of
+the UNIX system.
+
+The binaries for project and turnin should be installed in the system's
+default search path in something like /usr/local/bin or /usr/custom/bin.
+The project binary should be mode 0755 (or 0711), the turnin binary
+should be mode 04755 (or 04711) and owned by the superuser.  This is
+because turnin must set-effective-uid to the target instructor on the
+fly.  (It could be setuid to a single instructor, but the program is
+useful to many instructors.)
+
+There is a configuration file which should be superuser-writable only
+(mode 0644, owned by the superuser).  This file tells the system which
+logins are available to accept projects.  This file is installed in a
+lib directory, usually /usr/local/lib or /usr/custom/lib, and is called
+turnin.cf.  This file contains a colon-separated list of data very much
+like the passwd file; there is a manual page for these fields
+(turnin.cf.5L).
+

@@ -1,0 +1,81 @@
+# $Id: README,v 1.3 2009/09/15 20:23:49 ksb Exp $
+
+This is the replacement for the distrib-based master source structure.
+The Distfile, Make.host-for-loop and rdist call in the Makefile are
+all replaced by the "msrc" program, which uses hxmd to do most of the
+file processing work in parallel (with m4, as the old one did).
+
+We've re-factored the master source data flow a little to allow these:
+	+ local.defs can be in a different location on some target hosts
+	+ default to ssh rather than rsh, but allow either
+	+ create a better "pull" system (via rsync)
+	+ use hxmd for better parallel execution
+	+ use hxmd -Clocal.cf to build files for pull-style updates
+	+ replaced "makeme" with "mmsrc"
+
+Control logic renamed:
+	The control logic used to be separated into Distfile and a for
+	loop in the Makefile.  Now it is all in the Makefile, and in the
+	msrc program itself (this much more compactly expressed as make
+	macros with fixed names).
+
+	The "Distfile" used to be installed in every product, now that is
+	is built by automation in msrc itself.  If you need to do it for
+	reason you set MODE=local and then you can do it yourself.  In
+	that case I would code a script called "Provision" to do the work.
+	I've used "rsync" from a script like that, but rdist works fine
+	if you patch the 2 bugs I describe elsewhere (limited environment
+	and nodescend).
+
+	We used to process the "Make.host" file via distrib(8) to send to
+	the remote machine as the build logic, now we process "Makefile.host"
+	via hxmd to send to the remote host.  We also add any file that
+	ends in ".host" as another MAP'd file (or read the make macro ${MAP}).
+
+	We used to code the list of files and subdirs in "Distfile", now
+	the list of file comes from the control recipe in $SEND and $SUBDIR.
+	And the list of exceptions in $IGNORE (another recipe macro).  We
+	also use $INTO from the Makefile's macros directly.  The target
+	name "__msrc" is reserved for msrc's use.  See qstart.html.
+
+	We used to code the attributes of the local machine (MYHOSTYPE,
+	MYHOSOS) in distrib, now information about the localhost is are
+	in "local.cf" or any file you like under -C, -X, and -Z.
+
+	We used to have the path to "local.defs" in every Makefile, now
+	it is in your configuration file(s) along with some related macro
+	definitions (ENTRY_DEFS, ENTRY_LOGIN, see "M4 HOOKS" in the
+	manual page).
+
+	We used to have trouble with the "pull" logic, now we can build
+	the files locally with mmsrc(8) using the macros from the control
+	recipe (from Msrc.mk, msrc.mk, Makefile, or makefile).
+
+Flow:
+	See msrc.html in this directory.
+
+	Basically msrc reads the control recipe file using make(1) and a
+	reserved target (__msrc) by copying the file to /tmp and adding
+	text to the end of the copy.  [Detail, this may require more than
+	a single execution of make.]
+
+	Using the macro values it extracted from that recipe it sorts the
+	files and directories in the current directory into several type
+	(MAP, SEND, SUBDIR, IGNORE, and HXINCLUDE).  It also picks a MODE
+	(local or remote) based on that macro and the command-line option
+	-l, and a target directory from INTO.
+
+	Using all that information it builds a Distfile (or the like) and
+	a script to provision the target directory with the file types
+	gathered.
+
+	It then selects the hosts to target (via hxmd) and executes the
+	provision script and rdist (version 6) update of those hosts in
+	parallel, see hxmd(8).
+
+	The spell can leverage hxmd's retry logic or cleanup code, as well
+	as xapply's "no elements selected" and output features.  After a
+	little cleanup of temporary files it is all done.
+
+--
+ksb, Sep 2009

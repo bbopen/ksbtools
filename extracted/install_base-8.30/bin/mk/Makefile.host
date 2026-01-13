@@ -1,0 +1,171 @@
+`# Written by S. McGeady, Intel, Inc., mcg@mipon2.intel.com		(sm)
+#	     Kevin S Braunsdorf, ksb@cc.purdue.edu, purdue!ksb		(ksb)
+#
+# This software is not subject to any license of the American Telephone
+# and Telegraph Company or the Regents of the University of California.
+#
+# Permission is granted to anyone to use this software for any purpose on
+# any computer system, and to alter it and redistribute it freely, subject
+# to the following restrictions:
+#
+# 1. The authors are not held responsible for any consequences of the
+#    use of this software.
+#
+# 2. The origin of this software must not be misrepresented, either by
+#    explicit claim or by omission.  Credit to the authors must appear
+#    in documentation and sources.
+#
+# 3. Altered versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 4. This notice may not be removed or altered.
+#
+# Makefile for mk
+#  Modified version from the last PUCC release by Kevin Braunsdorf,
+#  contact at install@ksb.npcguild.org
+#
+# $Id: Makefile.host,v 5.19 2010/06/22 20:49:22 ksb Exp $
+'define(EMU_SETENV,ifelse(
+HOSTTYPE,FREEBSD,no,
+HOSTTYPE,OPENBSD,no,
+HOSTTYPE,NETBSD,no,
+HOSTTYPE,IBMR2,no,
+HOSTTYPE,HPUX7,no,
+HOSTTYPE,LINUX,no,
+yes))
+`SHELL=/bin/sh
+PROG=	mk
+BIN=	${DESTDIR}/usr/local/bin
+MANDIR=	${DESTDIR}/usr/local/man/man1
+
+L=/usr/local/include
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE= -I$L
+DEBUG='ifelse(HOSTTYPE,`V386',`',
+HOSTTYPE,`HPUX9',`',
+HOSTTYPE,`HPUX10',` ',
+HOSTTYPE,`HPUX11',`',
+`-O')
+# sometimes we need to force the name of the Compiler, or use a
+# symbolic link in a special (prepended by local.defs) directory.
+ifelse(HOSTTYPE,`HPUX9',`CC=gcc',
+HOSTTYPE,`HPUX10',`CC=gcc',
+HOSTTYPE,`HPUX11',`CC=gcc',
+`')
+`CDEFS=	-D'HOSTTYPE`'ifelse(HOSTTYPE,`SUN4',` -DSUNOS=41')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	'ifelse(MKCMD,`no',`main.h ')`mk.h match.h rlimsys.h machine.h
+SRC=	'ifelse(MKCMD,`no',`main.c ')`mk.c match.c rlimsys.c \
+	rcsname.c
+GENh=	'ifelse(MKCMD,`no',`',`main.h')`'ifelse(
+EMU_SETENV,yes,`')` dicer.h
+GENc=	'ifelse(MKCMD,`no',`',`main.c')`'ifelse(
+EMU_SETENV,yes,` setenv.c')` dicerdicer.c dicermixer.c dicer.c
+GEN=	${GENh} ${GENc}
+DEP=	${SRC} ${GENc}
+OBJ=	main.o mk.o rcsname.o match.o rlimsys.o dicerdicer.o dicermixer.o'ifelse(
+EMU_SETENV,yes,` setenv.o')`
+MAN=	mk.man
+SOURCE=	Makefile README mk.html mk.m ${MAN} ${HDR} ${SRC}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}'ifelse(
+HOSTTYPE,`SUN5',` -lgen',
+HOSTTYPE,`IRIX5',` -lgen',
+HOSTTYPE,`IRIX6',` -lgen')`
+
+test: FRC
+	cd Tests && MK="" ./Driver 2>/dev/null && echo "Test exits $$?"
+
+'ifelse(MKCMD,`no',`',``
+main.h: main.c
+
+main.c: mk.m
+	mkcmd mk.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -rf prog.[ch]
+'')`
+
+dicer.c dicer.h:
+	explode -s $@
+
+dicerdicer.c:
+	MACHINE_H="#include \"machine.h\"" explode -u dicer dicer.c
+
+dicermixer.c:
+	MACHINE_H="#include \"machine.h\"" explode -u mixer dicer.c
+
+setenv.c:
+	MACHINE_H="#include \"machine.h\"" explode -s $@
+
+dicer: dicer.c dicer.h
+	${CC} -fwritable-strings -DDICER_TEST -g -o $@ dicer.c
+
+clean: FRC
+	rm -f Makefile.bak *.o prog.[ch] ${GEN} ${PROG} setenv.c dicer a.out core errs tags
+
+depend: ${HDR} ${SRC} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP} \
+		-tmain -s.c -F "mkcmd -M %F" mk.m
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all ${BIN} ${MANDIR} FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${MANDIR}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${BIN} ${MANDIR}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+mk.o: machine.h match.h main.h mk.c mk.h rlimsys.h dicer.h
+
+rcsname.o: machine.h match.h rcsname.c
+
+setenv.o: machine.h match.h setenv.c
+
+match.o: machine.h match.h match.c
+
+rlimsys.o: machine.h match.h rlimsys.c
+
+main.o: machine.h match.h main.c mk.h dicer.h
+
+dicerdicer.o: dicerdicer.c dicer.h
+
+dicermixer.o: dicermixer.c dicer.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

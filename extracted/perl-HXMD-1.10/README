@@ -1,0 +1,44 @@
+# $Id: README,v 1.3 2008/09/29 15:55:45 ksb Exp $
+
+HXMD version 1.8
+=================
+
+This module provide access to hxmd's configuration data from perl
+scripts.  This can be really handy for gerating reports that would
+be hard to summarize from parallel shell operations.  As as side-
+effect distrib configuration files (which are in the same format)
+are also covered.
+
+There is a simple output function included to help convert an input
+configuration to some other output format.  This is most useful for
+merge operations, or to add (empty?) columns to a configuration file.
+
+INSTALLATION
+
+To install this module type the following:
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+You can use msrc to install on a remote machine ($HOST) with:
+  dmz $HOST perl Makefile.PL
+  dmz $HOST make install
+
+
+DEPENDENCIES
+
+This module requires no other modules or libraries.  Not even any of
+ksb's crazy master source tools.
+
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2008 KS Braunsdorf
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+
+#--
+# $Id: README,v 1.3 2008/09/29 15:55:45 ksb Exp $

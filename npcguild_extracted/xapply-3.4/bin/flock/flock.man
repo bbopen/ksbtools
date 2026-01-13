@@ -1,0 +1,100 @@
+.\" $Id: flock.man,v 2.0 1996/11/14 18:16:01 kb207252 Exp $
+.\" by Kevin Braunsdorf and Matthew Bradburn
+.TH FLOCK 1L LOCAL
+.SH NAME
+flock - lock a file to synchronize command streams
+.SH SYNOPSIS
+\fBflock\fP [\-\fBc\fP\fBf\fP\fBh\fP\fBn\fP] [\-\fBEX\fP|\fBSH\fP|\fBUN\fP|\fBNB\fP] \fIfile\fP|\fIfd\fP [\fIcmd\fP]
+.br
+\fBflock\fP \-\fBh\fP
+.br
+\fBflock\fP \-\fBV\fP
+.SH DESCRIPTION
+Flock applies or removes an advisory lock on the named file or file descriptor.
+Advisory locks allow cooperating processes to perform consistent operations
+on files see \fIflock\fP(2).
+.PP
+When flock succeeds, the exit status from the \fIflock\fP command is 
+the exit status of its child.  The default \fIcmd\fP is ``/bin/true'' so 
+that by default \fIflock\fP will succeed.  \fIFlock\fP will exit nonzero 
+if it cannot lock the file, or the specified \fIfile\fP (\fIfd\fP) cannot 
+be (isn't) opened.
+.PP
+It \fBflock\fP has to open the file to get the lock it will not pass
+the created file descriptor to the child process.  (Said process might
+unlock the descriptor.)  If the named file is all numeric the \-\fBf\fP
+option may be used to force it to be interpreted as a file name.
+.SH OPTIONS
+.TP
+.BI \-c
+Create the lock file if it doesn't exist.
+.TP
+.BI \-f
+The given \fIfile\fP is a file name, even if consists of all digits.
+.TP
+.BI \-h
+Give a brief help message.
+.TP
+.BI \-n
+Do not create the lock file if it doesn't exist.  This is the default.
+.TP
+.BI \-EX
+Set or reset the LOCK_EX bit in the arguments to \fIflock\fP(2).
+This is the default if no locking bits are given.
+.TP
+.BI \-NB
+Set or reset the LOCK_NB bit in the arguments to \fIflock\fP(2).
+.TP
+.BI \-SH
+Set or reset the LOCK_SH bit in the arguments to \fIflock\fP(2).
+.TP
+.BI \-UN
+Set or reset the LOCK_UN bit in the arguments to \fIflock\fP(2).
+This option is only useful when a file descriptor is given as the
+`file' on which to operate.
+.TP
+.BI \-V
+Output the version of \fIflock\fP installed.
+.PP
+The option \-\fBEX\fP may be spelled \-\fBLOCK_EX\fP, likewise the other
+locking bits may be spelled more verbosely.
+.PP
+The locking bits may be inclusive or'ed together with a pipe (`|'), which
+must be quoted from the shell.
+.SH EXAMPLES
+.PP
+If a given daemon flocks its log file before each group of writes
+one might use:
+.sp 1
+	flock -EX 1 echo \*(lqsomething important\*(rq >>daemon.log
+.sp 1
+to avoid interlaminate writes to the log.
+.PP
+In a shell script:
+.sp 1
+	# stdout is a (possibly) shared file so we wait for it
+.br
+	flock -EX 1
+.br
+	# these have to be run under one lock
+.br
+	doit1 ; doit2; doit3
+.br
+	# end critical code, unlock the descriptor
+.br
+	flock -UN 1
+.sp 1
+To edit a shared file:
+.sp 1
+	flock share.c vi share.c
+.sp 1
+.SH BUGS
+None known.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx, Memphis, TN
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+sh(1), true(1), flock(2), open(2)

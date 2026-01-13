@@ -1,0 +1,423 @@
+.\" how to code an mk marker line
+.\" $Id: mk.man,v 5.7 2010/08/13 19:04:17 ksb Exp $
+.\" $Compile: Display%h
+.\" $Display: groff -Tascii -tbl -man %f | ${PAGER:-less}
+.\" $Install: %b -mDeinstall %o %f && cp %f ${DESTDIR}/usr/local/man/man5/mk.5
+.\" $Deinstall: ${rm-rm} -f ${DESTDIR}/usr/local/man/[cm]a[nt]5/mk.5*
+.TH MK 5L LOCAL
+.SH NAME
+mk \- how to write and embed \fBmk\fP commands
+.SH SYNOPSIS
+\fB$\fP \fImarker\fP[\fB(\fP\fIsubmarker\fP\fB)\fP] [\fB=\fP[\fB~\fP]\fIexit\-status\fP] [\fB,\fP\fIresource\fP\fB=\fP[\fIlimit\fP][\fB/\fP\fImaximum\fP]] \fB:\fP \fIcommand\fP [ \fB$$\fP ] [\fIdata\fP]
+.SH DESCRIPTION
+.I Mk
+is a utility for detecting and executing shell commands within files.
+Normally, when the named files contain source language statements,
+the commands are contained in lines that appear as comments to
+the language processor.
+This is merely a convention, however, and is not a
+.I mk
+requirement.
+.PP
+.I Mk
+commands are always given to \fIsh\fP(1) for execution.
+It is the convention of the authors to use an indirect
+name for the \*(lqkey\*(rq UNIX tools in each command.
+For example when a command requires the use of a language processor,
+like cc(1), one might use the shell form
+.sp 1
+	${cc-cc} ...
+.sp 1
+so that different versions of the compiler (cc or gcc) or cross
+compilers might be used in place of the default compiler.
+.PP
+Some compilers required a special optimization level for debugging.
+A hook for this option is usually provided by a variable whose
+name ends in the string \*(lq_debug\*(rq
+.sp 1
+	${cc-cc} ${cc_debug-\-O} ...
+.sp 1
+This allows the user to simply set an environment variable when
+debugging a product.
+.PP
+The default load name, \*(lqa.out\*(rq, should \fBnot\fP be used as an
+output file, if it can be avoided,
+(such default actions are available via the compiler itself).
+.I Mk
+rules generally use the basename of the given file as an output
+file (see \fImk\fP(1l) for a description of all the percent escapes).
+.sp 1
+	${cc-cc} ${cc_debug-\-O} \-o %F ...
+.sp 1
+.PP
+If any special flags must be included to compile this program,
+or several options cause different versions to be built they should
+be specified next:
+.sp 1
+	${cc-cc} ${cc_debug-\-O} \-o %F ...
+.br
+	${cc-cc} ${cc_debug-\-g} \-o %F \-DDEBUG ...
+.sp 1
+.PP
+The name of the source file should be followed by any libraries
+that the product needs to load against.
+.sp 1
+	${cc-cc} ${cc_debug-\-O} \-o %F \-DNORMAL %f \-lm
+.sp 1
+.PP
+For other compilers or processors use a similar pattern to form
+a command.  In cases where the empty string would be bad,
+the shell form \fB${thing:-thing}\fP is preferred.
+.PP
+Sometimes recursive calls to \fImk\fP are the best way to
+solve a complex problem.
+The escapes \fImk\fP provides for recursive calls (%b, %o, %\fIoption\fP)
+are used to pass down the command line switches that might be important:
+.sp 1
+	%b %o \-mStep1 %f && %b %o \-mStep2 %f
+.sp 1
+Sometimes one might want to force an option to a recursive call, but
+leave the others as given (in this case we force \-a):
+.sp 1
+	%b \-a%C%I%N%V \-m%m %f
+.sp 1
+
+.SH "MARKED LINES"
+.PP
+The default \fImarker\fP \fBmk\fP searches for is \*(lqCompile\*(rq.
+A marker is, in effect, a verb that is applied to a file, these are
+the markers \fImk\fP has conventions for (by default):
+.sp 1
+.RS
+.TS
+l l.
+Clean	remove any junk this file might produce
+Compile	produce an binary from this file
+Display	produce an output from this file
+Info	output a description of what \fBmk\fP thinks is in the file
+Laser	format this file to produce a hard copy
+Run	execute this file (if possible)
+Mkcat	format a manual page for the \fImkcat\fP(8l) or \fIman\fP(1) programs
+.TE
+.RE
+.sp 1
+Other markers will be added as needed.
+.PP
+A submarker is a modifier on the verb, or a parameter for the verb.
+These are used to choose marked lines when more than on marked
+line might serve.
+Submarkers are still primitive, and not likely to evolve.
+.PP
+Currently few submarkers have a defined meaning to \fImk\fP:
+.RS
+.TS
+l l.
+debug	generate a debugging version
+test	generate a test program for this module
+verbose	be more verbose
+\fIos\fP	generate a version for the given operating system
+	SYSV, bsd, hpux, posix, SUN5, AIX, FREEEBSD, NETBSD, etc.
+.TE
+.RE
+.SH "MATCHING"
+.PP
+These rules cause a match for marked lines in any file \fImk\fP searches:
+.RS
+\(bu the special marker \*(lq*\*(rq matches any \fImarker\fP
+.br
+\(bu the special submarker \*(lq*\*(rq matches any \fIsubmarker\fP
+.br
+\(bu the marker from the line must match \fImarker\fP
+.br
+\(bu if a \fIsubmarker\fP was given on the command line it must be matched
+.br
+\(bu case differentiates markers and submarkers unless \-\fBi\fP was given
+.br
+.RE
+.PP
+Thus we have a table of \fImk\fP invocations versus markers:
+.RS
+.TS
+l l l l
+l c c c.
+Marker	\-mTest	\-mTest \-ddebug	\-mTest -d'*'
+$Fail	no	no	no
+$Test	yes	no	no
+$Test(bsd)	yes	no	yes
+$Test(debug)	yes	yes	yes
+$Test(*)	yes	yes	yes
+$*	yes	no	no
+$*(bsd)	yes	no	yes
+$*(debug)	yes	yes	yes
+$*(*)	yes	yes	yes
+.TE
+.RE
+.PP
+When coding a template file the $\fImarker\fP(*): form is used to
+assure a match for \fImarker\fP.
+.PP
+When two markers have exactly the same actions for a particular file
+type that can be `hot-wired' together via two escapes:
+.br
+	%h\fInew-marker\fP
+.br
+	%H\fInew-submarker\fP
+.br
+In the first form \fInew-marker\fP may be followed by a \fInew-submarker\fP
+in parenthesis.  The new marker remains in effect for only the current file.
+.SH TEMPLATES
+.PP
+By using \fImk\fP's template's options
+the user might build a default rule for a given application.
+\fIMk\fP will expand each element of the template path as if
+it were a \fIcommand\fP, then try to read the generated filename.
+If the file exists and contains a marked line that matches
+the current marker \fImk\fP will use that command.
+.PP
+\fIMk\fP has a set of default templates under some directory
+(likely \fI/usr/local/lib/mk\fP) these are scanned if no other
+\-\fBe\fP or \-\fBt\fP options are given.
+The root of this directory is provided by the \fB%~\fP escape to
+allow users to reference these templates.
+.PP
+The default list of templates may be examined with ``\fImk\fP \-\fBV\fP''.
+.PP
+The default \fImk\fP templates are driven by two regular expression
+table match engines (%~/map/pre  and %~/map/post).
+They are scanned as any other RE expansion (see %<\fImap\fP>)
+They reference some common directories in \fImk\fP's library:
+.RS
+.TS
+l l.
+type/%y	trap based on file type
+pre/%x	trap extenders that represent non-text files
+file/%G	trap files with special names
+dot/%x	trap text file extenders
+m/%M	trap based on marker given
+map/*	control the search orders
+magic-\fIxxxx\fP	trap on magic number \fIxxxx\fP (in hex)
+is-\fIfoo\fP	overloaded templates goto one of these via \fB%g\fP
+.TE
+.RE
+.SH "EXTENDED ESCAPES"
+.PP
+Past experience has shown the general templates need to do some
+sanity checking that embedded marked lines usually do not have to
+do; for example, checking a magic number.
+Some additional percent escapes are documented here to provide the
+required additional features.
+.PP
+A marked line may be conditionally rejected based on a string match:
+.br
+	%=/\fIstr1\fP/\fIstr2\fP/
+.br
+If the expansion of \fIstr1\fP is different from the expansion of \fIstr2\fP
+the marked line is rejected.  Likewise:
+.br
+	%!/\fIstr1\fP/\fIstr2\fP/
+.br
+rejects the marked line if the expansions are the same.
+These forms all expand to the empty string, which is arguably a botch.
+The ``/'' may be replaced by any character to avoid a character in
+either \fIstr1\fP or \fIstr2\fP.
+.PP
+Characters may be extracted from the subject file (%f).
+The form (square brackets mean optional below):
+.br
+	%# [\fIcount\fP] [@\fIseek\fP] \fIfmt\fP [\fIsize\fP]
+.br
+expands to the concatenation of \fIcount\fP records read from the
+subject file at position \fIseek\fP converted via the printf(3s)
+format \fIfmt\fP.
+The records are optionally taken to be of size byte, word, int or long
+via a key (b, w, i, l).
+The lower case \fIsize\fP specifiers are unsigned, the upper case
+variants are considered signed.
+.PP
+In a similar fashion the interpreter field may be extracted from
+any file loaded with the \*(lq#!\*(rq magic number.
+The form
+.br
+	%#!
+.br
+expands to the interpreter provided after the #!.
+In other cases just the basename of the interpreter is needed,
+in which case the form
+.br
+	%#/
+.br
+or
+.br
+	%[#!/$]
+.br
+which expands to that basename.  In either case if the current file
+is not loaded with #! the expansion is rejected.
+.PP
+In some cases the best action to take it is to give up, for example
+when an incorrect magic number is discovered:
+.br
+	%.
+.br
+rejects the current line and file.
+No further lines will be read from this template file, template list
+or source file.
+.PP
+When an extender is clearly overloaded the
+template will have to decide which of several alternatives
+a file represents and take then correct actions.
+For example some files which end in ``.C'' are \fIcompacted\fP and
+some are C++ source files.
+The template may check the magic number on the file with:
+.br
+	%=/1fff/%#%04xw/...
+.br
+which will only pass if the target file is in fact compacted, then
+the template may transfer control to another template which is
+designed just for compacted data:
+.br
+	%=/1fff/%#%04xw/%g%~/is-compact
+.br
+or may reject the current expansion with \fB%^\fP.  This is most
+useful when expanding the template options, or in a \fImapfile\fP.
+.PP
+The %<\fImapfile\fP> expression first expands the \fImapfile\fP
+subexpression, as it would any other expansion.  The \fBmk\fP
+opens the resulting filename (read-only).  The file must have
+a strict format, one of three lines are allowed (in any order):
+.TP
+blank lines
+These are ignored, as vertical white space.
+.TP
+# comments
+Are ignored (so this file can have marked lines).
+.TP
+\fItemplate\fP  \fIRE\fP  \fIresult\fP
+All three expressions are expanded in turn.  If any fail the
+line is rejected (subsequent lines in the file are examined).
+If all expand, and the expansion of the \fItemplate\fP is
+matched by the expansion of the \fIRE\fP, then the \fIresult\fP
+is returned.
+.br
+The \fIresult\fP is expanded in a context where %0, %1, %2.. %9
+are replaced with the matches for the \e(...\e) expressions in
+the regular expression (provided by the match operation of \fIRE\fP on \fItemplate\fP).
+
+.SH FAILURE
+.PP
+Some markers can detect that they have failed and that the user might
+want to take corrective or special action in this case.
+The convention in such cases is to call the shell form:
+.sp 1
+	${false-false}
+.sp 1
+to allow the user a ``hook'' with which to trap the error.
+.PP
+A single command may be rejected with
+.br
+	%^
+.br
+which just continues at next available marked command (without rejecting
+the whole file) or running a command.
+In the interactive mode this is the "find the next match" (`f') option.
+This is also used to reset the counter \fB\-l\fP uses to limit the number
+of lines searched for marked commands.  By placing a comment like:
+.br
+	// $*(*): %^
+.br
+We can reset the number of lines to search as often as needed to search
+the entire file.  There is no other way to adapt or reset that counter
+without spawning a new instance of \fImk\fP with an explicit \fB\-l\fP
+option.
+.PP
+Another kind of `failure' is running out of commands to try.
+The last possible action in a template should be marked with:
+.br
+	%;
+.br
+which is called the `last chance' escape.  This instructs the
+driver software to stop searching when this line is selected,
+we are done (even under \fB\-a\fP or \fB\-A\fP).
+This allows the Info target to output multiple lines for
+a file, then stop before it falls into lines which shouldn't ever match.
+
+.SH "HERE DOCUMENTS"
+In the best UNIX tradition \fImk\fP can "eat its own dog food".  That is
+to say it can create a file to be processed recursively via \fImk\fP.
+The \fB%J\fP token causes \fImk\fP to create a temporary file in much
+the same way the shell does for here documents (e.g. via \fB<<\fP redirection).
+Lines from the current file (or template) are copied to the file until a
+marked line that matches the present \fImarker\fP and \fIsubmarker\fP are
+found.  These lines are \fBnot\fP expanded, and are made available
+to the processor via the \fB%j\fP expander (which expands to the
+name of said temporary file).
+.PP
+The marked line which terminated the in-line data must contain the \fB%j\fP
+token on it someplace (even after the \fB$$\fP token).
+It may contain \fB%J\fP to start another here document.  The line is also
+inspected as the next possible command.
+.PP
+There are two additional tokens which are of use here, \fB%$\fP and \fB%?\fP.
+To access any \fIdata\fP after the \fB$$\fP token use \fB%$\fP.  Note
+that this token changes values for each marked line and for the
+use of \fB%J\fP.  After each \fB%J\fP any use of \fB%$\fP refers to
+data presented after the \fB$$\fP on the marked line which
+terminated the here document, not the one that started the here document.
+.PP
+In much the same way as \fB%$\fP presents data, \fI%?\fP presents the
+text after the closing \fB%j\fP.  It also moves with each use of \fB%J\fP.
+.PP
+And, yes, you can have more than one here document in an expansion.
+The numeric parameters (%1, %2, %3...) expand to the active here document
+files, %1 to the first, %2 to the second and so on.  It is possible
+to rename, remove, or otherwise process here documents, they are only
+removed at the end of each file's processing.
+.PP
+The contents of a here document may be filtered with \fB%|\fP/\fIleader\fP/:
+the expansion of the \fIleader\fP expression is removed from the beginning
+of each line in the here document text.  Usually this removes the comment
+symbol from each line (viz. with \fB%|/#/\fP).  This stays in effect until
+the end of the file unless reset.
+
+.SH EXAMPLES
+.TP
+$\&All: %b %o \-mCompile *.c
+Compile all the C source files in this directory using their own
+rules.
+.TP
+$\e&Compile: ...
+A trick to avoid letting mk see a marked line in an examples
+section of a manual page.
+.TP
+$\&Compile(debug): ${cc\-cc} ${cc_debug-\-g} \-o %F \-DDEBUG %f \-lm
+This line will match only if \-\fBd\fPdebug or \-\fBd\fP'*' were given.
+.TP
+$\&Compile(*): ${cc\-cc} ${cc_debug-\-O} \-o %F %f \-lm
+This line will match any default request.
+.TP
+$\&*(*): echo \'%B: %m: unknown marker\' 1>&2 && ${false\-false}
+This marked line will output an error message for any marker, and fail.
+.TP
+$\&*(*): %!/c5a3/%#%04xw/ %.  # wrong magic number
+Detect a bad magic number on a file, reject the remainder of this
+template.
+.TP
+$\&Info(*): ${echo-echo} "%f: loaded with '%#!'"
+If the file is loaded with #!\fIinterpreter\fP, this command
+will output the \fIinterpreter\fP.
+.TP
+$\&Compile(*): %hCc
+Chain the `Compile' marker to `Cc' for this file.
+.SH BUGS
+.PP
+Use of \fIrcs\fP(1) keywords as markers
+(Author, Date, Header, Id, Locker, Log, RCSfile, Revision, Source, State)
+might give unexpected results.
+.SH BUGS
+The last chance escape is not installed in all the templates that need it.
+.SH AUTHORS
+Kevin Braunsdorf, NonPlayer Character Guild (mk@ksb.npcguild.org)
+.br
+S. McGeady, Intel, Inc.
+.SH "SEE ALSO"
+mk(1l), sh(1),
+printf(3), expander.html [in the source to mk]

@@ -1,0 +1,11 @@
+# $Id: README,v 3.0 1992/04/22 14:30:46 ksb Stab $
+
+ This files in this directory are for the creation of a "libtomb".  What
+happens is that we create libtomb.a, which contains the functions "open",
+"creat", "unlink", "rename", and "truncate".  These functions are the ones
+user's of this library link their programs to, and they fork and exec the
+setuid "entomb" program.
+
+ The tricky part is getting the functions to call the real libc functions
+after they fork when the time comes to actually unlink, etc. the file in
+question.  So we use syscall.

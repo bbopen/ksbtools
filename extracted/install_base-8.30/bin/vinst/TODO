@@ -1,0 +1,59 @@
+# $Id: TODO,v 1.9 2004/01/20 14:20:14 ksb Exp $
+
+We could make the "Hey you use RCS here!" code much better:
+	look for "target,v" as well as "RCS/"
+	look for "s.target" as well as "SCCS/"
+	look for "CVS" in parent dirs
+When we id the revcontrol process as it for a lock on the file,
+run the editor on the file, diff the results (locally), then
+ask if they want to commit or backout (unlock in both cases).
+Maybe we can just do the name checks ... hehehe.
+
+Another case is the file that was installed with install from a source
+that should be used to update it, like the master source:
+	look for $\Id:...$ $\Source:...$ or $\Header: $
+	look for our own token, like %_no_vinst_allowed_%?
+If we find one of these confirm that they know what they are doing,
+ask them the remove the offending token, and reconfirm is the token
+is still in the file after they edit it.
+
+
+We should do vipw.  Really.  If called "vipw" we could force a
+locking option with -L/etc/ptmp to lock the ptmp file, and (if needed,
+a -Arule to run an op action to make the database file.  (If installus
+or install succeeds.)
+
+Se we'd need:
+	-Lfile	build a link-lock to the target file
+	-Arule	run this op action only for a clean install via "op rule"
+	-F	obtain a flock on the file
+	-D	obtain a flock on the directory
+and
+	basename "vipw" "-L/etc/ptmp -F -Amkpwdb /etc/passwd"
+or some such.  That'd be way cool.
+
+Maybe install(!) should take -Aop-rule, then insallus could force it
+and we'd be set.
+	-Arule	run this op action only for a clean install via "op rule"
+
+Additional bonus: simple ksh aliases like
+	vialias="vinstus -Anewaliases /etc/aliases"
+would let Jane Admin update /etc/aliases as herself.  She might not
+have to su all day.
+
+Issues: while you might have installus on the file you might not be
+able to link(2) the lock to it.  Sigh.  This is not the power I wanted,
+but it is so close I might do it anyway.  Mostly because vipw is so
+useless to Joe User.
+
+
+Accept (at the file doesn't exist menu) a 't' for a "Seclect a template"
+and default to some file with the same extension in a path like
+".:$HOME/lib/vinst:/usr/share/skel:/usr/local/lib/vinst" maybe.
+
+Generate better templates for any non-existant files -- even better if
+the Customer had some environment variable or option set to have a hook
+to control this.  Something like "mk" but w/o an existing file?
+
+--
+ksb, Jan 2004

@@ -1,0 +1,20 @@
+#!/bin/sh
+# $Id: preend.init,v 3.1 2000/07/31 14:20:16 ksb Exp $
+# Solaris startup script for /etc/init.d/preend
+# suggested S/K level is rc2.d/S79preend and None (we take a TERM)
+
+case ${1-help} in
+start)
+	/usr/local/etc/preend -p
+	;;
+stop)
+	/usr/proc/bin/ptree root | grep '[p]reend' |
+		awk '{ print "kill -TERM " $1}' |sh 
+	;;
+help)
+	echo "`basename ${0}`: usage {start|stop|version}"
+	;;
+version)
+	echo '$Id: preend.init,v 3.1 2000/07/31 14:20:16 ksb Exp $'
+	;;
+esac

@@ -1,0 +1,172 @@
+.\" $Id: unrm.man,v 3.2 2010/07/09 14:19:14 ksb Exp $
+.\" by Matthew Bradburn, and Kevin Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: ${groff-groff} -Tascii -man %f | ${PAGER:-less}
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man1/unrm.1
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]1/unrm.1*
+.TH UNRM 1L PUCC
+.SH NAME
+unrm - restore files
+.SH SYNOPSIS
+\fBunrm\fP [-\fBVafhlv\fP] [-\fBc\fIcommand\fP] [\fIfiles\fP]
+.SH DESCRIPTION
+\fIUnrm\fP(1L) may be used to restore files that have been destroyed by
+commands such as \fIrm\fP(1), \fImv\fP(1), \fIcp\fP(1), and \fIentomb\fP(8l).
+Normally, when a file is destroyed by \fIrm\fP, \fImv\fP, \fIcp\fP, or
+\fIentomb\fP, it is copied to
+a special directory called a "tomb."  A file may reside in a tomb for
+at most 24 hours, after which it may be completely removed from the
+system by \fIpreend\fP(8L) (see \fIpreend\fP for more information).
+
+.PP
+It is easy to restore files that have been entombed.  First, issue the command
+"unrm -l" to get a list of the files that are currently in the tomb.
+To restore a particular file, issue the command "unrm \fIfile\fP."
+\fIFile\fP will be moved from the tomb to the
+current working directory and should appear
+exactly as it was just before it was entombed (with the possible exception
+that \fIgroup\fP and \fIother\fP permissions for the file may be turned off).
+It is
+possible to restore more than one file at a time.  See the \-a option, and
+the \fBEXAMPLES\fP section below.
+
+.PP
+When invoked without arguments, \fIunrm\fP enters an interactive mode.
+While in this mode, the \fIlist\fP, \fIpurge\fP, \fIrestore\fP, and
+\fIshow\fP commands perform file name generation (\*(lqglobbing\*(rq)
+similar to that of \fIsh\fP(1).  Options from the \fBUNRM\fP environment
+variable are parsed as well, so more command line arguments can be given there.
+
+.PP
+If you wish to restore a file that is no longer in the tomb, or was for
+some reason not entombed, you may use \fIflost\fP(1L) to request that a file
+be retrieved from backup tape.  This approach may be successful if the file
+existed for at least 24 hours before being deleted, and has been deleted for
+no more than two weeks.  \fIFlost\fP will ask you a series of questions about
+how and when the file was deleted.  Giving specific information in response
+to these questions makes it more likely that the file will be recovered.
+See the \fIflost\fP manual page for more information.
+
+.PP
+The environment variable \fBENTOMB\fP provides the user with flexibility to
+turn entombing on and off, and to decide what types of files are or are not
+entombed.  See the \fIentomb\fP manual page for more information.
+
+.PP
+Regarding security, users may not access a tomb except under careful
+control of programs such as \fIunrm\fP and \fIentomb\fP.  Additionally, files
+are entombed for their owners, not for the person who entombs them.
+
+.PP
+If entombing takes place across untrusted networks, entombed files may
+still count against a user's quota until such a time that \fIpreend\fP(8L)
+can \fIchown\fP the files to "charon."
+See the \fIentomb\fP and \fIpreend\fP manual pages for more information.
+
+.PP
+\fIUnrm\fP supports \fBNFS\fP mounted tombs, but only if the mount point
+is visible.  Since \fIunrm\fP runs set-GID, \fBUID/GID\fP mappings may cause
+\fIunrm\fP to fail over \fBNFS\fP.
+
+.SH OPTIONS
+.TP
+.BI \-a
+Restore all files in the invoker's tomb.
+.TP
+.BI \-c \ command
+Execute \fIcommand\fP.  If this option is given, \fIunrm\fP
+will not enter interactive mode, even if no \fIfile\fP arguments are given.
+Commands with options must be quoted or they will not be parsed correctly.
+\fICommand\fP should be one of the following:
+.br
+
+.RS 5
+.TP
+.B bye
+Exit unrm.
+.TP
+.BI cd \ dir
+Change unrm's working directory to \fIdir\fP.
+.TP
+.B help
+Print help information.
+.TP
+.B list
+List the contents of the tomb.
+.TP
+.BI ls \ dir
+List the contents of the directory \fIdir\fP.
+.TP
+.BI purge \ files
+Remove \fIfiles\fP from the tomb.
+.TP
+.B pwd
+Print the path to the working directory.
+.TP
+.B quit
+Exit unrm.
+.TP
+.BI restore \ files
+Restore \fIfiles\fP from the tomb to the working directory.
+.TP
+.BI show \ files
+Invoke the user's pager on the entombed \fIfiles\fP.
+.TP
+.B tomb
+Show what tombs are used/available.
+.TP
+.B verbose
+Toggle verbosity.
+.TP
+.B "?"
+Print help information.
+.RE
+
+.TP
+.BI \-f
+Allow restored files to overwrite existing ones without requesting confirmation.
+.TP
+.BI \-h
+Print a help message.
+.TP
+.BI \-l
+List files in the tomb.
+.TP
+.BI \-V
+Show version information.
+.TP
+.BI \-v
+Be less verbose.
+
+.SH EXAMPLES
+.PP
+To see the path names of tombs searched:
+.IP
+unrm -c tomb
+.PP
+To see a listing of the files in all the tombs:
+.IP
+unrm -l
+.PP
+To view an entombed file:
+.IP
+unrm -c 'show \fIfile\fP\'
+.PP
+To restore an entombed file named \fIfoo\fP:
+.IP
+unrm foo
+
+.SH BUGS
+\fIUnrm\fP's idea of file name expansion is not exactly like \fIsh\fP's --
+in \fIunrm\fP, `*' matches file names beginning with dot (`.').
+.SH AUTHOR
+Matthew Bradburn
+.br
+Greg Becker
+.br
+KS Braunsdorf
+.br
+NPCGuild.org
+.SH "SEE ALSO"
+cp(1), entomb(8l), environ(7), flost(1L), libtomb(3x), mv(1), preend(8L),
+sh(1), rm(1)

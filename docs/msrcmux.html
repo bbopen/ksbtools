@@ -1,0 +1,663 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>msrcmux -- self-serve configuration management reponder</TITLE>
+<link rel="stylesheet" type="text/css" href="https://carrera.databits.net/~ksb/msrc/css/code.css" />
+</HEAD> <BODY>
+<h1 id="known">To understand this document</h1>
+
+This document describes one of the two master source platform pull services.
+The other is
+<A href="../../sbin/mpull/mpull.html"><code class="sh">mpull</code></A>.
+If you want the client to do the configuration of the shadow copy,
+then you want to read about that client.
+If you need to use remote meta-information to configure the shadow copy,
+then you are in the right place.
+
+<p>
+If you have never read the
+<A href="../../../Pkgs/msrc_base/msrc.html">msrc primer</A>, please
+read it before you continue with this document.
+
+<p>
+To install this service you <strong>must</strong> be able to edit
+system configuration files (viz. <code class="path">/etc/inetd.conf</code>,
+<code class="path">/etc/tcpmux.conf</code>, or
+<code class="path">/etc/xinetd.d/msrcmux.conf</code>).
+Then you must be able to restart (reload) the apropos service.
+<p>
+Most implementations of <code class="sh">inetd</code> had an implementation
+of <code class="sh">tcpmux</code> included, until recently.  Since some
+versions of <code class="sh">xinetd</code> do not include one, so I coded
+a stand-alone version that you may configure to support local services.
+See <A href="../../libexec/tcpmux/tcpmux.html"><code>tcpmux</code></A>,
+if your local version of <code class="sh">inetd</code> doesn't internally
+support the RFC1078 mux.
+
+<h1 id="what">What is <code class="sh">msrcmux</code>?</h1>
+
+The <A href="/~ksb/cgi-bin/manpage.cgi?msrcmux">manual page</A> describes
+<code class="sh">msrcmux</code> as offering platform archives of
+layer 2 (product) master source directories.
+This allows recognized clients to request the configured shadow of
+a specific source directory for download, via an anonymous data service.
+The client must have an IP address that reverse-maps to a hostname
+contained in the meta-configuration data on the server, and it must
+specify a legitimate path to the product directory.
+
+<p>
+This sounds like it could be a security issue, but there are filters
+one can put in to mitigate such risks.  More about that later, because
+putting a cipher or other checks in makes this really hard to debug.
+So please start with clear-text <code class="sh">tar</code> files,
+then compress them, then encrypt them, only as needed.
+
+<h2 id="ask">When would a client connect to <code>msrcmux</code>?</h2>
+
+Some people <strong>push</strong> updated (or new) configuration files to
+the instances they manage.  Some setup <strong>pull</strong> structures which
+allow their instances to `self configure' by requesting updates from the
+(local) configuration management service.  I am not an advocate for either
+method.  I push when needed, and pull when needed.  Both work and scale
+just the same, if you engineer the structure well.  It is clear to me
+that you need a push to setup a pull, and need a pull to assure that
+all the pushes assumed to be installed were, or still are.  See
+<A href="../../libexec/hostlint/hostlint.html"><code>hostlint</code></A>.
+
+<p>
+Clients connect to <code class="sh">msrcmux</code> to pull updated
+configuration data from their configuration management server.
+In the <code class="sh">msrcmux</code> case, that data comes only from
+master source directories which are under a specific directory hierarchy.
+The service may also limit the meta-configuration files available to
+the clients by directory.  These limits are intended to allow enough
+restriction to assure no private data radiates outside known clients,
+while still allowing delivery of useful updates.
+
+<p>
+That is a fine line.  Allowing global client access to your
+<acronym title="concurrent versions system">CVS</acronym> repository is
+a much larger data-leak risk.
+
+<p>
+As for the specific <strong>time</strong> a client would request any
+given update, that is an engineering issue.  I will say that having
+a large population of clients request services at exactly the same
+second is a <em class="error">bad idea</em>.  It is far better to
+configure a window for each client (or groups of clients) to assure
+they do not all pick the same time to pounce the service.
+<p>
+It is also a good idea to provide locally cached copies of
+the master source to reduce network latency.
+Disk space is cheap and <code class="sh">rsync</code> is really nifty.
+That is <strong>not</strong> to say that every client should cache all parts of
+your source hierarchy: set a local policy that works for you.
+
+<h2 id="request">How do clients connect to <code>msrcmux</code>?</h2>
+
+Each client connects with <code class="sh">muxcat</code>, see
+<A href="/~ksb/cgi-bin/manpage.cgi?muxcat&amp;1l">muxcat(1l)</A>.
+There is a recipe file which pulls the whole build-chain
+(<code class="markup">msrc_base</code>,
+<code class="markup">install_base</code>,
+and all the level 2 packages) into the home directory of a mortal
+login.  At <code class="markup">npcguild.org</code> you might get it from
+<A href="/msrc/opt/ksb/home/home.html">
+<code class="path">msrc/opt/ksb/home/</code></A>, but your
+local site policy may have a custom location.
+
+<h2 id="reverse">What if the reverse lookup for my hosts doesn't work?</h2>
+
+This is actually quite common, so I fixed it.  Provide a
+<code class="param">reverse</code> map file under <code class="opt">-R</code>
+on the <code class="sh">msrcmux</code> command-line.  This forces the
+mux to call <code class="sh">mk</code> to select a shell command from
+the <code class="param">reverse</code> file to map the host to
+the correct name in the <code class="param">config</code> file:
+<blockquote class="file"><pre><code >mk -s -l0 -m</code><code class="param">hostname</code> <code >-s</code><code class="param">IP-address</code><code > -DCONFIG=</code><code class="param">config</code> <code class="param">reverse</code></pre></blockquote>
+Note that the <code class="param">hostname</code> will be
+<code class="markup">@</code> for unmapped IP addresses.
+<p>
+If the <code class="param">reverse</code> specified on the command line is
+dot (<code class="markup">.</code>), then the configuration file is
+searched for a matching marked line.  All the normal <code class="sh">mk</code>
+judo works: build a script to find the name or match it from a map file
+of regular expressions, or chain to some other program.  The client
+connection is actually still open in <code class="param">stdin</code>, but
+this is not a good way to augment the protocol, really.
+
+<h3 id="reversemap">Example <code class="param">reverse</code> map file</h3>
+
+This <code class="param">reverse</code> file maps the loop-back address to
+our hostname, 2 RFC 1918 addresses to local hostnames, and every other
+hostname to what the local resolver returns (in lowercase).
+<blockquote class="file"><pre><code ># $Id: <i>....</i>
+# $*(127.0.0.1): hostname
+# $@(10.5.34.83): ${echo:-echo} predator.example.com
+# $@(10.5.34.144): ${echo:-echo} sulaco.example.com
+# $@(10.5.34.233): ${echo:-echo} nostomo.example.com
+# $@(*): <em class="error">${false:-false} "unmapped reverse for an unknown IP"</em>
+# $*(*): ${echo:-echo} %M</code></pre></blockquote>
+The unmapped reverse for an unknown IP line should issue some warning to
+the client, and log the failure to trigger the remeditation of
+the client's lack of a reverse mapping, policy configuration, and owner.
+Moreover, use this to find the party trying to pull configuration data from
+your configuration management server to reconnoiter your hosts.
+<p>
+This is a <strong>clear opportunity</strong> to close-the-loop on
+many levels.  Don't let it slip away.
+
+<h3 id="example">Example services</h3>
+
+On my workstation I run this service from <code class="path">/etc/tcpmux.conf</code>
+<blockquote class="file"><pre><code ># supply test hosts with msrc configurations
+<em class="new">msrcmux</em> stream tcp nowait <em class="new">bob /usr/local/libexec/msrcmux msrcmux <A href="#limit">-Zmux.zf</A></em> <em class="error">/usr/msrc</em></code></pre></blockquote>
+The login <code class="markup">bob</code> is the builder of all the
+configured <code class="sh">tar</code> archives.  Bob can write in
+<code class="path">/tmp</code> and has a home directory that is empty
+and owned by <code class="markup">source.source</code>, not
+<code class="markup">bob</code>.  The ownership prevents any build from
+writing in $HOME, but the group (<code class="markup">source</code>)
+allows read access to things like common shell configuration files.
+
+<p>
+My local <code class="sh">rsync</code>'d copy of the master source is
+kept where I have space to do it (under <code class="path">/home/local</code>).
+That is really invisible to clients, since they have no visibility into
+that.  But it does set the default <code class="make">INTO</code> to
+<code class="path">/home/local/src</code> if it is not set in any
+master recipe file.  Since I always set <code class="make">INTO</code> that's never happens.
+
+I could use a symbolic link from <code class="path">/usr/msrc</code> to
+<code class="path">/home/local/msrc</code> to trick the makefile
+code.
+
+<p id="xinetd">
+If you run a platform that uses <code class="sh">xinetd</code> then
+you'll need this stanza:
+<blockquote class="file"><pre><code > # This is the configuration of the xinetd tcpmux service.
+service msrcmux
+{
+	disable      = no
+	id           = tcpmux-msrcmux
+	type         = TCPMUX <em class="error">UNLISTED</em>
+	wait         = no
+	socket_type  = stream
+	protocol     = tcp
+	env          = PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/bin:/usr/bin
+	user         = <em class="error">bob</em>
+	group        = <em class="error">source</em>
+	server       = /usr/local/libexec/msrcmux
+	server_args  = -R /usr/local/lib/<em class="error">policy</em>/dmz.rev -Z mux.zf <em class="error">/usr/msrc</em>
+}</code></pre></blockquote>
+Install that file (replacing any red text in accordance with local site policy).
+Also enable <code class="markup">tcpmux-server</code>.  Then
+<code class="markup">reload</code> <code class="sh">xinetd</code> to
+activate the new service.
+
+<h3 id="building">Building the extracted directory</h3>
+
+A client host pulls the tar archive via the generic
+<code class="sh">muxcat</code> client, see
+<A href="../../bin/muxcat/"><code class="sh">muxcat</code></A>.
+For example:
+<blockquote class="file"><pre><code >$ <em class="new">muxcat msrc.rocks.example.com msrcmux local/bin/oue >/tmp/$$.tar</em>
+$ <em class="new">file /tmp/$$.tar</em>
+/tmp/2063.tar: POSIX tar archive</code></pre></blockquote>
+Then builds it as a platform source directory:
+<blockquote class="file"><pre><code >$ <em class="new">D=`mktemp -d /tmp/${USER:-${LOGIN:-nobody}}XXXXXX`</em>
+$ <em class="new">cd $D</em>
+$ <em class="new">tar xvf /tmp/$$.tar</em>
+x ./
+x ./ITO.spec
+x ./machine.h
+x ./README
+x ./TODO
+x ./oue.html
+x ./oue.m
+x ./oue.man
+x ./ouereg.sh
+x ./Makefile
+$ <em class="new">make</em>
+explode -s dicer.c
+mkcmd oue.m
+(cmp -s prog.c main.c || (cp prog.c main.c &amp;&amp; echo main.c updated))
+main.c updated
+(cmp -s prog.h main.h || (cp prog.h main.h &amp;&amp; echo main.h updated))
+main.h updated
+rm -f prog.[ch]
+explode -s dicer.h
+/usr/bin/gcc  -DFREEBSD -I/usr/local/include -o oue main.c  -L/usr/local/lib -lgdbm
+$ <em class="new">./oue -V</em>
+oue: $Id: <i>...</i>
+...</code></pre></blockquote>
+To clean up after the build:
+<blockquote class="file"><pre><code >$ <em class="new">cd ..</em>
+$ <em class="new">rm -rf $D $$.tar</em></code></pre></blockquote>
+
+<p>
+This allows a client to pull any number of archives, build them, install
+them and leave no local debris (other than the updated configuration and
+any <code class="sh">install</code> backup files).  Thus no large
+<code class="path">/usr/src/local</code> spool is required for this
+model.
+
+<p>
+However this model also doesn't support building layer 3 packages.
+Those must be converted to some binary package format.
+
+<h2 id="map">Building a map file for hosts that don't reverse correctly</h2>
+
+It is better to map the reverse of a host to the
+<acronym title="fully qualified domain name">FQDN</acronym> of the host.
+Sometimes for other network topology reasons the name used in
+<code class="path">site.cf</code> is an alias for 1 interface,
+rather than the FQDN that might map to multiple network interfaces.
+In that case the reverse name will not match the forward used by
+<code class="param">site.cf</code>.
+
+<p>
+These are easy to find.  For each IP, if the name used forwards to and maps
+back to the same name we are good.  Otherwise we need to build a map
+from the name we got to the name we have:
+<blockquote class="file"><pre><code >#!/usr/bin/env ksh
+# $Id: <i>...</i>
+# Build a prototype reverse file from an hxmd configuration file. (ksb)
+hxmd -C${1:-<em class="error">site.cf</em>} 'echo HOST $(dig HOST +short)' |
+xapply -f 'Rev=$(dig -x  %[1 2] +short |sed -e s/\\.\$//)
+	: ${Rev:=$(host %[1 2] |sed -ne "s/\\.\$//" -e "s/.*pointer //p")}
+	: ${Rev:=@}
+	[ _"$Rev" = _%[1 1] ] || echo "# \$$Rev(%[1 2]): \${echo:-echo} %[1 1]"' -</code></pre></blockquote>
+<p>
+That spell builds a new reverse map file.  Make the map file depend on
+the configuration file in a <code class="sh">make</code> recipe and
+you are in business.  You may have to add some catch-all lines at the
+end to map unknown clients.  For example:
+<blockquote class="file"><pre><code ># map unknown clients to their reverse name (lower cased)
+# $@(*): ${echo:-echo} "IP %d: not authorized" 1>&amp;2 ; ${false:-false}
+# $*(*): ${echo:-echo} %M</code></pre></blockquote>
+
+<h2 id="default">Default values provide useful clues</h2>
+Some clues are built into the stock structure via 2 files in
+<code class="sh">hxmd</code>'s library <code class="path">auto.cf</code> and
+<code class="path">mux.zf</code>.
+
+<p>
+We'll talk about <code class="path">mux.zf</code> first.
+Here is an example from my installation:
+<blockquote class="file"><pre><code ># $Id: mux.zf<i>...</i>
+# Zero configuration file for msrcmux pull actions.			(ksb)
+#
+# Provided in the RFC1078 service name:
+MSRCMUX=`msrcmux'
+# Clients access this service by this CNAME, A record, or SRV:
+MSRCMUX_MPS=`msrc.<em class="error">example.com</em>'
+# We were provisioned with this configuration file:
+MSRCMUX_CFG=`HXMD_OPT_C'</code></pre></blockquote>
+
+<p>
+That zero-configuration file sets the attribute
+<code class="attr">MSRCMUX</code> to the name of the (default)
+RFC1078 service, "msrcmux".  This allows checks for
+<code class="opt">-BMSRCMUX</code> or
+<code class="markup">ifdef</code>-markup (based on that macro) to allow any
+master source level 2 directory to <strong>modify its output</strong> when
+called from our <code class="sh">msrcmux</code> service.
+
+<p>
+Since it is a zero configuration file the values are
+<strong>defaults</strong>, and any host definition might provide an
+explicit value to replace them.
+
+<h2 id="access">Limit access to specific directories</h2>
+
+A client is allowed to pull any directory if they are in any
+valid configuration file, and their IP reverses to a known hot.
+Any directory might include an <code class="path">Remote.hxmd</code>
+(aka. <code class="path">Msrcmux.hxmd</code>) which limits
+access to hosts that do not (or do) have a specific attribute.
+
+<p>
+One might wish to limit access to files which carry protected information
+(<code class="sh">ssh</code> keys, passwords,
+<acronym title="secure socket layer">SSL</acronym> certificates, etc.),
+which would normally be pushed over <code class="sh">ssh</code>.
+To implement that policy, let's use the <code class="attr">MSRCMUX</code> from
+the zero configuration file (above) to flag a general limit for pull-clients.
+Then for each product which should <strong>not</strong> allow such clients
+may include the lines in <code class="path">Remote.hxmd</code>:
+<blockquote class="file"><pre><code ># Never allow msrcmux client pull access because <i>...</i>
+# See mux.zf in hxmd's lib.
+-B!MSRCMUX</code></pre></blockquote>
+
+<p>
+This clearly documents the reason for the limit in each directory, and
+the location of the attribute definition.
+The provision spell to make that happen a <code class="opt">-Z</code>
+option to <code class="sh">msrcmux</code> specifies the file
+<code class="path">mux.zf</code> which is built in
+<code class="sh">hxmd</code>'s library directory by
+<code class="markup">msrc_base</code>.  You are welcome to
+build one which better fits your needs.
+This could be specified by local site policy: for example, local
+policy might require an attribute name like
+<code class="attr">MSRCMUX_ACCESS_REQUEST</code>.
+
+<p>
+A local example of this is the <code class="path">hostlint-policy</code>
+directory which only allows hosts which have the
+<code class="markup">policycache</code> <code class="attr">SERVICE</code>
+defined to pull that policy.  There is no restriction on
+<code class="sh">rsync</code> access to that directory, so clients could
+pull the directory an run <code class="sh">mmsrc</code> to install it.
+The limit is in-place to prevent distribution of a policy directory to
+hosts that might keep an out-of-date copy: by limiting the places we
+have to update the policy, to assure a more timely update for all.
+
+<h3 id="using">Using the <code class="path">auto.cf</code> cycle</h3>
+
+The <code class="path">auto.cf</code> file then adds attribute assignments for
+some macros that might allow the client to reconnect (as listed in the
+zero-configuration file above, <code class="path">mux.zf</code> above):
+<dl>
+<dt><code class="attr">MSRCMUX</code>
+<dd>
+The service polled.
+<dt><code class="attr">MSRCMUX_MPS</code>
+<dd>
+The <acronym title="canonical name">CNAME</acronym> that the service wants
+clients to connect to, or the name of the host when none are provided.
+<dt><code class="attr">MSRCMUX_CFG</code>
+<dd>
+The configuration file selected for the host.
+</dl>
+These automate pull updates cycle by intent, and also allow an
+update to change (the enclosing loop) for the next update cycle by
+changing the name of the host to poll.
+This requires the current service to advertise a new
+<acronym title="canonical name">CNAME</acronym> which may be moved to
+the new service after at least 1 whole update cycle.
+Then a flip of the CNAME to atomically move the update record.
+
+<h3 id="display">Display the configuration of a client</h3>
+
+This is a really good trick.  It is much easier to debug issues with
+a client if you can see the <code class="sh">hxmd</code> configuration
+data the server is using for your client.  But it seems like it might
+be hard to fetch that data in a clear presentation, since it might be
+drawn from any number of configuration files.
+
+<p>
+But with <code class="sh">msrcmux</code> it is really not as hard
+as you'd think.  It does have a lot of levels of quote and markup,
+but then again think about who coded it.  There are 5 files needed
+to construct the output:
+
+<p>
+A <code class="path">Makefile</code> to drive the data collection:
+<blockquote class="file"><pre><code ># $Id: Makefile,v <i>...</i>
+# Reflect our configuration back to a pull client, as best we can. (ksb)
+INTO=/usr/src/opt/ksb/which
+
+GEN=
+SOURCE=Makefile Makefile.host README
+
+source: ${SOURCE} ${GEN}
+
+FRC:
+
+# msrc hook
+__msrc: source</code></pre></blockquote>
+
+<p>
+An <code class="sh">hxmd</code> cache directory to capture the output from
+an <code class="sh">m4</code> <code class="markup">dumpdef</code> call.
+We'll call the directory <code class="path">defs.host</code> so
+<code class="sh">msrc</code> will add it to <code class="make">MAP</code>.
+<p>
+For that directory we need a <code class="path">defs.host/Cache.m4</code>
+recipe file:
+<blockquote class="file"><pre><code >`# $Id: Cache.m4,v <i>...</i>
+# Record all the m4 definitions we know about for this host.	(ksb)
+'changequote([,])dnl
+[Q='
+O=`
+]changequote(`,')
+`all: suppress
+	@TF=${O}mktemp $${TEMPDIR:-/var/tmp}/defXXXXXX"${O} &amp;&amp;\
+	grep -v ${Q}^#${Q} suppress |oue -D$$TF >/dev/null &amp;&amp;\
+	efmd'dnl
+ifdef(`HXMD_OPT_C',`` -C 'HXMD_OPT_C')`'dnl
+ifdef(`HXMD_OPT_X',`` -X 'HXMD_OPT_X')`'dnl
+ifdef(`HXMD_OPT_Z',`` -Z 'HXMD_OPT_Z')`'dnl
+` -G 'HOST` -F0 dump.host 2>&amp;1 |oue -k ${Q}%[1 1]${Q} -R ${Q}%1${Q} -I$$TF |\
+	grep . ;\
+	rm -f $$TF
+
+defs: all
+
+HOST: all
+'dnl</code></pre></blockquote>
+<p>
+Which depends on a file <code class="path">defs.host/suppress</code>.  This file
+removes any macros from the <code class="markup">dumpdef</code> output
+that either is noise, or should never be made public.
+<blockquote class="file"><pre><code ># $Id: suppress,v <i>...</i>
+`builtin'
+`sysval'
+`dnl'
+`dumpdef'
+`indir'
+`paste'
+`divnum'
+`m4wrap'
+`substr'
+`maketemp'
+`__line__'
+`expr'
+`undivert'
+`len'
+`include'
+`divert'
+`__file__'
+`undefine'
+`regexp'
+`shift'
+`index'
+`decr'
+`spaste'
+`pushdef'
+`translit'
+`define'
+`popdef'
+`patsubst'
+`errprint'
+`traceon'
+`ifdef'
+`incr'
+`sinclude'
+`changequote'
+`traceoff'
+`esyscmd'
+`eval'
+`unix'
+`m4exit'
+`changecom'
+`ifelse'
+`defn'
+`syscmd'
+<em class="error">`PEGPROXY'</em></code></pre></blockquote>
+I only stuck <code class="attr">PEGPROXY</code> in there as an example,
+it is really not double-secret.  It might be clever to remove some of
+the <code class="sh">hxmd</code> internal macros:
+<code class="attr">HXMD_B</code>,
+<code class="attr">HXMD_OPT_C</code>,
+<code class="attr">HXMD_OPT_X</code>,
+<code class="attr">HXMD_OPT_Z</code>,
+<code class="attr">HXMD_PHASE</code>,
+<code class="attr">HXMD_U</code>,
+<code class="attr">HXMD_U_COUNT</code>,
+<code class="attr">HXMD_U_MERGED</code>, and
+<code class="attr">HXMD_U_SELECTED</code>.  These do not radiate a
+lot of information, but putting them into a configuration file is
+<strong>poor form</strong>.
+<p>
+The value of <code class="attr">MSRCMUX_CFG</code> is
+litterally "HXMD_OPT_C", forcing a dependency on <code class="sh">m4</code> to
+expand that to the filename given to <code class="sh">msrcmux</code> by
+the client: removing that definition makes the output far less useful.
+Se we don't remove the internal definitions at this level.
+
+<p>
+The cache recipe also uses a file <code class="path">defs.host/dump.host</code>
+that is super anti-climatic:
+<blockquote class="file"><pre><code >dnl $Id: dump.host,v <i>....</i>
+dumpdef</code></pre></blockquote>
+This file could be omitted, in favor of literal markup in the recipe file,
+but it makes the spell far less flexible.
+
+<p>
+A <code class="path">Makefile.host</code> to drive the display of the data on
+the client host (after it become <code class="path">Makefile</code>):
+<blockquote class="file"><pre><code >`# $Id: Makefile.host,v <i>...</i>
+# The platform recipe for this just displays the data we produced	(ksb)
+# the recorded data and the list.  Most functions just use the defs
+# file directly.
+'changequote([,])dnl
+[Q='
+C=`
+]changequote(`,')
+`SOURCE=Makefile README defs
+
+BUILT="'syscmd(`date|tr -d "\\n\\r"')`"
+
+all: defs .SILENT
+	echo ${Q}# $$From: $${echo:-echo} ${BUILT}${Q}
+	sort defs | sed -e "s/^\${C}\([^${Q}]*\)${Q}<acronym title="a tab">	</acronym>/\\1=/"
+
+clean:
+
+${SOURCE}:
+	echo "Bad push for $@, sorry." ; $${false:-false}
+
+source: ${SOURCE}
+
+FRC:
+'dnl</code></pre></blockquote>
+Note that there is a <code class="markup">TAB</code> character in
+the <code class="sh">sed</code> command between <code class="markup">${Q}</code>
+and the following slash (<code class="markup">/</code>).
+
+<p>
+With those files installed, a pull of that directory (which I
+called <code class="path">opt/ksb/which</code>) builds a
+directory with a <code class="sh">make</code> recipe file,
+and the <code class="path">defs</code> file built by the
+cache recipe in <code class="path">defs.host</code>.  The
+<code class="path">defs</code> file is the raw output from
+a <code class="markup">dumpdef</code> for the client host, with
+the macros listed in <code class="path">suppress</code> removed.
+The <code class="markup">all</code> target in the recipe formats
+this output to look more like an <code class="sh">hxmd</code>
+configuration file.
+<p>
+Run <code class="sh">make all| ${PAGER:-less}</code> in that directory to
+see the configuration specification for your client host.
+Here is an example script to drive the process from a client:
+<blockquote class="file"><pre><code >#!/usr/bin/env ksh
+# $Id: <i>...</i>
+# Report this host's configuration from our master-pull-source's	(ksb)
+# the hxmd file used to build auto.cf.
+set -e
+TF=`mktemp -d ${TMPDIR:-/var/tmp}/${USER:-${LOGIN:-$$}}XXXXXX`
+cd $TF
+hxmd -Cauto.cf -Glocalhost -BMSRCMUX_MPS \
+	'muxcat MSRCMUX_MPS msrcmux ${1:-<em class="error">opt/ksb/which</em>} MSRCMUX_CFG |tar xf - &amp;&amp;
+		make all'
+cd /
+exec rm -rf $TF</code></pre></blockquote>
+Note that this outputs nothing when the client didn't pull
+<code class="path">auto.cf</code> (because <code class="attr">MSRCMUX_MPS</code>
+is not defined for <code class="opt">-B</code>).  If you'd like more
+feedback for that case add a <code class="opt">-N</code> like:
+<blockquote class="file"><pre><code >hxmd -Cauto.cf -Glocalhost -BMSRCMUX_MPS \
+	<em class="new">-N "echo 'No pull information for localhost in auto.cf%0'" \</em>
+	'muxcat MSRCMUX_MPS msrcmux ${1:-<em class="error">opt/ksb/which</em>} MSRCMUX_CFG |tar xf - &amp;&amp;
+		make all'</code></pre></blockquote>
+
+Otherwise the output looks like:
+<blockquote><pre><code ># $From: ${echo:-echo} "Wed Sep 26 18:23:08 CDT 2012"
+BINDVER=`9'
+CLASS=`w'
+ENTRY_DEFS=`/usr/local/lib/distrib/local.defs'
+HOST=`w01.example.com'
+HOSTOS=`61000'
+HOSTTYPE=`NETBSD'<i>...</i></code></pre></blockquote>
+
+<p>
+Given a local site policy that specifies which host attributes are
+provided to define each host, we could reformat that output into
+<code class="path">auto.cf</code> to build a local configuration file on
+the client that mocks the central one quite effectively.
+<p>
+The <code class="sh">perl</code> script to do just that is left as
+<acronym title="Hint, move the ones listed in the header
+to the end, with the header line.">puzzle for the reader</acronym>.
+And this would be the place to remove the <code class="attr">HXMD_*</code>
+macros from the stream (replacing them in any definitions).
+Next handle multiple-line values and
+<acronym title="impossible: is
+	foo=`Riply'
+	bar=`Jones'
+actually 1 define of foo with embedded inverted quotes?">all unbalanced quotes</acronym>.
+
+<h2 id="inadvertently">Inadvertently limiting access</h2>
+
+If the master recipe (e.g. <code class="path">Makefile</code>, or
+<code class="path">Msrc.mk</code>) must <strong>write</strong> in
+the local directory, then you may be out of luck.  Almost all
+<code class="sh">tcpmux</code> services run as a non-privileged user
+(viz. <code class="markup">nobody</code> or <code class="markup">vanilla</code>)
+and possibly a group to allow read-only access to some data
+(viz. <code class="markup">source</code>).  Processes running under such
+restrictions do not have access to write in cache directories or
+to <code class="sh">co</code> files from
+<acronym title="revision control system">RCS</acronym>.
+
+<p>
+Most <code class="make">MAP</code>'d files should function because they
+only update temporary files via <code class="sh">m4</code> filters.
+But if they use <code class="markup">syscmd</code> they may execute
+commands that must create files and fail as well.  A good example of
+this is <code class="sh">hxmd</code> cache directories that are owned
+by the superuser or some dedicated pseudo-user.
+
+<p>
+What this means is the you can only pull products that were coded with
+care.  Actually this is true for any complex structure, so it shouldn't
+be news to you.
+
+<h2 id="rcsvg">Out of sync sources</h2>
+
+Note that <code class="sh">msrcmux</code> does <strong>not</strong>
+do anything to assure that the source directory is stable.  If you
+need to add an <code class="sh">rcsvg</code> filter to your process,
+then you'll have to edit the script, or root the master source copy
+on a clean shadow of the working directories.  Space is cheap.
+See the <A href="../../bin/rcsvg/rcsvg.html">HTML document</A> on
+<code class="sh">rcsvg</code>.
+
+<p>
+Some care should be taken to assure that the revision control
+label used to checkout the stable code is, itself, always stable.
+
+<h2 id="summary">Summary</h2>
+
+The <code class="sh">tcpmux</code> service allows access to some, but
+not all, remote clients over simple network services.  This service
+provides client-based limits on access, granular to directory, and a
+clean way to update level 2 packages and the configuration of the
+service itself.  The <code class="path">auto.cf</code> file contains
+some macro support to allow clients to find the service.
+
+<HR><PRE>
+$Id: msrcmux.html,v 1.23 2012/11/09 20:13:52 ksb Exp $</PRE></BODY></HTML>

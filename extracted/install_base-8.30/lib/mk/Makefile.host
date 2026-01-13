@@ -1,0 +1,76 @@
+`# Platform recipe for mk library files (default rules for mk target files)
+# $Id: Makefile.host,v 5.14 2010/04/09 15:15:56 ksb Exp $
+
+SHELL=/bin/sh
+SUBDIR= bin dot file is m map pre type
+OTHER=	README
+LIB=	${DESTDIR}/usr/local/lib/mk
+MAKE=make
+DOC=	${DESTDIR}/usr/local/man/man5
+MAN=	mk.man
+SOURCE=	Makefile ${OTHER} ${MAN}
+
+LOOP=	-for i in ${SUBDIR}; do\
+		echo $$i:;\
+		(cd $$i;\
+		[ -f Makefile ] || co -q Makefile;\
+		${MAKE} ${MFLAGS} LIB="${LIB}/$$i" $@;\
+		)\
+	done
+
+all: ${SOURCE} FRC
+	${LOOP}
+
+calls: FRC
+	echo "Too much output and CPU usage."
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs lint.out tags
+	${LOOP}
+
+deinstall: FRC
+	echo "Unsafe to deinstall a whole binary directory."
+	false
+
+depend: FRC
+	${LOOP}
+
+dirs: ${DOC} ${LIB} FRC
+	${LOOP}
+
+${DOC} ${LIB}:
+	install -dr $@
+
+distrib: FRC
+	${LOOP}
+
+install: FRC
+	${LOOP}
+
+lint: FRC
+	${LOOP}
+
+mkcat: FRC
+	mkcat -r${DOC} -D DESTDIR=${DOC} ${MAN}
+	${LOOP}
+
+print: FRC
+	echo "Too much output."
+
+msource: FRC
+	: "We get here as a side-effect of a loop"
+
+source: ${SOURCE}
+	${LOOP}
+
+spotless: FRC
+	${LOOP}
+
+tags: FRC
+	${LOOP}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

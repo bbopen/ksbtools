@@ -1,0 +1,148 @@
+# $Id: INSTALL,v 3.4 2010/08/16 16:06:35 ksb Exp $
+
+Disclaimer
+----------
+
+FedEx takes no comfort or distress from the fact that I did this work all
+on my own time.  Neither of us expect that this software will bring us
+material gain or blame.  Use at your own risk.  See the file LICENSE.
+
+
+Prereq
+------
+
+You need msrc_base and install_base from the NPC Guild.org repo.  Install
+those to get lots of great tools (like xapply and op) first.
+
+
+Install
+-------
+
+You need to make the login `charon' with primary group `charon'.  This is
+the tomb owner.  Things setuid (setgid) charon can read/write the crypts
+for any login.
+
+/etc/passwd
+	charon:*:11520:602:The Ferryman:/home/dscm1/Tomb:/nonexistant
+/etc/group
+	charon:*:602:
+
+If you make the login have uid #11520 and the group #602 you won't have to
+change them in libtomb/libtomb.h.  Else change them there (now).  I might
+change the uid to 602, if I didn't have 1,000 hosts with it as 11520.
+
+If you are going to install entombing under /usr/local/{bin,lib,sbin} then
+you won't have to change the path to entomb in libtomb/libtomb.h, else
+change it there.
+
+On about line 80 of libtomb/libtomb.h we try to guess how to read the
+mounted file systems list.  The -D`hostype' in all the Makefile's tells us
+which one to pick (SUN3, SUN4, S81 (Dynix), LINUX, FREEBSD, ...).
+
+If you use msrc a lot follow local convention, else you should
+fallback to mmsrc with:
+	$ mmsrc -y INTO=/tmp/my.entomb -Cauto.cf make all
+
+That should build all 6 programs.  If it did
+	$ su
+	# mmsrc -y INTO=/tmp/my.entomb -Cauto.cf make install
+	# exit
+	$ rm -rf /tmp/my.entomb
+
+On Solaris you might ignore warnings like these:
+	"eopen.c", line 39: warning: identifier redeclared: open
+	"eopen.c", line 41: warning: type does not match prototype: file
+	"eopen.c", line 41: warning: parameter mismatch: 2 declared, 3 defined
+
+Setup preend
+------------
+
+Put the system startup for "preend" in /etc/init.d/preend (aka /etc/rc.d)
+and link it, or in /usr/local/etc/rc.d as preend.sh (it is
+"etc/preend/preend.sh" now).
+
+Or on older systems edit /etc/rc.local and put in the local daemons:
+	if [ -x /usr/local/etc/preend ] ; then
+		echo -n " preend" ; /usr/local/etc/preend -p
+	fi
+
+Or add a svcs xml thingy.  We'll start preend after a bit.
+
+
+Enable rm, mv, cp
+-----------------
+
+To make rm/mv/cp entomb get the Net2 source to them and build them
+with /usr/local/lib/libtomb.a on the load line.  [The package "rm-1.0.tgz"
+has the source you need.]  On a FreeBSD host you can
+	cd /usr/src/bin/rm
+	make "LDADD=-L/usr/local/lib -ltomb" clean rm install; make clean
+	cd ../mv
+	make "LDADD=-L/usr/local/lib -ltomb" clean mv install; make clean
+	cd ../cp
+	make "LDADD=-L/usr/local/lib -ltomb" clean cp install; make clean
+
+
+To test it.
+-----------
+
+Try to start preend on a filesystem you can write on (as root)
+do NOT pick "/" or "/tmp":
+	# /usr/local/etc/preend -d /var
+	preend: build tomb with `install -d -m 0770 -o charon -g charon /var/Tomb'
+
+Note that preend tells you how to use install to construct the tomb, do it:
+	# install -d -m 0770 -o charon -g charon /var/Tomb
+
+Then make preend run:
+	# /usr/local/etc/preend -d /var &
+	preend: Cleaning /var/Tomb
+	preend: sleeping 5 minutes
+	#
+
+In another window create a test file on the target filesystem, as some
+non-superuser (like "daemon", or "testme"):
+	# su - daemon
+	daemon$ cd /var/msgs
+	daemon$ date > tfile
+	daemon$ rm tfile
+	daemon$ unrm -l
+	Files entombed for you:  (most recently removed first)
+		  date entombed  file name                  file size
+		  ---- --------  ---- ----                  ---- ----
+	Mon Jul 31 16:24:50 2010  tfile                     29
+
+
+If that looks OK, you can stop the debug version of preend, and
+remove the (bogus) tomb you created [as you wish].
+
+
+Final tuning
+------------
+
+Now build tombs on each filesystem (e.g. /home/$fs/Tomb) that Customers
+might delete files they wanted from.  Do not EVER put a Tomb on slash (/)
+or the system temporary directories (/tmp, /var/tmp).
+
+In the system startup you need to add "preend" to purge the crypts of old
+files.  See etc/preend/README and such.  Then reboot, or start the system
+script for preend by hand (from the console, maybe).
+
+
+
+Maintainance
+------------
+
+Once a year (on your birthday) you might run
+	# preend -d1R
+to remove tombs and crypts for users that have been removed from the system.
+This keeps things tidy, but doesn't really save a lot of space.
+
+If you add NFS filesystems they will only accumulate files unless you enable
+a preend on the server, or force one of the clients to run a preend for that
+filesystem by name.  The model says that only the NFS server should run the
+preend, in general.
+
+
+--
+KS Braunsdorf, entomb on no-spam npcguild.org,  Aug 2010

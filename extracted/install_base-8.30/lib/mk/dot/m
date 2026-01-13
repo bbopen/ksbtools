@@ -1,0 +1,34 @@
+# a modula 2 source file?						(ksb)
+# $Id: m,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+# XXX could be Objective C too, how would we know?
+
+$Compile(*):	%=,mkcmd,%#/,%hMkcmd
+$Compile(*):	%=,m2,%x,%hM2
+
+$Compile(*):	${m2-m2} ${m2_debug--O} -D%s -o %F %f
+$Compile(*):	${m2-m2} ${m2_debug--O} -o %F %f
+$M2(*):		${m2-m2} ${m2_debug--O} -c -D%s %f
+$M2(*):		${m2-m2} ${m2_debug--O} -c %f
+$Clean(*):	${rm-rm} -f %F.o %F
+$Clean(*):	${rm-rm} -f %F.o
+$Depend(*):	${maketd-maketd} -da -I/usr/include/local -D%s %f
+$Depend(*):	${maketd-maketd} -da -I/usr/include/local %f
+
+$Info(*):	%=/m2/%X/${echo-echo} "Modula 2 source"
+
+$*(*): %=/m2/%X/%.  # if we are not a .m2 file, quit looking
+
+# am mkcmd source file?
+$Compile(*):	%b %o -mMkcmd %f && %b %o -m%m -s%s %F.c
+$Compile(*):	%b %o -mMkcmd %f && %b %o -m%m %F.c
+
+$Mkcmd(*):	${mkcmd-mkcmd} -n$\$ %f\n\t(${cmp-cmp} -s $\$.c %s.c || (${cp-cp} $\$.c %s.c && echo %s.c updated))\n\t(${cmp-cmp} -s $\$.h %s.h || (${cp-cp} $\$.h %s.h && echo %s.h updated))\n\t${rm-rm} -f $\$.[ch]
+$Mkcmd(*):	${mkcmd-mkcmd} -n$\$ %s %f\n\t(${cmp-cmp} -s $\$.c %F.c || (${cp-cp} $\$.c %F.c && echo %F.c updated))\n\t(${cmp-cmp} -s $\$.h %F.h || (${cp-cp} $\$.h %F.h && echo %F.h updated))\n\t${rm-rm} -f $\$.[ch]
+$Mkcmd(*):	${mkcmd-mkcmd} -n$\$ %f\n\t(${cmp-cmp} -s $\$.c %F.c || (${cp-cp} $\$.c %F.c && echo %F.c updated))\n\t(${cmp-cmp} -s $\$.h %F.h || (${cp-cp} $\$.h %F.h && echo %F.h updated))\n\t${rm-rm} -f $\$.[ch]
+$Mkcmd(*):	${mkcmd-mkcmd} %s %f -n%F
+$Mkcmd(*):	${mkcmd-mkcmd} %f -n%F
+
+$Clean(*):	${rm-rm} -f prog.[cho] %F.o %F
+$Clean(*):	${rm-rm} -f prog.[cho] %F.o
+
+$Info(*):	${echo-echo} "Modula 2 source or mkcmd input"

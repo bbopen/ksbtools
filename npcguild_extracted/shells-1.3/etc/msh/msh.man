@@ -1,0 +1,61 @@
+.\" $Id: msh.man,v 1.1 1997/01/28 04:35:34 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH MSH 1L LOCAL
+.SH NAME
+msh \- the message shell
+.SH SYNOPSIS
+.ds PN "msh
+\fI\*(PN\fP [\fIdefault\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.SH DESCRIPTION
+.PP
+When an login is going to be removed from the system (or moved to
+another system) the message shell presents notification to anyone
+accessing the system from the defunct account.
+This is acomplished by setting the shell of the account to
+the path to \fImsh\fP.
+.PP
+The message is recovered from a spool directory (/var/spool/msh)
+by the login name or primary group name of the account.
+The name that message shell is running as or a
+pointer positional parameter \fIdefault\fP
+(default value of "Default")
+is opened as a last resort.
+.PP
+If no message can be located a pointer directing the customer to
+the system administrator is displayed.
+
+.SH OPTIONS
+Since the message shell is usually run from \fBlogin\fP no command
+line switches may be presented.
+.TP
+\fB\-h\fP
+Print a brief help message.
+.TP
+\fB\-V\fP
+Show version information.
+.SH EXAMPLES
+Build a file "toor" in the default message spool directory,
+make a login "toor" in /etc/passwd with \fImsh\fP as its login shell
+and login.
+.SH BUGS
+.PP
+Uses \fBcat\fP to present the message to the user.  A shell-safe
+pager would be a better option.
+.PP
+The three second sleep is handy for xterm as well as ISN users.
+
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+DSPD UNIX Support
+.br
+ksb@fedex.com
+
+.SH "SEE ALSO"
+sh(1), login(8)

@@ -1,0 +1,17 @@
+`# $Id: Make.host,v 1.3 2000/07/30 22:21:49 ksb Exp $
+# Confirm the meta source fakery did _something_ useful			(ksb)
+#
+
+SOURCE=Make.host Makefile rsrc makeme PULL README TODO rsrc.html
+BIN=/usr/Admin/bin
+
+all: FRC
+	@echo "Make.host: Our host type is 'HOSTTYPE` about number 'HOSTOS`"
+	@echo "Make.host: We are 'HOST` with a short name of \"'SHORTHOST`\""
+'ifdef(`HASSRC',`	@echo "Make.host: We have sources (HASSRC)."
+',`')dnl
+`
+
+FRC:
+
+'dnl

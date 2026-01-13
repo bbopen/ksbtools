@@ -1,0 +1,10 @@
+# $Id: step,v 2.15 2007/02/28 20:19:17 ksb Exp $
+$Compile: %+Step(*)%h
+
+# This file checks to be sure mk honors %+ to do multistep tasks
+
+$Step(1): true
+$Step(2)=~0: false
+$Step(3): exit 0
+$Step(4): true%-
+$Step(fail): false

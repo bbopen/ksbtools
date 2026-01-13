@@ -1,0 +1,6 @@
+/* $Id: util_username.mi,v 8.3 2004/12/15 22:20:18 ksb Exp $
+ * After the `init' section of main you may use this variable as the
+ * login name of the (startup) real uid.				(ksb)
+ */
+%char %K<util_username>1v[%K<util_username>2v]%;
+%static char *%K<util_finduser>1v(/* char * */)%;

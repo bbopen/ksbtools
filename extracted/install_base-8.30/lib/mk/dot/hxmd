@@ -1,0 +1,10 @@
+# an hxmd options file, generally used by msrc or mmsrc for ksb's tool chain
+# $Id: hxmd,v 1.1 2008/04/05 18:18:39 ksb Exp $
+
+$Compile(*):	%hInfo
+
+$Info(*):	${echo-echo} "hxmd options file for msrc"
+$Info(*):	${echo-echo} "hxmd options file for mmsrc"
+
+$*(*):	: 'hxmd options file %f, do not know how to %m(%s) it.' && ${false-false}
+$*(*):	: 'hxmd options file %f, do not know how to %m it.' && ${false-false}

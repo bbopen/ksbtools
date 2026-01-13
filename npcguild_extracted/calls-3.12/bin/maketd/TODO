@@ -1,0 +1,18 @@
+# $Id: TODO,v 4.1 1997/10/02 16:47:44 ksb Exp $
+
++ Did mkdep, test it?
+
+	mkdep -ap -m makefile -f incfile ..
+
+  maketd should now believe that incfile is included to find the local
+  depends for the given files.  Scan the -m Makefile for variable
+  defines.  Update the incfile rather than the Makefile.
+
++ When "gcc -M" fails to find an included file it outputs nothing on
+  stdout which causes maketd to abort.  We might want to do the other
+  files (under -d or -r at least)?
+
+--
+"Let me be empty, oh weightless and maybe -- find some peace within."
+				Sarah McLachlan, _Angel_
+ksb

@@ -1,0 +1,112 @@
+`#	$Id: Make.host,v 3.7 2000/06/20 14:10:27 ksb Exp $
+#
+#	Makefile for curly/uncurly
+#
+
+SHELL=/bin/sh
+BIN=	${DESTDIR}/usr/local/bin
+DOC=	${DESTDIR}/usr/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE=
+DEBUG=	
+CDEFS=  -D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+YFLAGS=	
+
+GENC=	curly.c uncurly.c
+GENH=	curly.h uncurly.h
+GEN=	${GENC} ${GENH}
+HDR=	machine.h
+SRC=	
+DEP=	${GENC} ${SRC}
+OBJ=	curly.o uncurly.o
+MAN=	curly.man
+OTHER=	README curly.m uncurly.m
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+all: curly uncurly
+
+curly:$P curly.c
+	${CC} -o $@ ${CFLAGS} curly.c
+
+uncurly:$P uncurly.c
+	${CC} -o $@ ${CFLAGS} uncurly.c
+
+curly.h: curly.c
+
+curly.c: curly.m
+	mkcmd std_help.m std_version.m curly.m
+	-(cmp -s prog.c curly.c || (cp prog.c curly.c && echo curly.c updated))
+	-(cmp -s prog.h curly.h || (cp prog.h curly.h && echo curly.h updated))
+	rm -f prog.[ch]
+
+uncurly.h: uncurly.c
+
+uncurly.c: uncurly.m
+	mkcmd std_help.m std_version.m uncurly.m'ifelse(
+HOSTTYPE,`FREEBSD',`',` util_fgetln.m')`
+	-(cmp -s prog.c uncurly.c || (cp prog.c uncurly.c && echo uncurly.c updated))
+	-(cmp -s prog.h uncurly.h || (cp prog.h uncurly.h && echo uncurly.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f Makefile.bak curly uncurly ${GEN} *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/curly
+	install -R ${BIN}/uncurly
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} FRC
+	maketd -a ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${BIN} ${LIB}
+
+distrib: FRC
+	distrib -c ${BIN}/curly HOST
+	distrib -c ${BIN}/uncurly HOST
+
+install: all dirs FRC
+	install -c -s curly uncurly ${BIN}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"curly source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${BIN} ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+curly.o: curly.c
+
+uncurly.o: uncurly.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

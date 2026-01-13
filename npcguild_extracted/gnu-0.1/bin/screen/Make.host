@@ -1,0 +1,60 @@
+`# $Id: Make.host,v 1.1 1997/07/11 16:09:40 ksb Exp $
+#
+#	platform Makefile for GNU screen
+
+BASE=	screen-3.7.2
+TARSRC=	${BASE}.tar.gz
+OTHER=	README
+SOURCE=	Makefile ${OTHER} ${TARSRC}
+
+all: ${BASE} FRC
+	cd ${BASE} && make $@
+
+${BASE}: ${TARSRC}
+	zcat < ${TARSRC} | tar xf -
+	cd ${BASE} && ./configure --prefix='ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support',`/usr/local')`
+
+clean: FRC
+	rm -rf ${BASE}
+
+deinstall: FRC
+	cd ${BASE} && make $@
+
+depend: FRC
+	cd ${BASE} && make $@
+
+dirs: FRC
+	cd ${BASE} && make $@
+
+distrib: FRC
+	cd ${BASE} && make $@
+
+install: all FRC
+	cd ${BASE} && make $@
+
+lint: FRC
+	cd ${BASE} && make $@
+
+mkcat: FRC
+	cd ${BASE} && make $@
+
+print: source FRC
+	cd ${BASE} && make $@
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

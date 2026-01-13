@@ -1,0 +1,155 @@
+# $Id: Make.host,v 4.36 2000/06/20 14:08:55 ksb Exp $
+#
+SHELL=/bin/sh
+changequote(~,+)dnl
+~# Makefile for maketd
+#		Kevin Braunsdorf	Purdue University Computing Center
+BIN=	${DESTDIR}/usr/local/bin
+PROG=	maketd
+
+#Compile time options have been moved to machine.h
+
+# We might need the old style script to make our first depends!
+# Use either of these lines, upper might be faster if your cc has -M
+# (the second line goes to great trouble to get a `#' sign, some
+# makes are very broken!)
+#OLDCODE= ${CC} ${CFLAGS} -M $$file |sed -e 's/^.*\.o *: *//'
+OLDCODE= ${CC} ${CFLAGS} -E $$file |\
+	 sed -n -e `echo '/^@pragma/d' |tr "@" "\043"` -e /mkcmd_generated/d |\
+	 sed -n -e `echo '/^@/p' |tr "@" "\043"` |\
+	 sed -e 's/^.[ 0-9]*"\(.*\)" *$$/\1/' -e '/\/usr\/include/d'
+
+I=/usr/include
+S=/usr/include/sys
+P=
+G=/usr/local/lib/gcc-lib
+
+INCLUDE= 
+DEBUG=+ifelse(HOSTTYPE,~V386+,~+,~-O+)~
+CDEFS=  -D+HOSTTYPE~+ifelse(
+1,ifdef(~PATH_CPP+,1,0),~ ~-DPATH_CPP="\"+PATH_CPP~\""++,
+HOSTTYPE,~SUN5+,~ -DPATH_CPP="\"~eval+ \$${CC-'cc -xM'} '%I %F'\""+,
+HOSTTYPE,~VAX8800+,~ -DUSE_CPP_M=0+,
+HOSTTYPE,~IBMR2+,~ -DUSE_CPP_M=0+,
+HOSTTYPE,~TITAN+,~ -DUSE_CPP_M=0+,
+HOSTTYPE,~ETA10+,~ -DSYSV -DNEED_STRCMP -DUSE_CPP_M=0+,
+HOSTTYPE,~V386+,~ -DSYSV -DNEED_STRCMP -DUSE_CPP_M=0+,
+HOSTTYPE,~EPIX+,~ -DSYSV -DNEED_STRCMP -DUSE_CPP_M=0+)~
+CFLAGS=	${DEBUG} ${CDEFS} ${INCLUDE}
+
+GENh=	
+HDR=	+ifelse(MKCMD,~no+,~main.h +)~abrv.h maketd.h machine.h
+SRC=	+ifelse(MKCMD,~no+,~main.c +)~abrv.c maketd.c
+GENH=	+ifelse(MKCMD,~no+,~+,~main.h+)~ srtunq.h
+GENC=	+ifelse(MKCMD,~no+,~+,~main.c+)~ srtunqfree.c srtunqgets.c \
+	srtunqgti.c srtunqin.c srtunqinit.c srtunqdtree.c
+GEN=	${GENC} ${GENH}
+DEP=	${GENC} ${SRC}
+OBJ=	main.o abrv.o maketd.o srtunqfree.o srtunqgets.o \
+	srtunqgti.o srtunqin.o srtunqinit.o srtunqdtree.o
+MAN=	maketd.man
+SOURCE=	Makefile README GCC.awk M4.patch ${MAN} ${HDR} ${SRC}
+
++ifelse(HOSTTYPE,~NEXT2+,~.SUFFIXES:
+.SUFFIXES: .c .h .o .s+)~
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${DEBUG} ${OBJ} 
+
++ifelse(MKCMD,~no+,~+,
+~main.h: main.c
+
+main.c: maketd.m
+	mkcmd std_help.m std_version.m maketd.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -rf prog.[ch]
+
++)~
+
+# there is no way to make this work without explode, really. -- ksb
+
+srtunq.h:
+	explode $@
+
+srtunqfree.c srtunqgets.c srtunqgti.c srtunqin.c srtunqinit.c srtunqdtree.c:
+	explode -u `expr $@ : 'srtunq\(.*\)\.c'` srtunq.c
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} *.o a.out core errs lint.errs tags
+
+# we use the old sloppy code for booting our depends
+depend: ${HDR} ${SRC} ${GEN} FRC
+	mv Makefile Makefile.bak
+	sed '/^# DO NOT DELETE THIS LINE/,$$d' <Makefile.bak >Makefile
+	echo '# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT' >>Makefile
+	echo '' >>Makefile
+	for file in ${DEP}; do \
+	    o=`echo $$file |sed 's/c$$/o/'` ;\
+	    ${OLDCODE} |sort -u |\
+	    awk 'BEGIN { rec = "'$${o}'" ": " ; } \
+		{ if (length(rec $$1) > 76) \
+		{ print rec, "\\" ; rec = "  " $$1 } \
+		else { rec = rec " " $$1 } } \
+		END { print rec, "\n" } ' >>Makefile ;\
+	done
+	echo '# *** Do not add anything here - It will go away. ***' >>Makefile
+
+depend2: ${HDR} ${SRC} ${GEN} FRC all
+	./${PROG} -d ${INCLUDE} ${DEP}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG}
+
+install: all FRC
+	install -c -s ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -p -Pstaff -J"Maketd Source" ${SOURCE}
+
+shar: source FRC
+	shar ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR} ${GEN}
+	ctags -t ${SRC} ${HDR} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+abrv.o: abrv.c abrv.h machine.h main.h maketd.h srtunq.h
+ 
+main.o: abrv.h machine.h main.c maketd.h srtunq.h
+ 
+maketd.o: abrv.h machine.h main.h maketd.c maketd.h srtunq.h
+ 
+srtunqdtree.o: srtunq.h srtunqdtree.c
+ 
+srtunqfree.o: srtunq.h srtunqfree.c
+ 
+srtunqgets.o: srtunq.h srtunqgets.c
+ 
+srtunqgti.o: srtunq.h srtunqgti.c
+ 
+srtunqin.o: srtunq.h srtunqin.c
+ 
+srtunqinit.o: srtunq.h srtunqinit.c
+
+# *** Do not add anything here - It will go away. ***
++dnl

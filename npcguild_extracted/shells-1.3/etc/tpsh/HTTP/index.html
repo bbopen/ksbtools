@@ -1,0 +1,243 @@
+<HTML>
+<TITLE>TPSH -- the tape spool shell</TITLE>
+<BODY>
+<H1>The tape shell</H1>
+Distributes software to machines that lack a network connection
+to the central source by a large data pulse encode on a tape.
+
+<H2>Theory of operation</H2>
+The assumption here is that it is marginally better to send
+software (data, programs, course-ware, configuration or other stuff)
+to some remote locations as a tape rather than run a long wire
+(dial, leased line, or strings and cans) to the site.
+
+<P>
+Someone at the site must be granted <STRONG>privileges</STRONG>
+to install the distribution and tasked with the
+<STRONG>responsibility</STRONG> of getting the tape loaded.
+
+<P>
+To make this more standard and easier for (any infrequent)
+customers at such locations we have this tool.
+
+<H2>Usage</H2>
+The person at the isolated location takes few steps to load a
+tpsh tape:
+<DL>
+<DT>login: <CODE>tpsh</CODE>
+<DT>Password: <I>some_word</I>
+<DD>
+We have to login to the host to gain access to the tape drive.
+
+<DT><I>load the tape in the system tape drive</I>
+<DD>
+Put the install medium in the system tape drive.
+
+<DT>tpsh> <CODE>load</CODE>
+<DD>
+Type in the <CODE>load</CODE> command to start the tape unload process.
+
+<DT><I>Answer any questions the tape unload program askes you</I>
+<DD>
+The tape unload may confirm that you are loading the correct file set
+onto the machine.
+
+<DT>tpsh> <CODE>eject</CODE>
+<DD>
+Type the <CODE>eject</CODE> command to get the tape back.
+
+<DT>tpsh> <CODE>reboot</CODE>
+<DD>
+<STRONG>Optionally</STRONG> force a system reboot with the <CODE>reboot</CODE>
+command.
+
+<DT>tpsh> <CODE>quit</CODE>
+<DD>
+Stop the tape install program (and logout).
+
+</DL>
+
+<P>
+None of these commands should be more complex that it looks.
+
+<H2>Format</H2>
+A tape shell format tape has a tar archive as a header possibly
+followed by other tar/cpio/dump/other format files on the tape.
+The distribution may span multiple tapes with a little work.
+
+<P>
+Here is the general plan:
+
+<UL>
+<LI>the tpsh login has a password that Data Protection sets
+for some time window (like 2 weeks)
+
+<LI>the Customer works with DSCM/DSPD to build a tape and instructions
+<UL>
+<LI>a tar archive with an `unbundle' script is copied to
+the tape
+
+<LI>a template set of instructions is customized for the install
+
+<LI>the `unbundle' script calls the std extraction of the
+software
+
+<LI>this looks like a normal hands-off automated install
+</UL>
+
+<LI><I>Someone</I> produces apropos copies
+
+<LI><I>Someone</I> ships these to the field agents
+
+<LI>the field agents must:
+<UL>
+<LI>put the tape in a drive
+
+<LI>login as tpsh with the password DPDP set
+
+<LI>load the tape  [with the `load' command]
+
+<LI>answer any questions the distribution asks
+
+<LI>eject the tape  [with the `eject' command]
+
+<LI>optionally reboot  [with the `reboot' command]
+
+</UL>
+
+<LI>the field agent may return the tape to <I>Someone</I>, add it
+to the backup cycle, or toss it in the trash.
+
+<LI>some post-install automation may be started from Memphis to
+check that the install was clean and pure (if we have any way to check).
+</UL>
+
+<H2>Building a tape</H2>
+Here is how a tape is constructed:
+
+<P>
+The normal change management process drops a tar-ball in the archive.
+The requested roll-out is too large to send over the wires.  As a fall-
+back this tape system option is brought out.  Some tech-dudes from the
+customer project might have to be involved in this process.
+
+
+<BLOCKQUOTE>
+Remember that the directory structure you are now constructing
+will be extracted under /tmp, the script `unbundle' will be run,
+then the Driver will be given back control to eject the tape.
+</BLOCKQUOTE>
+
+<P>
+So in a temporary directory:
+
+<P>
+A template shell script is customized for this release.  Some text
+is inserted to explain what version/release/software is on the tape
+so the operator can check versus the printed instructions.  Which are
+fabricated from another template at the same time.
+
+<P>
+Any other programs or scripts needed to complete the install on the
+target machine are placed in a subdirectory.
+
+<P>
+The pre-install/install/post-install scripts for each hunk on the tape
+are placed in subdirectories.
+
+<P>
+Edit the unbundle scripts to
+<UL>
+<LI>add <CODE>$TAPE_DIR/bin</CODE> to the path (if needed)
+
+<LI>extract hunks from the tape device <CODE>$TAPE_DEVICE</CODE>
+
+<LI>call each install script as apropos
+
+<LI>do any clean-up
+</UL>
+
+<P>
+When all the data/programs are in place to create a tar archive on
+an empty tape.  If other data is required on the tape use mt/tar to
+add these files to the end of the tape.
+
+<P>
+<STRONG>Test this tape!</STRONG>
+It would be easy to put the tar archives on the tape
+in the wrong order, or overwrite part of the tape with another archive.
+Be very sure you have created what you wanted.
+
+<H2>Duplication</H2>
+Is beyond the scope of this document.
+
+<H2>Example Usage</H2>
+We provide some example files for your viewing pleasure.
+
+<H3>Example <CODE>unbundle</CODE></H3>
+
+<CODE><PRE>
+#!/bin/ksh
+# $Id: index.html,v 2.0 1996/11/07 17:37:20 kb207252 Exp $
+#
+# This is the template unbundle script !!! DELETE THIS LINE !!!
+# !!! Change the text below !!!
+
+cat &LT;&LT;\!
+
+			Example 1.4
+
+This is the example tape.  If you don't want to add the example
+software to you system type "no" at the prompt below.
+
+Otherwise this tape adds all the example software to your system.
+The example software doesn't really do anything to your machine.
+
+!
+
+# canned confirmation
+while : ; do
+	print - '\n\nShall we add this distribution to this host? ["yes" or "no"] \c'
+	read ans
+	case "$ans" in
+	yes|YES|\"yes\"|\"YES\")
+		echo "OK"
+		break ;;
+	no|NO|\"no\"|\"NO\")
+		echo "Aborting install."
+		exit 0 ;;
+	*)
+		echo '\nOnly "yes" or "no", please.' ;;
+	esac
+done
+
+# OK, $TAPE_DEVICE and $TAPE_DIR have the info we need
+# (and we are started from $TAPE_DIR, BTW).
+
+if [ _"$TAPE_DIR" != _"`pwd`" ] ; then
+	echo "We should be in \`$TAPE_DIR' not `pwd`."
+fi
+
+PS1="tpsh# "
+PATH=$TAPE_DIR/bin:$PATH
+export PATH PS1
+
+# !!! put your text here !!!
+# !!! put your commands (gzip, installus?) in bin !!!
+
+exit 0
+</PRE></CODE>
+
+<H3>Example <CODE>Commands</CODE></H3>
+<CODE><PRE>
+# $Id: index.html,v 2.0 1996/11/07 17:37:20 kb207252 Exp $
+# general format [mkcmd cmd_parse.m style]
+#	path argv0 [params] -- helptext
+#
+# any shell level command you can run, you can link in here
+#
+/bin/ls ls [-flags] -- list files in stage area
+</PRE></CODE>
+
+</BODY>
+</HTML>

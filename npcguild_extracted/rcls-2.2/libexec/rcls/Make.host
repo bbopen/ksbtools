@@ -1,0 +1,99 @@
+`# $Id: Make.host,v 2.4 2000/06/20 14:10:47 ksb Exp $
+#
+#	master Makefile for remote customer login services
+
+SHELL=/bin/sh
+PROG=	rcls
+BIN=	${DESTDIR}/usr/local/libexec
+LIB=	${DESTDIR}/usr/local/lib/rcls
+DOC=	${DESTDIR}/usr/local/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE=-I/usr/local/include
+DEBUG=	
+CDEFS=  -D'HOSTTYPE` -DRCLS_TRACE=0
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+YFLAGS=	
+
+GENC=	main.c
+GENH=	main.h rcls_callback.h
+GEN=	${GENC} ${GENH}
+HDR=	machine.h
+SRC=	
+DEP=	${GENC} ${LINKC} ${SRC}
+OBJ=	main.o
+MAN=	rcls.man
+OTHER=	README TODO callback.hdr rcls.rpc
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+all: rcls_callback.h ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ} -L/usr/local/lib 'ifelse(
+HOSTTYPE,`SUN5',` -lmapmalloc -lpthread -ldl -lrpcsvc -lnsl ')` -ldb
+
+main.h: main.c
+
+main.c: ${PROG}.m
+	mkcmd ${PROG}.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+rcls_callback.h: callback.hdr rcls.x
+	( cat callback.hdr && rpcgen -h rcls.x ) >$@
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} ${LINK} *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} ${LINK} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${BIN} ${LIB}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all dirs FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${BIN} ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

@@ -1,0 +1,16 @@
+# extract shar file under Compile					(ksb)
+# $Id: shar,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	${sed-sed} -n -e '/^#/,$p' <%f | ${sh-sh} %s
+$Compile(*):	${sed-sed} -n -e '/^#/,$p' <%f | ${sh-sh}
+
+$Clean(*):	${rm-rm} -f %P
+$Clean(*):	${rm-rm} -rf %P
+
+$Display(*):	${sed-sed} -n -e '/^#/,$p' %s <%f | ${PAGER-${more-more}}
+$Display(*):	${sed-sed} -n -e '/^#/,$p' <%f | ${PAGER-${more-more}}
+
+$Info(*):	${echo-echo} "shell archive"
+
+$Run(*):	${sed-sed} -n -e '/^#/,$p' %s <%f | ${sh-sh} %s
+$Run(*):	${sed-sed} -n -e '/^#/,$p' <%f | ${sh-sh}

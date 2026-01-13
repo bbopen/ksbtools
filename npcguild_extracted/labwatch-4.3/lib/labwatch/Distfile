@@ -1,0 +1,21 @@
+# $Id: Distfile,v 1.4 1998/10/18 18:37:40 ksb Exp $
+#
+`( . ) -> ( 'HOST` )
+	except_pat ( /RCS /Makefile /Distfile /Make\\.host /labwatch\\.cf  /empty.cf );
+	install ${INTO};
+
+( 'ifelse(
+SHORTHOST,`gumby',`gumby.cf',
+SHORTHOST,`groobee',`groobee.cf',
+SHORTHOST,`puffball',`puffball.cf',
+SHORTHOST,`tara',`tara.cf',
+SHORTHOST,`trixie',`trixie.cf',
+`empty.cf')` ) -> ( 'HOST` )
+	install -b ${INTO}/labwatch.cf; 
+
+( labwatch.cf.man ) -> ( 'HOST` )
+	install ${INTO}/labwatch.cf.man;
+
+( @Make.host@ ) -> ( 'HOST` )
+	install -b ${INTO}/Makefile;
+'dnl

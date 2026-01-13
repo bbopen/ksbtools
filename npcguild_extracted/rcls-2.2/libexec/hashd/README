@@ -1,0 +1,14 @@
+# $Id: README,v 1.2 1999/07/31 18:14:29 ksb Exp $
+
+This is the hash daemon that WebSSO uses to get a unique index for
+each new Customer that builds credentials on www.fedex.com.  The
+strings returned are friendly to most systems, except for the "/",
+which I think we might replace with a "@".
+
+Since nobody runs matride anymore (heheha) we steal the garcon
+port to run our service.  That's funny.  For example:
+ garcon stream tcp nowait ZZZ /usr/local/libexec/hashd hashd /var/sso/sequence
+
+
+--
+ksb

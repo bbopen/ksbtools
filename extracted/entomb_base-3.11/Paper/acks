@@ -1,0 +1,10 @@
+.\" $Id: acks,v 3.0 1992/04/22 13:22:58 ksb Stab $
+.\" $Compile:	nroff -ms %f | ${PAGER-more}
+.\" $Laser:	ltroff -ms %f
+.LP
+.NH
+Acknowledgements
+.LP
+Thanks to predecessors at the Engineering Computer Network and the
+Purdue University Computer Science department, as well as the
+Computing Center Unix Group and Bob Brown of RIACS.

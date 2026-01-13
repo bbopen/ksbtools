@@ -1,0 +1,30 @@
+# $Id: README,v 4.0 1994/05/27 13:28:09 ksb Exp $
+
+Clever labstat commands:
+
+$ labstat -ax | grep '[UD][EN][AS][DE]'
+	show DEAD or UNSEEN hosts and last report time for them.
+
+$ labstat -al | awk '{ if ($3 > 0.99) { print $0; }} '
+	show hosts with a load greater than 0.99.
+
+$ labstat lv426
+	give a simple status line for lv426 only
+
+$ labstat +enad135 -f | less
+	give a visual picture of the NFS balance in a 1st floor lab
+
+$ rlogin `labstat -W`
+	login to an idle client
+
+
+Labstat outputs a snap-shot of the current client status.  Status information
+may be filtered to output only interesting machines.  Information is at most
+about 7 minutes old.
+
+We use labstat to scan for high loads, look for idle machine to login to,
+and look for console logins that have been on longer than local policy
+provides (-al, -W, -az120).
+
+kayessbee
+

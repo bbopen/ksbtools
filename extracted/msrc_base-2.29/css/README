@@ -1,0 +1,13 @@
+# $Id: README,v 1.1 2008/02/07 02:16:22 ksb Exp $
+
+This directory allows style sheets and the like (maybe a few
+common graphics) to be cached in a common place for the HTML
+documents included in the source directories.
+
+Map the directory above this one (/usr/msrc/ or so) to "/msrc"
+on you webserver.  If you also install the "manpage.cgi" so a
+reference the "http://this-server/cgi-bin/manpage.cgi?..."
+hits it we can include manual page links from the HTML docs.
+This makes it way easier to read this heirarchy.
+
+ksb, Feb 2008

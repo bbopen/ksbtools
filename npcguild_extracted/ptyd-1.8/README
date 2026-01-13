@@ -1,0 +1,16 @@
+# $Id: README,v 1.1 1997/11/29 18:06:29 ksb Exp $
+
+This almost forgotten code lets user level programs get pseudo
+tty devices owned by themselves w/o being root.  Plus they can
+(and should) get a utmp entry.
+
+The daemon that does it is small and simple.  No root breaking
+allowed.
+
+Install libpty, ptyd, and upgrade script to one that can get a
+utmp entry.  Wow!  Xterm used to have #if's to use this, it might
+still as far as I know.  rlogind, telnet, and a few others were
+easy to "upgrade" last time I looked.
+
+--
+ksb

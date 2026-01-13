@@ -1,0 +1,7 @@
+# This file checks mk's goto traps				(ksb)
+# $Id: goto,v 5.0 1999/02/26 17:43:03 ksb Exp $
+
+mk -Vs $0
+exit $?
+
+$*(*): %g/dev/null:goto.works

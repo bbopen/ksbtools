@@ -1,0 +1,6 @@
+/* $Id: util_cache.mi,v 8.32 2008/09/05 16:24:54 ksb Exp $
+ * forward declaration of file caching code				(ksb)
+ */
+%extern char *%K<cache_file>1v(int u_iFd, unsigned int *u_puLines)%;
+%extern char **%K<cache_vector>1v(char *pcCache, unsigned int u_uLines)%;
+%extern int %K<cache_dispose>1v(char **u_ppcVector)%;

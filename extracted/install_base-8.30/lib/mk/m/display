@@ -1,0 +1,8 @@
+# this target does something to show the contents of the file		(ksb)
+# in a nice format
+# $Id: display,v 5.0 1996/09/09 21:08:18 kb207252 Exp $
+
+$Display(*): ${PAGER-${more-more}} %s %f
+$Display(*): ${PAGER-${more-more}} %f
+$Display(*): ${cat-cat} %s %f
+$Display(*): ${cat-cat} %f

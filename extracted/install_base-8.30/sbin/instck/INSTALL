@@ -1,0 +1,83 @@
+#/bin/sh
+# $Id: INSTALL,v 8.1 1999/03/06 19:26:13 ksb Exp $
+# Kevin Braunsdorf, Greg Rivers, William McVey
+#
+# Reviews a typical Unix System finding users and groups of privilege and 
+# tries to zap them.
+#
+# You'll need this until modecanon is released -- ksb.
+#
+# Copy this file to /tmp/something, edit it to include the filesystems
+# that are totally root controled (like "/usr/local" might be controled
+# by root, but not share a mount point with /usr).
+#
+# root of the devices dir
+DEV="/dev /devices"
+#
+# logs and the like
+VAR="/var /usr/spool /etc"
+#
+# root's binary dirs
+# find / /opt 
+DIRS="/bin /usr/bin /usr/etc /etc /usr/lib /opt /usr/openwin/bin /opt/*/bin"
+
+
+# find users that might be important for setuid
+echo "owners to watch for:"
+(
+find $DEV  \
+	\( -perm -400 \( ! -perm -40 -o ! -perm -4 \) -print \) \
+	\( -perm -200 \( ! -perm -20 -o ! -perm -2 \) -print \) \
+	\( -perm -100 \( ! -perm -10 -o ! -perm -1 \) -print \) |
+	xargs ls -gl
+find $VAR -type d  \
+	\( -perm -400 \( ! -perm -40 -o ! -perm -4 \) -print \) \
+	\( -perm -200 \( ! -perm -20 -o ! -perm -2 \) -print \) \
+	\( -perm -100 \( ! -perm -10 -o ! -perm -1 \) -print \) |
+	xargs ls -dgl
+)| awk '{ print $3; }' | sort -u
+
+# find groups that matter...
+echo "Groups to watch for;"
+(
+find $DEV $VAR ! -type d \( -perm -10 ! -perm -1 -print \) \
+	-o \( -perm -20 ! -perm -2 -print \) \
+	-o \( -perm -40 ! -perm -4 -print \)  | xargs ls -l
+find $VAR -type d \
+	   \( -perm -10 ! -perm -1 -print \) \
+	-o \( -perm -20 ! -perm -2 -print \) \
+	-o \( -perm -40 ! -perm -4 -print \)  | xargs ls -dl
+)| awk '{ print $4; }' | sort -u
+
+# do the mode canon thing with that info...
+
+# pass over groups to set group classes (adorn, priv, -priv, login...)
+
+# Humm.  group "root" means g-rwx,o-rwx a group of -priv
+# pass over fs to set group invs:
+#	force g-w for adorn groups
+#	go-X for -priv groups
+#	login groups on login fs's only
+
+build link info pass
+find $DEV $VAR $DIRS ! -type d ! -links 1 -print | xargs ls -id |
+
+echo "chown these to root:"
+# find (in a binary directory) files that could/should be root owned
+find $DIRS -xdev \( ! -user uucp ! -user root \)  \
+	\( \( -type f ! -perm -4000 \) -o -type d \) \
+	\( -perm 755 -o -perm 555 -o -perm 711 -o -perm 511 -o -perm 311 -o -perm 111 \) -print
+
+# do the same for other groups
+find $DIRS -xdev -type d \
+	\( \( -perm -040 -perm -004 \) -o \( ! -perm -040 ! -perm -004 \) \) \
+	\( \( -perm -020 -perm -002 \) -o \( ! -perm -020 ! -perm -002 \) \) \
+	\( \( -perm -010 -perm -001 \) -o \( ! -perm -010 ! -perm -001 \) \) \
+	! \( -group sys -o -group adm -o -group tty -o -group bin -o -group mail -o \( -user uucp -group uucp \) -o \( -user lp -group lp \) \) \
+	-print | xapply -f -3 'instck -G -Lvd' - - -
+
+find $DIRS -xdev -type d -print | 
+	xapply -f "ls -ld %1 | awk '{ print \"%1 \" \$4; }'" - | 
+	xapply -f 'instck -G -g %[1 2] -Lvx %[1 1]' -
+	
+# echo "chgrp these to 0"

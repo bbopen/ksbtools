@@ -1,0 +1,92 @@
+`# $Id: Make.host,v 3.8 2000/06/20 14:07:47 ksb Exp $
+#
+# Makefile for entomb
+# by Matthew Bradburn, PUCC Unix Group
+#
+
+SHELL=/bin/sh
+PROG= entomb
+LIB= ${DESTDIR}/usr/local/lib
+CPP= /lib/cpp
+
+S=/usr/include/sys
+I=/usr/include
+L=../libtomb
+
+INCLUDE= -I$L
+DEBUG=	-O
+CDEFS=	-D'HOSTTYPE`'ifelse(
+HOSTTYPE,`SUN4',` -DDEFAULT_EV="\"no,copy:*.o:a.out:core:y.output:y.tab.?:lex.yy.?\""')`
+CFLAGS=	${DEBUG} ${CDEFS} ${INCLUDE}
+
+GENc=	'ifelse(MKCMD,`no',`',`main.c')`
+GENh=	'ifelse(MKCMD,`no',`',`main.h')`
+HDR=	'ifelse(MKCMD,`no',`main.h ')`entomb.h fslist.h
+SRC=	'ifelse(MKCMD,`no',`main.c ')`entomb.c fslist.c
+GEN=	${GENc} ${GENh}
+DEP=	${GENc} ${SRC}
+OBJ=	main.o entomb.o fslist.o
+MAN=	entomb.man
+SOURCE=	Makefile ${HDR} ${SRC} ${MAN}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o ${PROG} ${CFLAGS} ${OBJ} -L $L -ltomb
+
+'ifelse(MKCMD,`no',`',
+`main.h: main.c
+
+main.c: entomb.m
+	mkcmd entomb.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -rf prog.[ch]')`
+
+clean: FRC
+	rm -f Makefile.bak ${GEN} a.out core errs lint.errs tags *.o ${PROG}
+
+depend: ${SRC} ${HDR} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+distrib: FRC
+	distrib -c ${LIB}/${PROG}
+
+# N.B.: Configure me here:
+#	if entomb has to work over NFS change -oroot to -ocharon
+install: all
+	install -cs -m6755 -o'ifelse(HOSTTYPE,`SUN4',`charon',`root')` -gcharon ${PROG} ${LIB}/${PROG}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+lint:	${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+print:  ${SOURCE}
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean FRC
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR} ${GEN}
+	ctags -t ${SRC} ${HDR} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+entomb.o: entomb.c entomb.h fslist.h
+
+fslist.o: fslist.c fslist.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

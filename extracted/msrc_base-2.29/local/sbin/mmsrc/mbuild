@@ -1,0 +1,390 @@
+#!/bin/ksh
+# $Id: mbuild,v 4.8 2008/10/26 18:04:26 ksb Exp $
+# master source builder.  This knows a lot about which master-source	(ksb)
+# products depend on which ones.
+# $1 must me a curl prefix or rsync prefix to fetch the master source:
+#	ftp://ftp.npcguild.org/pub/ksb		(fetch, wget, curl)
+#	http://www.npcguild.org/ftp/pub/ksb	(fetch, wget, curl)
+#	rsync://rsync.npcguild.org/tools	(rsync)
+#	file://path/to/cache/			(cp, cat)
+
+# [opts] [site] [--] [level2names]
+DEF_SITE=ftp://ftp.npcguild.org/pub/ksb
+: ${SITE:=$DEF_SITE}
+progname=`basename $0`
+usage="$progname: usage [-arv] [-C db] [-m top] [site] [products]
+$progname: -h
+$progname: -V"
+
+slide='P=$1; shift; set _ -`expr _"$P" : '\''_-.\(.*\)'\''` ${1+"$@"}; shift'
+param='if [ $# -lt 2 ]; then echo "$progname: missing value for $1" 1>&2 ; exit 1; fi'
+
+# default values for all the flags, or leave unset for a ${flag-value} form
+VFLAG=false		# ubiq. version command
+AFLAG=false		# auto install
+MFLAG=/usr/msrc/local	# root of tools dir
+VERBOSE=false		# trace missing depends
+: ${MDB:=mbuild.db}	# our prerequisite database
+: ${REMOVE:=false}	# remove previous source if it exisits
+
+# read an environment variable as well as the command line options:
+# protect this script from leading -x's with a bogus underbar, then remove it
+set _ $MBUILD ${1+"$@"}
+shift
+
+MAKEME_AT=`whence makeme` || {
+	echo "$progname: makeme: cannot locate in \$PATH ($PATH)"
+	exit 2
+}
+AS_ROOT=`if [ $(id -u) -eq 0 ] ; then echo true ; else echo false; fi`
+
+# Get the options from the command line (+ any variables)
+while [ $# -gt 0 ]
+do
+	case "$1" in
+	-a)
+		AFLAG=true
+		shift
+		;;
+	-a*)
+		AFLAG=true
+		eval "$slide"
+		;;
+	-C)	eval "$param"
+		MDB=$2
+		shift ; shift ;;
+	-C*)	MDB=`expr _"$1" : _'-.\(.*\)'`
+		shift ;;
+	-m)	eval "$param"
+		MFLAG=$2
+		shift ; shift ;;
+	-m*)	MFLAG=`expr _"$1" : _'-.\(.*\)'`
+		shift ;;
+	-r)
+		REMOVE=true
+		shift
+		;;
+	-r*)
+		REMOVE=true
+		eval "$slide"
+		;;
+	-V)
+		VFLAG=true
+		shift
+		;;
+	-V*)
+		VFLAG=true
+		eval "$slide"
+		;;
+	-v)
+		VERBOSE=true
+		shift
+		;;
+	-v*)
+		VERBOSE=true
+		eval "$slide"
+		;;
+	--)
+		shift
+		break
+		;;
+	-h|-h*)
+		cat <<HERE
+$usage
+a	 attempt to auto install each program selected
+C db	 read prerequisite information from db (rather than mbuild.db)
+h	 print this help message
+i	 force interactive mode
+m path	 force the root of the master source to be path
+r	 remove older release before installing new one
+v	 be verbose with reguard to missing prerequisite
+V	 show version information
+site	 location of ksb's master source, as a URL prefix
+products list of product to install
+HERE
+		exit 0
+		;;
+	-*)
+		echo "$usage" 1>&2
+		exit 2
+		;;
+	*)
+		# process and continue for intermixed options & args
+		break
+		;;
+	esac
+done
+
+if [ _-- = _"$1"  ] ; then
+	shift
+elif [ $# -gt 0 ] ; then
+	SITE=$1
+	shift
+fi
+
+# Change the URL into a command to download or copy the resource here.
+case _"$SITE" in
+_file:*)
+	Xd=`echo "$SITE" |sed -e "s!file[:/]*\(.*\)!\1!"`
+	[ -d "$Xd" ] || Xd=/$Xd
+	if [ ! -d "$Xd" ] ; then
+		echo "$0: local cache $Xd: not a directory" 1>&2
+	fi
+	FRP="cp $Xd/\$1 \$2"
+	;;
+_ftp:*|_http:*)
+	# find a good way to download a common URL
+	if wget --help  > /dev/null 2>&1 ; then
+		FRP="wget -w 10 -o /dev/null $SITE/\$1 && [ _\$2 != _\${1##*/} ] && mv \${1##*/} \$2"
+	elif fetch -q file:/dev/null ; then
+		FRP="fetch -Aa -w 10 -l -m -o \$2 $SITE/\$1"
+	elif curl --version >/dev/null ; then
+		FRP="curl -sS -o \$2 $SITE/\$1"
+	else
+		echo "$progname: no wget, fetch, or curl found"
+		exit 7
+	fi
+	;;
+_rsync:*)
+	Xf=`echo "$SITE" |sed -e "s!rsync[:/]*\([^/][^/]*\)[/:][:/]*\(.*\)!\1::\2!"`
+	Xr=`whence rsync` || {
+		echo "$progname: rsync not available?"
+		exit 7
+	}
+	FRP="$Xr -L $Xf/\$1 \$2"
+	;;
+*)
+	echo 1>&2 "$0: \"$SITE\": URL schema must be one of (ftp:, http:, rsync:, file:)"
+	exit 1
+	;;
+esac
+
+# $1 is the resource, $2 is a place to cache it
+function pull_resource {
+	eval $FRP
+}
+# $1 is a program or file to get an RCS or CVS version from (ksb)
+whence ident || function ident {
+	[ _-q = _$1 ] && shift
+	strings $1 |egrep "^[$](Id|Header|Revision)[:]"
+}
+function my_version {
+	local - PT
+	case $1 in
+	/*)
+		PT=$1;;
+	*)
+		PT=$MFLAG/$1;;
+	esac
+	if expr _"$PT" : _'.*\.[em]*[chia]' ; then
+		ident -q "$PT" 2>/dev/null || what "$PT" 2>/dev/null
+	elif expr _"$PT" : _'.*\.so' ; then
+		ident -q "$PT" 2>/dev/null || what "$PT" 2>/dev/null
+	elif [ -x "$PT" ] ; then
+		"$PT" -V 2>/dev/null
+	else
+		ident -q "$PT" 2>/dev/null || what "$PT" 2>/dev/null
+	fi
+}
+
+# Version output, like any other ksb tool
+if $VFLAG ; then
+	echo "$progname: "'$Id: mbuild,v 4.8 2008/10/26 18:04:26 ksb Exp $'
+	echo "$progname: URL: $SITE"
+	echo "$progname: master source root is: $MFLAG"
+	echo "$progname: prerequisite data from: $MDB"
+	echo "$progname: makeme as $MAKEME_AT"
+	echo "$progname: resource copy command: $FRP"
+	exit 0
+fi
+
+if [ ! -d "$MFLAG" ] ; then
+	echo 1>&2 "$progname: $MFLAG: missing master source root directory"
+	exit 2
+fi
+
+TDIR=/tmp/mbcd$$
+while [ -d $TDIR ] ; do
+	TDIR="$TDIR,$((RANDOM%100))"
+done
+trap "rm -rf $TDIR" EXIT INT
+mkdir $TDIR || exit
+
+[ -f $MDB ] && cp  $MDB $TDIR/mbuild.db
+if [ ! -f $MDB ] ; then
+	pull_resource $MDB $TDIR/mbuild.db
+fi
+cd $TDIR || exit 3
+if [ ! -f mbuild.db ] ; then
+	echo "$0: no $MDB, quit"
+	exit 2
+fi
+
+# 3 files  have, missing, want
+# Get the files left on the line, put them in the want list
+>have
+>missed
+while [ $# -gt 0 ]
+do
+	echo "$1"
+	shift
+done |sort >want
+
+# build have list
+# vinst:/usr/local/bin/vinst: 1.18 :One:install:bin/vinst
+#  $N     $C                  $V    $S   $P      $W
+# no quotes in the db file
+sed -e 's/#.*//
+/^$/d
+s/^/N="/
+s/:/" C="/
+s/:/" V="/
+s/:/" S="/
+s/:/" P="/
+s/:/" W="/
+s/$/"/' < mbuild.db >mbuild.cmd
+>topo
+while read CMD ; do
+	eval $CMD
+	echo "$N $N" >>topo
+	for PR in $P ; do
+		echo "$PR $N"
+	done >>topo
+	if my_version "$C" |grep "$V" >/dev/null ; then
+		echo $N
+	else
+		echo $N >>missed
+	fi
+done <mbuild.cmd |sort >have
+sort missed >missing
+#tsort -q topo >order
+rm -f missed
+
+
+# While there are thing we might be able to build, try to build one	(ksb)
+# Find ones we can (any with pre-reqs made, or no pre-reqs) and comm
+# them with the ones we want.
+PS3="Choose a package to build: "
+INTR=`stty -a |sed -n -e 's/.*intr *= *\([^ ;]*\).*/\1/p' |tr '[a-z]' '[A-Z]'`
+while [ -s missing ] ; do
+	while read CMD ; do
+		eval $CMD
+		if [ -z "$P" ] ; then
+			echo $N
+			continue
+		fi
+		for PR in $P ; do
+			grep "^$PR\$" have >/dev/null && continue
+			$VERBOSE && echo "$N needs $PR" 1>&2
+			continue 2
+		done
+		echo $N
+	done <mbuild.cmd |sort >all-enable
+	comm -23 all-enable have >enable
+	if [ ! -s enable ] ; then
+		echo "$progname: Missing" `wc -l <missing` "but none allowed?"
+		fmt missing |sed -e 's/^/	/'
+		echo "$progname: giving up."
+		exit 11
+	fi
+	# If there is one in the want list we should take that,
+	# else we should take any direct prerequisite from one in the
+	# want list (to get us closer).
+	sort enable have |comm -12 - want >prio
+	if [ ! -s prio ] ; then
+		comm -12 missing enable >prio
+	fi
+	# When there are still no obvious choices we should pick the enabled
+	# name that appears as the most common prerequisites of the
+	# ones we want.  Or at least find a prereq that helps. 		(ksb)
+	back=`sort -u missing want`
+	>tNep
+	while [ ! -s prio ] ; do
+		for PN in $back ; do
+			sed -n -e "s/ $PN\$//p" topo
+		done |sort -u >tNep
+		if [ _"$back" = _"`cat tNep`" ] ; then
+			break
+		fi
+		comm -12 tNep enable >prio
+	done
+	rm tNep
+	if [ -s prio ] ; then
+		mv prio enable
+	fi
+	echo "Press $INTR to abort."
+	while [ -s enable ] ; do
+		select PKG in Rescan Status `cat enable` ; do
+			if [ _Rescan = _$PKG ] ; then
+				break 2
+			fi
+			if [ _Status = _$PKG ] ; then
+				(	echo "Have:"
+					fmt < have |sed -e 's/^/	/'
+					echo "Want:"
+					fmt < want |sed -e 's/^/	/'
+					echo "Missing:"
+					fmt < missing |sed -e 's/^/	/'
+				) |${PAGER:-less}
+				continue
+			fi
+			eval `grep "N=\"$PKG\"" <mbuild.cmd`
+			pull_resource $N-$S.tgz ./$N-$S.tgz
+			if [ ! -s $N-$S.tgz ] ; then
+				echo "$progname: fetch failed for $N-$S.tgz"
+				REPLY=''
+				continue
+			fi
+			W="$MFLAG/$W"
+			WIN="${W%/*}"
+			mkdir -p "$WIN"
+			if $REMOVE && [ -d $W ] ; then
+				rm -r $W
+			fi
+			/bin/ls -1 $WIN |sort >wasW
+			gunzip -c < $N-$S.tgz |(cd "${WIN}" && tar xf -)
+			MADE=`/bin/ls -1 $WIN |sort |comm -23 - wasW`
+			if [ ! -d $W ] ; then
+				mv $WIN/$MADE $W || {
+					echo "$progname: $N-$S.tgz didn't make $W"
+					exit 10
+				}
+			fi
+			rm -f wasW
+			( cd $W && $MAKEME_AT all ) || {
+				echo "$progname: $N relese $S failed to build"
+				continue
+			}
+			(cd $W
+			if $AFLAG ; then
+				if $AS_ROOT ; then
+					$MAKEME_AT install
+				else
+					su root -c "$MAKEME_AT install"
+				fi
+			elif $AS_ROOT ; then
+				echo "install the product with \"$MAKEME_AT install\""
+				PS1="install $N #  " ${SHELL:-ksh} -i
+			else
+				echo "su and install the product with \"$MAKEME_AT install\""
+				PS1="install $N \$  " ${SHELL:-ksh} -i
+			fi
+			$MAKEME_AT clean >/dev/null 2>/dev/null
+			)
+			SV=`my_version $C`
+			if echo "$SV" |grep "$V" >/dev/null ; then
+				echo "Installed $N"
+				(cat have; echo $N) |sort >thep ; mv thep have
+				grep -v "^$N\$" missing >tmep ; mv tmep missing
+				grep -v "^$N\$" want >twep ; mv twep want
+				grep -v "^$N\$" enable >teep ; mv teep enable
+			elif $VERBOSE ; then
+				echo "$N not version \"$V\", I see \"$SV\""
+			fi
+			break
+		done
+	done
+	echo "Rescanning..."
+done
+echo "All packages built."
+exit 0

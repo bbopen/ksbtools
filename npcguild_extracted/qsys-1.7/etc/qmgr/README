@@ -1,0 +1,41 @@
+# $Id: README,v 1.3 1997/01/06 01:40:30 kb207252 Exp $
+
+The heart of the whole deal.  The qmanager (qmgr) launches jobs from a
+single queue, waits for them to complete, then launches more jobs.  It can
+keep track of a fixed number of jobs running from its queue (usually 1 to 3
+on a uni-processor machine).
+
+Qmanagers on other hosts can NFS mount our spool and share the work.  In
+this case qstat -v shows which host the job is running on and qrm/qkill
+remote shell to the apropos host to do their work.
+
+When the qmanager runs out of tasks he polls the queue every 120 seconds
+waiting for someone to insert more work.  As long as he is busy jobs flow
+end-to-end, he only polls when the queue is exhausted.
+
+
+Qmgr produces a nifty log file with the time of each job start and how
+many hours it spent in the queue.  Job output should be redirected, or it
+ends up in this log.
+
+Qend shuts the queue down as the next job.  In the multi-process case
+this breaks a little.
+
+Bugs:
+	- qmgr lets the user process have its initgroups structure (I've
+	not found a way around this) so `daemon' should not have any
+	extra groups, and the primary login group should be `vanilla'
+	or some other safe group.
+
+	- qmgr should notice qadd's to the queue somehow (named pipe?)
+
+	- as the XXX comment in qmgr.m says, we assume the all the hosts
+	pulling from an NFS mounted queue are in the same BIND domain
+	(a.cs.klink.edu and b.cs.klink.edu work, but a.other.klink.edu
+	will be confused with a.cs.klink.edu).
+
+	+ we should have an ops interface to the console server to tell
+	operations how we are doing (al la labwatch).
+
+--
+ksb@fedex.com

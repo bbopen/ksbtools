@@ -1,0 +1,42 @@
+<HTML>
+<HEAD><TITLE>Set environment variables</TITLE></HEAD>
+<BODY>
+Family: setenv
+<BR>
+Authors: Kevin S Braunsdorf
+<BR>
+Mail: ksb@sa.fedex.com
+<BR>
+Version: 5.1
+<BR>
+Bugs: None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+This code emmulates the <CODE>setenv</CODE> code for
+systems which do not support that interface.
+
+<H1>Configuration</H1>
+
+None.
+
+<H1>Provides</H1>
+<DL>
+<DT> int setenv(char *pcName, char *pcValue);
+<DD>
+Given a named environment variable and a value this code
+updates the global C variable <CODE>environ</CODE> to point to
+a new vector with the variable replaced or added (someplace).
+
+<P>
+If the new value is <CODE>(char *)0</CODE> (the NULL pointer) then
+the variable is <STRONG>removed</STRONG> for the global environment.
+</DL>
+
+<H1>To Do List</H1>
+
+Port to new systems.  Add a <CODE>putenv</CODE> interface.
+</BODY>
+</HTML>

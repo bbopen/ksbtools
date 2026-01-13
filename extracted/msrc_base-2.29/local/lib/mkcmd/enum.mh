@@ -1,0 +1,6 @@
+/* enumerated types from mkcmd						(ksb)
+ * $Id: enum.mh,v 8.8 1999/06/14 14:44:18 ksb Exp $
+ * We have to expand quite a bit, so we put it all in a file.
+ */
+%extern unsigned %K<EnumCvt>1ev(/* pcIn, ppcList */)%;
+%@expand "enum.info"

@@ -1,0 +1,19 @@
+# $Id: README,v 4.0 1996/07/14 19:01:51 kb207252 Exp $
+
+The electronic submission tools are use, primarily, to fill up file
+systems with copies of students files :-).
+
+This is the `receive' end of this system, which allows graders to
+choke many swallow5's to death in less than one term.  I have some
+more bits to this system, helpful scripts and such if anyone cares.
+
+The file "install.doc" is a typescript of someone (me) installing a
+test course with project -i.
+
+The "template" file is used to _grade_ student's projects.  Of course
+running the project as the instructor would show a great amount of trust
+between the prof. and the student.  Build a lesser acount and rcp/rsh
+the binary in using .rhosts -- I would.
+
+--
+K S Braunsdorf (ksb@fedex.com)

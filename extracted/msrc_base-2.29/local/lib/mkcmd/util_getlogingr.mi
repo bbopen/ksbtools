@@ -1,0 +1,6 @@
+/* $Id: util_getlogingr.mi,v 8.4 2008/09/05 16:24:54 ksb Exp $
+ * Find out what groups a login belongs to, no limits			(ksb)
+ * (you can qsort them yourself).
+ * The returned vector is suitable for free'ing. -- ksb
+ */
+%extern int %K<util_getlogingr>1v(/* pcLogin, ppGRFound */)%;

@@ -1,0 +1,31 @@
+# $Id: pre,v 5.2 1999/02/26 19:45:09 ksb Exp $
+# mk uses this file to map nontext files to the the apropos template.	(ksb)
+# mk's default -e rule (in 4.1) is
+# mk: -e `%<%~/map/pre>:%~/pre-%x:%~/comma-%U,'
+
+# special non-text file names
+%G	^a\\.out$		file/zmagic
+
+# Unix kernels from various venders
+# might check magic number here first, text files name "unix" are common
+%G	^unix$			file/unix
+%G	^vmunix$		file/unix
+%G	^dynix$			file/unix
+%G	^hp-ux$			file/unix
+%G	^kernel$		file/unix
+%G	^386BSD$		file/unix
+%G	^ultrix$		file/unix
+%G	^xenix$			file/unix
+# not sure about this one...
+%G	^ncrm$			file/unix
+
+# prescan maps for non-text files
+%x	^pag$			pre/dbm
+%x	^dir$			pre/dbm
+%x	^latex$			pre/tex
+%x	^texinfo$		pre/texi
+%x	^core$			is/core
+
+# no extender -- map magic number
+%x	^$			%<%~/map/magic>
+%x	.			pre/%x

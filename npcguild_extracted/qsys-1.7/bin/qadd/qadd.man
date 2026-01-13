@@ -1,0 +1,100 @@
+.\" $Id: qadd.man,v 1.2 1997/01/06 02:24:37 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH QADD 1L LOCAL
+.SH NAME
+qadd \- add a job to a queue system queue
+.SH SYNOPSIS
+.ds PN "qadd
+\fI\*(PN\fP [\-\fBE\fP\fBn\fP\fBv\fP\fBx\fP] [\-\fInice\fP] [\-\fBd\fP \fIdir\fP] [\-\fBN\fP \fIname\fP] [\fIcmd\fP]
+.br
+\fI\*(PN\fP \-\fBm\fP \fIaddress\fP [\-\fBE\fP\fBn\fP\fBv\fP\fBx\fP] [\-\fInice\fP] [\-\fBd\fP \fIdir\fP] [\-\fBN\fP \fIname\fP] [\-\fBs\fP \fIsubject\fP] [\fIcmd\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+.sp
+.SH DESCRIPTION
+.PP
+Queue system jobs spool in a directory (\fIdir\fP) only to be executed after
+all jobs of higher priority (nice value) are finished.
+The queue manager, \fIqmgr\fP, dequeues jobs running them in order.
+.PP
+Queued jobs may be removed with \fIqrm\fP(1L).
+.PP
+When no commands are provided \fIqadd\fP prompts for commands much
+like \fBat\fP(1). The single command ``-'' is also accepted to mean this.
+.SH OPTIONS
+.TP
+.I nice
+Set a processes nice value (default 10) to speed (lesser values) or
+slow process execution.  Only the superuser may specify nice values
+lessthan zero.
+.TP
+.BI \-d dir
+Queue to manipulate.  The default queue (\fI/usr/spool/qsys\fP) is
+taken if none is provided.
+.TP
+.BI \-E 
+Produce the C code for the queue file on stdout, only.
+.TP
+.BI \-h 
+Print a brief help message.
+.TP
+.BI \-m address
+Mail address for output report.  Stdout and stderr of the process are
+sent to this address on completion.
+.TP
+.BI \-n 
+Just output a trace of commands run.
+.TP
+.BI \-N name
+The commands supplied are hidden by this name in \fIqstat\fP output.
+.TP
+.BI \-s subject
+The subject of the mail message may be changed.  This is not
+recommended for the casual user.
+The default string is ``queue job %s complete''.  Note that ``%s''
+is expanded (once) by printf(3) as the full job name.
+.TP
+.BI \-v 
+Be verbose.
+.TP
+.BI \-V 
+Show version information.
+.TP
+.BI \-x 
+This option is passed on to the shell which runs the \fIcmd\fP.
+The shell outputs each command as it is run.  See \fBsh\fP(1).
+.SH EXAMPLES
+.TP
+qadd \-m joe 'ls \-CF $HOME; date'
+Output a columnar directory listing and the date, mail this output to ``joe''.
+.TP
+qadd \-1 "make all"
+Use \fImake\fP(1) to update the current directory, do it as soon as
+possible.
+.TP
+qadd \-x ls /dev
+Run the command ``ls'' ignoring the ``/dev'' parameter.
+This is usually \fBnot\fP what was intended.
+The \-\fBx\fP option shows that \fIls\fP(1) is run with no parameters.
+.TP
+qadd \-19 'echo $0 $1 $3' one two tree
+Show the values of the positional parameter passed to the shell.
+.TP
+qadd \- < /tmp/cmds
+Enqueue the script in /tmp/cmds.  This is used when /tmp may
+be cleared before the job might run.
+.SH BUGS
+Stdout (stderr) of undirected command (those without \-\fIm\fP)
+goes to the stdout (stderr) of the qmgr process.  {This might
+also be a feature.}
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Group
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+qstat(8L), qrm(1L), sh(1)

@@ -1,0 +1,66 @@
+# $Id: README,v 8.12 2010/08/13 19:59:30 ksb Exp $
+
+You should have "msrc" and "mmsrc" installed on any host before you try to
+build this package.  If you don't look for "msrc_base" with a version of at
+least 2.15 and install that first.  If you are using FreeBSD ports just
+install /usr/ports/sysutils/msrc, as it depends on the whole chain.  If I've
+finished the ports you should be able to install this package by installing
+/usr/ports/*/vinst/ and /usr/ports/*/mkksb/.
+
+Be warned that /usr/local/bin/install can break some BSD installations!
+It doesn't know the magic chflags options, see chflags(1).  Some ports will
+find it via autoconf and break.  I find the program so useful that I just
+change my PATH when running portupgrade or portmaster to work around this
+limit.  I suppose we'll have to add the chflags options from BSD install
+someday to fix that.
+
+
+Manual installation:
+
+If msrc_base is installed and you don't have BSD ports try (as root):
+	# PATH=/usr/local/bin:/usr/local/sbin:/usr/ccs/bin:/usr/sfw/bin:$PATH
+	# export PATH
+	# [ -h /usr/local/bin/install ] && rm /usr/local/bin/install
+	# gunzip -c <install_base-8.30.tgz | tar xf -
+	# cd install_base-8.30
+	# mmsrc -l -Cauto.cf -y INTO=/tmp/_src -- make install
+
+We must see "/usr/local/bin/install" before the install program in /usr/bin,
+because we take more options (-dr is a good example).  If any ksh $ENV file
+puts $PATH back you may have to change $ENV for the build.
+
+Then you'll want to read up on "op" and "installus" as they run setuid root.
+I would want to configure those carefully.  The "access.cf" in this directory
+is a fair example of what I run in production.  Read bin/op/op.html for
+clues.  To install the file use mk via:
+	# mk -mInstall access.cf
+	# op help
+	<see the local site policy help message>
+
+There is no default configuration for installus, as it is configured
+for each destination directory as you need it.  If you read about it in the
+manual page and don't need it just remove it:
+	# make -C /tmp/_src/etc/installus deinstall
+
+This makes "vinst" unhappy (as a package) but is works unless you ask for
+installus under -U.
+
+Then remove the platform cache under /tmp/_src
+	# rm -rf /tmp/_src
+
+
+After that works:
+
+Kiss "sudo" goodbye and move up to op(1).  You';l like op because it speaks
+UNIX rather than what ever it is sudo grunts.
+
+If you take install's default "bin" group you might have to edit /etc/group
+to make it.  This gives you a meaningless group of adornment for files that
+are not setuid or group limited.  Since "root" (group 0) is special to some
+versions of "su" and "sudo" it makes a poor group of adornment.
+
+Look for "efmd", "oue", and lots of other tools that use these base
+tools as their core.
+
+--
+Kevin S Braunsdorf, install@ksb.npcguild.org, May 2010

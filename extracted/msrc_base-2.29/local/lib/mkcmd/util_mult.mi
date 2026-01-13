@@ -1,0 +1,5 @@
+/* forward for scaled conversion --ksb
+ * $Id: util_mult.mi,v 8.3 2004/12/15 22:20:18 ksb Exp $
+ */
+%extern unsigned long %K<pm_cvt>1ev(/* char *pcDo, POST_MULT *pPM, int iEntries */)%;
+%static unsigned long %K<pm_expr>1ev()%;

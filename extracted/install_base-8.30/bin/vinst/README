@@ -1,0 +1,53 @@
+# $Id: README,v 1.2 1999/06/01 18:33:34 ksb Exp $
+
+Sometime you need a tool just to make things Easy!
+
+I've found that people tend to edit files in-place rather than use install
+to update them.  This is poor from because it is not so hard to
+	cp /etc/motd /tmp/motd
+	vi /tmp/motd
+	install /tmp/motd /etc/motd
+
+but it is just enough more typing and thought that most people are not going
+to do it unless they think they'll make a mistake.
+
+Of course most traffic accidents happen within 4 blocks of your house, most
+file destruction happens when you least expect it.  And we all know it is
+likely you should do the copy-edit-install more often.
+
+So I coded a short C program that you can call as
+	vinst /etc/motd
+
+to do the 3 steps above.  It manages the temporary file for you and calls
+install and cleans up.  You don't have to type all those (three) commands
+anymore.
+
+Bonus features:
+	use -U to call installus rather than install
+	uses your $VISUAL, $EDITOR or vi
+	uses your $TMPDIR or /tmp
+	uses the targets OLD directory for temp space if you can to that
+	makes the target directory if is knows how (under -U)
+	builds OLD for you before the install, if it can
+
+Bugs:
+	not op(8) safe at all since it calls _your_ editor - use installus
+
+Usage Ideas:
+	A wrapper shell script (yeah, really) that lets Clerical Staff
+	edit kinda important files is easy.	
+		#!/bin/ksh
+		# set PATH/EDITOR for them (axe or mx or whatever)
+		# sanity check for $DISPLAY, etc.
+		# look a a command line keyword for the file to edit
+		# run vinst -U $the_file
+
+Follow-up:
+	Make the template default work better.  The silly shell template
+	was the first thing I though to put in (vinst.mc line 80).  Maybe
+	look for $VINST_TEMPLATE or a command line option (and read $VINST).
+	Looking at the name of the file (file.c) to search /usr/share/skel
+	might be a thing to think about.
+
+--
+ksb

@@ -1,0 +1,24 @@
+#  TeX document							(nuspl)
+#  $Id: tex,v 5.0 1996/09/09 21:05:58 kb207252 Exp $
+
+$Clean(*):	${rm-rm} -i %F.aux %F.dvi %F.log
+
+$Compile(*):	%b %o -mDvi %f
+
+$Dvi(*):	${tex-tex} %f
+
+$Info(*):	${echo-echo} "%f:  TeX document"
+
+$Laser(*):	%b %o -mDvi %f && %b %o -m%m -d%s %F.dvi
+$Laser(*):	%b %o -mDvi %f && %b %o -m%m %F.dvi
+
+$Page(*):	${PAGER-${more-more}} %f
+
+$Preview(*):	%b %o -mDvi %f && %b %o -m%m -d%s %F.dvi
+$Preview(*):	%b %o -mDvi %f && %b %o -m%m %F.dvi
+
+$Ps(*):		%b %o -mDvi %f && %b %o -m%m -d%s %F.dvi
+$Ps(*):		%b %o -mDvi %f && %b %o -m%m %F.dvi
+
+$*(*):		${echo-echo} "%f:  %m(%s) is ambiguous for a TeX document"
+$*(*):		${echo-echo} "%f:  %m is ambiguous for a TeX document"

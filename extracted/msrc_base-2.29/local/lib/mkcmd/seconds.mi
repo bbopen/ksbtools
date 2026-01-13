@@ -1,0 +1,21 @@
+/* $Id: seconds.mi,v 8.20 1998/11/28 16:43:14 ksb Exp $
+ * post mult seconds
+ * each month in turn?  Just use:
+ *	28d 29d 30d or 31d for a month
+ *	8y+2l for a decade
+ *	25d+100y for a century (24 in most centurys)
+ */
+#define PMS_SECOND	{ '\000', "seconds",		1UL, (char *)0	}
+#define PMS_MINUTE	{    'm', "minute",	       60UL, (char *)0	}
+#define PMS_HOUR	{    'h', "hour",	     3600UL, (char *)0	}
+#define PMS_DAY		{    'd', "day",	    86400UL, (char *)0	}
+#define PMS_WEEK	{    'w', "week",	   604800UL, (char *)0	}
+#define PMS_YEAR	{    'y', "year",	 31536000UL, (char *)0	}
+#define PMS_LEAP_YEAR	{    'l', "leapyear",	 31622400UL, (char *)0	}
+#define PMS_KILO	{    'k', "ksecond",	     1000UL, (char *)0	}
+#define PMS_CENTURY	{    'c', "century",   3155760000UL, (char *)0	}
+
+static POST_MULT aPMSeconds[] = {
+	PMS_SECOND, PMS_MINUTE, PMS_HOUR, PMS_DAY,
+	PMS_WEEK, PMS_YEAR, PMS_LEAP_YEAR, PMS_KILO
+};

@@ -1,0 +1,10 @@
+# $Id: Distfile,v 4.2 1993/11/03 10:31:14 ksb Beta $
+#
+ifelse(MKCMD,`no',`syscmd(`make main.c main.h >/dev/null')')dnl
+( . ) -> ( HOST )
+	except_pat ( /RCS /Makefile /Make.host /Distfile );
+	install ${INTO} ;
+
+( @Make.host@ ) -> ( HOST )
+	install -b ${INTO}/Makefile ;
+

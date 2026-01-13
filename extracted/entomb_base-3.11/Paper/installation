@@ -1,0 +1,583 @@
+.TL
+Details of the PUCC Entombing System
+.AU
+Greg Becker
+.AI
+Purdue University Computing Center
+.AB
+.LP
+The PUCC entombing system is a suite of programs that provide a secure,
+efficient, reliable, and easy to use mechanism for
+.B user
+.B level
+file recovery.
+The system is easy to install and requires little maintenance.  Best of all,
+the system is transparent:  Except for actual file recovery, users need not
+learn new commands to use the system.
+.LP
+This document details the mechanics of the entombing system, with
+emphasis on installation, maintenance, and troubleshooting.
+.AE
+.SH
+.ce 1
+Overview
+.PP
+The basic premise of any user level file recovery system is that it must
+archive deleted files for a reasonable period of time.
+In the event that a user wishes to recover a deleted file
+(perhaps it was deleted accidentally),
+the recovery system should be able to produce the file in a
+timely manner.
+.PP
+To understand how the PUCC Entombing System implements this procedure
+transparently, we must first define a few terms in the context of the
+entombing system.
+.PP
+A
+.I crypt
+is a directory where deleted files are maintained.
+For each
+.B UID,
+there is a unique crypt which may contain files previously owned by that
+.B UID\.
+The
+.B UID
+has no access to the crypt except through entombing system programs.
+For the sake of efficiency, the crypt name is the ASCII representation
+of the
+.B UID
+number for which it serves.
+.PP
+All the crypts for a given file system
+are kept in a directory known as a
+.I tomb\.
+Tombs are normally named "tomb", and must reside at the root
+of the given file system in order for entombing system
+programs to find them.
+Again, user level access to the tomb is not permitted, except through
+the user
+.I charon\,
+who owns the tomb, and the group
+.I charon,
+which must have group read, write, and execute access to all tombs.
+.PP
+When we
+.I entomb
+a file, we run a program that (in some manner) saves a copy of the file into
+a particular tomb/crypt.  Likewise, when we restore
+a file, we run a program that
+moves a file from a particular tomb/crypt to the 
+current working directory.
+.SH
+.ce 1
+Anatomy of the Entombing System
+.PP
+There are five main parts to the entombing system:
+.RS
+.IP
+.br
+A tomb directory on each file system subject to entombing.
+.br
+A daemon to periodically clean the tombs.
+.br
+A user agent to entomb files.
+.br
+A library interface for user level programs.
+.br
+A user agent to restore files.
+.br
+.RE
+.PP
+.B
+The Tomb.
+.R
+The tomb directory should be named "tomb", and must reside at the
+root of each file system for which entombing is desired.
+If the entombing
+system cannot find a directory named "tomb" at the mount point, it
+does
+.B not
+entomb any files for that file system.
+The tomb must
+be owned by a special user (charon) and be readable, writeable,
+and executable
+by both the tomb owner and the tomb's primary group (mode 0770.)
+Regarding security,
+the tomb owner's primary group should be unique unto the tomb owner.  No
+other users should be in this group except persons specifically involved
+in tomb maintenance.
+.PP
+.B
+The Daemon.
+.R
+The entombing system has a daemon named
+.I preend
+that periodically removes
+old files from select tombs.  This is required in order to prevent the
+entombing system from filling up the file system.
+.I Preend
+removes files based on
+how much free space is available for the given file system.
+.I Preend
+is not a
+set-UID root program, but it must run as root in order to read the file
+system and
+execute privileged commands.
+.PP
+.B
+The Entombing Agent.
+.R
+.I Entomb
+is the program that puts files in the tomb.  It must
+run set-GID charon so that it may access the tomb.  If possible,
+it should run set-UID root so that it may chown files to the tomb
+owner, thereby taking them off the original owner's quota.  If it can't
+run set-UID root (see the section on
+.B NFS),
+then
+.I preend
+must eventually perform the change of ownership.  Although
+.I entomb
+is a user level program, users need not call it directly to
+entomb their files because it is normally invoked transparently
+through use of system programs such as
+.I rm,
+.I mv,
+.I cp
+that have been linked with the entombing library.
+.PP
+.B
+The Library.
+.R
+The crux of the entombing system lies within
+.I Libtomb.a
+Here, calls to system calls that normally
+destroy files
+.I (creat,
+.I open,
+.I rename,
+.I truncate,
+and
+.I unlink)
+are intercepted so that the given file may be entombed.  After
+the entomb completes, the original system call is called and it's return
+value is the value returned by the library.  The original system call
+is called regardless of whether the entomb succeeds.  This
+alleviates problems caused by programs that try to access an unmounted
+entombing system (very likely
+in single user mode), or an improperly installed entombing system (tombs
+don't exist, aren't installed correctly, or missing/improperly installed
+entombing agent.)
+Users may link programs to
+.I libtomb.a
+in order to obtain the services of the
+entombing system.  System administrators may provide a virtually transparent
+user level file recovery service to their users simply by linking utilities
+such as
+.I rm,
+.I cp,
+and
+.I mv
+to
+.I libtomb.a.
+.PP
+.B
+The Restoration Agent.
+.R
+.I Unrm
+is a user level program that enables users to easily restore
+entombed files.  It provides an interface that is helpful and easy to use,
+as well as a name that is easily guessed and remembered.
+.I Unrm
+need only run set-GID charon.
+.SH
+.ce 1
+Entombing and NFS
+.PP
+The entombing works with NFS mounted file systems.
+Best performance is achieved if all clients that mount tomb laden file
+systems are granted root access.  In this case,
+.I entomb
+may be installed and will perform correctly as a set-UID root program.
+If, however, UID 0 does not map to root (the default), then
+problems may arise.
+.PP
+In particular is the case where a user removes a file and expects his
+quota usage to go down.
+Since
+.I entomb
+normally uses 
+.I link
+to move files to the tomb,
+it will no longer be able to
+.I chown
+the file to charon, resulting in a situation where
+a user's quota usage remains constant no matter how many files she removes.
+This situation is currently resolved by
+.I preend,
+who at periodic intervals chowns files in the tomb not belonging to charon
+to charon.  Unfortunately, there is still a small window between
+a user's
+.I rm
+and
+.I preend's
+.I chown
+where a user may become confused by the apparent inconsistent behavior of
+.I rm.
+.bp
+.SH
+.ce 1
+Installation
+.PP
+Currently the entombing system is known to work under SunOS 3, SunOS 4.1, Ultrix 4.2, Dynix 3.0.12, and BSD 4.2.  The following procedure is a guide for
+installing the entombing system on the aforementioned platforms.
+.PP
+Go to the root of the entombing system source tree.  Edit the makefile in
+each subdirectory in order to describe the machine on
+which you are installing.  Change the make variables
+.B BIN,
+.B LIB,
+.B ETC
+if you
+would rather install the entombing system at some point other than /usr/local.
+.br
+.RS
+.IP
+$ cd /usr/src/local/entomb
+.br
+$ vi */Makefile
+.RE
+.PP
+Create a unique system login and group for the entombing system.  Throughout
+this document we will assume that login
+.I charon
+is the tomb owner with
+.B UID
+21,
+and group
+.I charon
+is the entombing group
+with
+.B GID
+807
+The new user should not be subject to disk quotas on any file systems
+with tombs.
+.PP
+Edit libtomb/libtomb.h and change the constants that describe the entombing
+system:
+.br
+.RS
+.IP
+$ vi libtomb/libtomb.h
+.RS
+.IP
+Edit
+.B TOMB_OWNER
+to be the login of the previously created account (TOMB_OWNER=charon.)
+.sp 1
+Edit
+.B TOMB_UID
+to be the
+.B UID
+of the previously created account (TOMB_UID=21.)
+.sp 1
+Edit
+.B TOMB_GID
+to be the
+.B GID
+of the previously created account (TOMB_GID=807.)
+.sp 1
+Edit
+.B ENTOMB
+to be the complete path to the binary program
+.I entomb
+(ENTOMB=/usr/local/lib/entomb.)
+.sp 1
+Edit anything else to suit your particular application.
+.RE
+.RE
+.PP
+.I Preend
+sanity checks
+.B TOMB_OWNER,
+.B TOMB_UID,
+and
+.B TOMB_GID,
+and will not run if they do not agree with corresponding values from the
+files /etc/passwd and /etc/group.
+.PP
+Build
+.I preend:
+.RS
+.IP
+$ cd preend; make
+.RE
+.sp 1
+As super-user, run `preend -V':
+.RS
+.IP
+$ su
+.br
+# ./preend -V
+.RE
+.sp 1
+Preend should respond with something like the following:
+.RS
+.IP
+preend: $Id: installation,v 1.2 1993/02/11 15:27:39 becker Exp $
+.br
+preend: tombs must be owned by charon (uid 21, gid 807)
+.br
+preend: tombs on this machine:
+.RE
+.sp 1
+meaning that it didn't find any tombs on any mounted file system.
+.sp 1
+Make a tomb at the mount point of some mounted file system:
+.RS
+.IP
+# mount /dev/fd0c /mnt
+.br
+# install -d -o charon -g charon -m 770 /mnt/tomb
+.RE
+.sp 1
+Run preend again to verify that it sees the tomb:
+.RS
+.IP
+# ./preend -V
+.RE
+.sp 1
+This time preend should output information about the tomb(s) it found:
+.RS
+.IP
+preend: $Id: installation,v 1.2 1993/02/11 15:27:39 becker Exp $
+.br
+preend: tombs must be owned by charon (uid 21, gid 807)
+.br
+preend: tombs on this machine:
+.br
+preend:  /mnt/tomb on /dev/fd0c (96% full)
+.RE
+.PP
+If
+.I preend
+doesn't find a tomb, ensure that the tomb resides at
+the mount point and has the correct modes.  Also, make sure that
+the description of charon's
+.B UID,
+.B GID,
+and login in libtomb/libtomb.h agrees
+with the corresponding data in /etc/passwd and /etc/group.
+Also, check that the tomb name agrees with the constant
+.B TOMB_NAME
+in libtomb/libtomb.h.  If everything thing is working up to this point,
+go ahead and install
+.I preend
+in /usr/local/etc.
+.PP
+Build and install libtomb, entomb, and unrm:
+.br
+.RS
+.IP
+# cd ..
+.br
+# for dir in libtomb entomb unrm ; do
+.br
+> ( cd $dir ; make install )
+.br
+> done
+.RE
+.PP
+The entombing system should now be completely installed.  In order
+to allow transparent use of the system with programs such as /bin/rm,
+/bin/mv, and /bin/cp, you must link those programs with
+.I libtomb.a:
+.br
+.RS
+.IP
+# cc -o rm rm.c -L/usr/local/lib -ltomb
+.br
+# cc -o mv mv.c -L/usr/local/lib -ltomb
+.br
+# cc -o cp cp.c -L/usr/local/lib -ltomb
+.RE
+.PP
+(Don't install these until the system has been tested for correct operation.)
+.PP
+Make a tomb on each file system for which you desire the entombing service.
+Ensure each tomb exists at a file system root and has the correct
+owner, group, and permissions.
+.PP
+Finally, start
+.I preend:
+.RS
+.IP
+$ /usr/local/etc/preend -p
+.RE
+.bp
+.SH
+.ce 1
+Testing
+.PP
+The first test is to see if
+.I entomb
+can copy a given file to the correct tomb/crypt:
+.RS
+.IP
+$ /usr/local/lib/entomb copy testfile
+.br
+$ echo $?
+.RE
+.PP
+Except for serious errors,
+.I entomb
+will not print an error message, so you'll have to check the exit code
+to ensure that the entomb succeeded.
+.I Entomb
+returns 0 for success,
+1 if a system error occurred, 2 if the file was not eligible to be
+entombed (directories, symbolic links, didn't exist, file of zero length, ...),
+and 4 if it didn't
+find a tomb on the given file system.  If
+.I entomb
+returns 4, make sure that
+.I entomb
+and the tomb are installed correctly.  If all goes well,
+check to see that the file is in the tomb:
+.RS
+.IP
+$ /usr/local/bin/unrm -l
+.RE
+.PP
+Unrm should respond with something like:
+.RS
+.IP
+Fri Aug  7 23:11:33 1992  testfile 12705
+.RE
+.PP
+Next, check that
+.I entomb
+can move a file to the tomb.  The file is effectively copied to the tomb by
+.I link,
+then the original is removed by
+.I unlink:
+.br
+.RS
+.IP
+$ ls -las testfile
+.RS
+.IP
+1 -rw-r--r--  1 becker         11 Aug  8 21:58 testfile
+.RE
+.sp 1
+$ /usr/local/lib/entomb rename testfile
+.br
+$ ls testfile
+.RS
+.IP
+ls: testfile: Not found
+.RE
+.sp 1
+$ unrm testfile
+.br
+$ ls -las testfile
+.RS
+.IP
+1 -rw-r--r--  1 becker         11 Aug  8 21:58 testfile
+.RE
+.RE
+.PP
+If all goes well, check all programs linked with libtomb.a to
+make sure that they work normally, with the side effect of entombing.
+If so, then they are ready for installation.  It is probably a good
+idea, however, to temporarily install these programs in a
+test directory such as /usr/new before permanently installing them in system
+directories such as /bin.
+.bp
+.SH
+.ce 1
+Periodic Maintenance
+.PP
+It is a good idea to periodically purge tombs of abandoned crypts.  This can
+be done from single user mode, or at boot time before
+.I preend
+is started by issuing the command:
+.br
+.RS
+.IP
+$ preend -R1
+.RE
+.sp 1
+Purging should usually follow mass account deletions, or be done at least
+yearly, depending upon the your site's account turnover rate.
+.bp
+.SH
+.ce 1
+Summary
+.PP
+The following is a summary of how the components of a properly installed
+entombing system should appear.
+.IP
+$ grep charon /etc/passwd
+.RS
+.IP
+charon:*?:21:807:The Ferryman,,,,:/userb/tomb:
+.RE
+.sp 1
+$ grep charon /etc/group
+.RS
+.IP
+charon:*:807:becker,ksb
+.RE
+.sp 1
+$ ls -dlg /user?/tomb
+.RS
+.IP
+drwxrwx--- 66 charon charon   4096 Jul 31 23:58 /usera/tomb/
+.br
+drwxrwx---137 charon charon   2560 Aug  6 18:30 /userb/tomb/
+.br
+drwxrwx--- 90 charon charon   5648 Aug  5 17:17 /userc/tomb/
+.RE
+.sp 1
+$ ls -dlg /usera/tomb/0
+.RS
+.IP
+drwxrwxrwx  charon   charon  /userc/tomb/0/
+.RE
+.sp 1
+$ ls -lg /usr/local/etc/preend
+.RS
+.IP
+-rwxr-----  1 root     operator    36864 Jun 20 17:37 /usr/local/etc/preend
+.RE
+.sp 1
+$ ls -lg /usr/local/lib/entomb
+.RS
+.IP
+-rwsr-sr-x  1 root     charon      20480 Jun 20 17:37 /usr/local/lib/entomb
+.RE
+.sp 1
+$ ls -lg /usr/local/bin/unrm
+.RS
+.IP
+-rwxr-sr-x  1 charon   charon      40960 Jun 20 17:37 /usr/local/bin/unrm
+.RE
+.sp 1
+$ ls -lg /usr/local/lib/libtomb.a
+.RS
+.IP
+-rw-r--r--  1 root     binary       4572 Jun 20 17:37 /usr/local/lib/libtomb.a
+.RE
+.sp 1
+$ grep preend /etc/rc.local
+.RS
+.IP
+if [ -f /usr/local/etc/preend ]; then
+.RS
+.IP
+/usr/local/etc/preend -p -s 15 & echo -n ' preend'      >/dev/console
+.RE
+fi
+.RE
+.RE

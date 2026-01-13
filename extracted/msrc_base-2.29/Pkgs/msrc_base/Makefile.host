@@ -1,0 +1,31 @@
+`# $Id: Makefile.host,v 1.3 2009/10/19 15:02:26 ksb Exp $
+# makefile for msrc_base package master source bundle (platform recipe)
+'changequote([,])dnl
+[O=`
+Q=']
+changequote(`,')dnl
+`SHELL=/bin/sh
+
+PREP= local/sbin/mmsrc
+BOOTSTRAP= local/lib/mkcmd local/lib/explode local/bin/mkcmd local/bin/explode
+ORDER= local/bin/ptbw local/bin/xclate local/bin/xapply \
+	local/lib/hxmd local/sbin/hxmd local/sbin/msrc
+SUBDIR= ${PREP} ${BOOTSTRAP} ${ORDER}
+
+GEN=
+SOURCE=	Makefile README options.html patch-client.c patch-setargs.c
+MAKE=make
+DESTDIR=
+
+all clean install: ${SOURCE} FRC
+	xapply "${MAKE} -C %1 ${MFLAGS} DESTDIR=${Q}${DESTDIR}${Q} $@" ${SUBDIR}
+
+${SOURCE}:
+	co -q $@
+
+source: ${SOURCE} ${GEN}
+FRC:
+
+# msrc hook:
+__msrc: source
+'dnl

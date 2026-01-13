@@ -1,0 +1,64 @@
+`#	$Id: Make.host,v 1.9 2000/06/20 14:06:37 ksb Exp $
+#
+#	Makefile for qstart
+#
+
+SHELL=/bin/sh
+PROG=	qstart
+DOC=	${DESTDIR}/usr/man
+
+C=../../lib/qcommon
+SRCs=	qstart.sh
+MAN=	qstart.man
+OTHER=	README
+SOURCE=	Makefile ${OTHER} ${MAN} ${SRCs}
+
+all: ${PROG}
+
+${PROG}: ${SRCs}
+	. $C/qpaths.sh && \
+	sed -e "/^#\$$/d" -e "/^#[^!]/d" -e s",_Q_MASTER_,$${Q_MASTER}," -e s",_Q_LOGFILE_,$${Q_LOGFILE}," -e s",_Q_ETC_,$${Q_ETC}," -e s",_Q_BIN_,$${Q_BIN}," -e s",_Q_SPOOL_,$${Q_SPOOL}," ${SRCs} > $@
+	chmod 755 $@
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} a.out core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	. $C/qpaths.sh && \
+	install -R $$Q_ETC/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: FRC
+
+distrib: FRC
+	. $C/qpaths.sh && \
+	distrib -c $$Q_ETC/${PROG} HOST
+
+install: all FRC
+	. $C/qpaths.sh && \
+	install -c -g $$Q_GROUP ${PROG} $$Q_ETC/${PROG}
+
+lint: FRC
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

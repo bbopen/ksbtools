@@ -1,0 +1,30 @@
+# $Id: README,v 1.2 1997/11/27 16:55:11 ksb Exp $
+
+When you need to tell someone they can't use the system change their
+shell to:
+	/usr/local/etc/msh
+
+Then put a note in a file under their login name in 
+	/var/spool/msh/$LOGIN
+or by the group in
+	/var/spool/msh/$GROUP
+or make links to "msh" by other names and put the message in that name
+	/var/spool/msh/msh   or   /var/spool/msh/frozen
+Or they'll get
+	/var/spool/msh/Default
+
+
+After all those are exhausted (usually this means the spool directory
+is not the correct mode) we output an internal message
+
+	msh: Your shell is the message shell
+	 There is no message in the spool directory for your login or group.
+	 Contact your system administrator for assistance.
+
+
+So they'll get some message when they login.  After you see a login or two
+(or after a fixed amount of time) delete the account and the message.
+
+
+--
+ksb

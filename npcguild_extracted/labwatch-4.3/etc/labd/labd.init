@@ -1,0 +1,36 @@
+#!/sbin/sh
+#
+# $Id: labd.init,v 3.3 2000/07/28 19:18:58 root Exp $
+#
+# /etc/init.d/labd - Start/Stop the lab daemon
+
+#
+# The network and streams should already be built by the time
+# this script runs.
+#
+PATH=/usr/bin:/sbin:/bin
+LABD_HOST=feinfo.cc.purdue.edu
+
+case $1 in 
+'start')
+	if [ -f /usr/local/etc/labd ]; then
+		if [ _5.7 = _`uname -r` ] ; then
+			/usr/local/etc/labd -U /kernel/genunix -s 50 -m 2 $LABD_HOST;
+		else
+			/usr/local/etc/labd $LABD_HOST;
+		fi
+	fi	
+	;;
+'stop')
+	if [ -f /usr/local/etc/labc ]; then
+		/usr/local/etc/labc -m localhost shoot
+	fi
+	;;
+'version')
+	echo `basename $0`': $Id: labd.init,v 3.3 2000/07/28 19:18:58 root Exp $'
+	;;
+*)
+	echo "/etc/init.d/labd: usage start|stop" 1>&2
+	exit 1
+	;;
+esac

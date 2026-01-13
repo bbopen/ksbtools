@@ -1,0 +1,6 @@
+# $Id: README,v 1.2 1994/04/04 16:11:15 ksb Exp $
+
+This code is part of the labd/labwatch/labstat system by Ben Jackson
+and Kevin Braunsdorf.
+
+The Dynix port reports load averages that are a factor of four too small.

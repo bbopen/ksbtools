@@ -1,0 +1,31 @@
+# $Id: README,v 1.1 1997/07/15 13:45:01 ksb Exp $
+
+This is the example interface for the GNU products into the master
+source system.  I put the tar archives in "~ftp/pub/gnu" but since the
+shell (/bin/sh) doesn't do tilde expansion they are spelled out in the
+example Makefile's.
+
+So you'll have to change  "/home/dspd6/ftp" to /usr/ftp or some other
+place where you keep the GNU tar files).
+
+If you have the distrib infrastructure installed you should be able to
+type
+	make HOSTS=-m$TARGET install
+
+from any of the three example directories to install the product.
+
+These are the three example products
+	rdist-6.1.3	(from mcooper at usc.edu)
+	gzip-1.2.4	(from the prep.ai.mit.edu archive)
+	screen-3.7.2	(also from prep.ai.mit.edu)
+
+I put in some "clues" as to how one might
+	+ "hack" the source after it is untar'd (with /bin/ed or patch)
+	+ force configure options like --prefix
+	+ clean up after yourself
+
+If you use the template Makefiles from msrc-4.16's Admin/templates/gnu.host
+and meta you should be set to build any others you need.
+
+--
+ksb

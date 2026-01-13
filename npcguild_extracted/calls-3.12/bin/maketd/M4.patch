@@ -1,0 +1,172 @@
+*** /tmp/,RCSt1021406	Fri Dec 18 14:39:34 1987
+--- m4.c	Tue Jun 30 01:03:10 1987
+***************
+*** 11,17
+   */
+  
+  #ifndef lint
+! static char rcsid[] = "$Header: /usr/msrc/usr/local/bin/maketd/RCS/M4.patch,v 4.0 1996/03/19 15:18:49 kb207252 Beta $";
+  #endif
+  
+  #include <stdio.h>
+
+--- 11,17 -----
+   */
+  
+  #ifndef lint
+! static char rcsid[] = "$Header: /usr/msrc/usr/local/bin/maketd/RCS/M4.patch,v 4.0 1996/03/19 15:18:49 kb207252 Beta $";
+  #endif
+  
+  #include <stdio.h>
+***************
+*** 49,54
+  
+  #define	putbak(c)	*ip++ = c;
+  #define	getchr()	(ip>cur_ip?*--ip: getc(infile[infptr]))
+  #define	putchr(c)	if (cp==NULL) {if (curfile)putc(c,curfile);} else *op++ = c
+  char	type[] = {
+  	0,	0,	0,	0,	0,	0,	0,	0,
+
+--- 49,57 -----
+  
+  #define	putbak(c)	*ip++ = c;
+  #define	getchr()	(ip>cur_ip?*--ip: getc(infile[infptr]))
++ #ifdef MAKETD
++ #define	putchr(c)	if (NULL==cp) {if (0 == makedepend && curfile)putc(c,curfile);} else *op++ = c
++ #else  MAKETD
+  #define	putchr(c)	if (cp==NULL) {if (curfile)putc(c,curfile);} else *op++ = c
+  #endif MAKETD
+  
+***************
+*** 50,55
+  #define	putbak(c)	*ip++ = c;
+  #define	getchr()	(ip>cur_ip?*--ip: getc(infile[infptr]))
+  #define	putchr(c)	if (cp==NULL) {if (curfile)putc(c,curfile);} else *op++ = c
+  char	type[] = {
+  	0,	0,	0,	0,	0,	0,	0,	0,
+  	0,	0,	0,	0,	0,	0,	0,	0,
+
+--- 53,60 -----
+  #define	putchr(c)	if (NULL==cp) {if (0 == makedepend && curfile)putc(c,curfile);} else *op++ = c
+  #else  MAKETD
+  #define	putchr(c)	if (cp==NULL) {if (curfile)putc(c,curfile);} else *op++ = c
++ #endif MAKETD
++ 
+  char	type[] = {
+  	0,	0,	0,	0,	0,	0,	0,	0,
+  	0,	0,	0,	0,	0,	0,	0,	0,
+***************
+*** 130,135
+  FILE	*curfile = { stdout };
+  FILE	*infile[10] = { stdin };
+  int	infptr	= 0;
+  
+  main(argc, argv)
+  char **argv;
+
+--- 135,156 -----
+  FILE	*curfile = { stdout };
+  FILE	*infile[10] = { stdin };
+  int	infptr	= 0;
++ #ifdef MAKETD
++ #include <sys/param.h>
++ int	makedepend = 0;
++ char	curfilename[MAXPATHLEN + 1];
++ newputc(x,c)
++ char x;
++ FILE *c;
++ {
++ 	if (0 == makedepend)
++ 		putc(x,c);
++ }
++ #undef putc
++ #define putc(x, c)	newputc(x, c)
++ #undef putchar
++ #define putchar(x)	newputc(x, stdin)
++ #endif MAKETD
+  
+  main(argc, argv)
+  char **argv;
+***************
+*** 219,224
+  #ifdef gcos
+  	tempname = "m4.tempa";
+  #endif
+  	if (argc>1)
+  		putbak(0);
+  	for (;;) {
+
+--- 240,252 -----
+  #ifdef gcos
+  	tempname = "m4.tempa";
+  #endif
++ #ifdef MAKETD
++ 	if (0 == strcmp("-M", argv[1])) {
++ 		argc--;
++ 		argv++;
++ 		makedepend++;
++ 	}
++ #endif MAKETD
+  	if (argc>1)
+  		putbak(0);
+  	for (;;) {
+***************
+*** 243,248
+  			else if ((infile[infptr]=fopen(argv[0], READ))==ERROR) {
+  				fprintf(stderr, "m4: file not found: %s\n", argv[0]);
+  				delexit();
+  			}
+  			continue;
+  		}
+
+--- 271,281 -----
+  			else if ((infile[infptr]=fopen(argv[0], READ))==ERROR) {
+  				fprintf(stderr, "m4: file not found: %s\n", argv[0]);
+  				delexit();
++ 			} 
++ #ifdef MAKETD
++ 			else if (0 != makedepend) {
++ 				strcpy(curfilename, argv[0]);
++ 				printf("%s: %s\n", curfilename, curfilename);
+  			}
+  #endif MAKETD
+  				
+***************
+*** 244,249
+  				fprintf(stderr, "m4: file not found: %s\n", argv[0]);
+  				delexit();
+  			}
+  			continue;
+  		}
+  		if (type[t]==ALPH) {
+
+--- 277,284 -----
+  				strcpy(curfilename, argv[0]);
+  				printf("%s: %s\n", curfilename, curfilename);
+  			}
++ #endif MAKETD
++ 				
+  			continue;
+  		}
+  		if (type[t]==ALPH) {
+***************
+*** 671,676
+  doincl(ap, c, noisy)
+  char **ap;
+  {
+  	if (c > 0 && strlen(ap[1]) > 0) {
+  		infptr++;
+  		ip_stk[infptr] = cur_ip = ip;
+
+--- 706,716 -----
+  doincl(ap, c, noisy)
+  char **ap;
+  {
++ #ifdef MAKETD
++ 	if (0 != makedepend) {
++ 		printf("%s: %s\n",curfilename, ap[1]);
++ 	}
++ #endif MAKETD
+  	if (c > 0 && strlen(ap[1]) > 0) {
+  		infptr++;
+  		ip_stk[infptr] = cur_ip = ip;

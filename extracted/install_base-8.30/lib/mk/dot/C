@@ -1,0 +1,8 @@
+# a C++ source file, or a compacted file				(ksb)
+# $Id: C,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+# We'd like to compile the c++ case, but we do not know how, try Cc
+$Compile(*):	%b %o -mCc -d%s %f
+$Compile(*):	%b %o -mCc %f
+
+$Info(*):	${echo-echo} "C++ source"

@@ -1,0 +1,134 @@
+# $Id: README,v 1.9 2008/10/21 16:09:30 ksb Exp $
+
+This is the gateway to a tool-chain that will make you happy.  I promise.
+After you've used xapply, hxmd and the tools around them for a while you'll
+wonder how anyone gets by (as a system admin) without them.
+
+
+If you are on a Linux system you can use the RPB.build script in the
+msrc-2.*.tbz archive to build RPMs for your hosts.  Use that if you can,
+else if you've done some distrib-style stuff before this should still be
+easy, if not you can still make it work if you follow these steps.
+
+
+Build this program with (don't type the dollar prompt) this command:
+	$ make mmsrc
+
+If that _didn't_ work run:
+	$ make Makefile.in && ./configure && make mmsrc
+
+If that _still_ left you flat try:
+	$ autoreconf configure.ac && make Makefile.in && ./configure
+
+Assuming you are running a modern UNIX system, with a good make(1),
+that should build a binary from "mmsrc.c".  If it doesn't you might have
+to mess with "machine.h" or pass a "-DHAVE_foo=1" logic in.  I tried to
+make the program as portable as I could.  If none of that works you
+can send in a bug report to me.
+
+
+Assuming that worked (or that you beat it into working)
+The output from the progran under -V should look about like:
+	$ ./mmsrc -V
+	mmsrc: _Id: mmsrc.m,v 1.25 2008/03/11 17:59:01 ksb Exp _
+	mmsrc:  makefile code: _Id: make.m,v 1.25 2008/03/11 14:53:25 ksb Exp _
+	mmsrc:  slot code: _Id: slot.m,v 1.5 2008/03/03 17:41:38 ksb Exp _
+	mmsrc:  hostdb code: _Id: hostdb.m,v 1.51 2008/03/04 20:54:13 ksb Exp _
+	mmsrc:  evector code: _Id: evector.m,v 1.8 2008/01/26 18:09:06 ksb Exp _
+	mmsrc: makefile: Makefile
+	mmsrc: make hook: __msrc
+	mmsrc: default utility: make
+(I changed the "$"'s into "_"'s so RCS would not munge the versions.)
+
+We're going to use this program to build many other msrc2008 programs
+(from the source directory), which means you are mostly there.  To do
+that we need to give the program a local "cache" to place the configured
+version of the code.  Let's pick a directory in /tmp:
+	TOPC=/tmp/ms2008.$$
+make sure you've picked one that doesn't presently exist,  then:
+	mkdir -p $TOPC/local/sbin/mmsrc
+
+We need one other key: the distrib-style HOSTTYPE.  This is the key to
+grouping hosts that can share source code (not binary files).  For
+example I've used this for years to group all Solaris 5.x hosts as "SUN5".
+If you've neved used master source before, run "./makeme -V" to help you
+figure out what name I've used for your platform  {FREEBSD, NETBSD,
+LINUX, SUN5, IBMR2, HPUX9, HPUX10, HPUX11, IRIX5, or the like}.
+
+If you don't see one that looks like what you are running, make one up.
+Set the shell variable "MYTYPE" to that name you picked.
+	MYTYPE="FREEBSD"
+you can also set "MYOS" if you know the base-100  release number for your
+OS.   Otherwise "makeme" might guess it correctly.  There are so many
+flavors of LINUX that the HOSTOS version numbers don't mean much.  I
+guess I'll have to put in a "DISTRO" macro someday.
+
+
+Now let's test the program we built with itself:
+	$ ./mmsrc -yINTO=$TOPC/local/sbin/mmsrc -DHOST=localhost \
+		-DHOSTTYPE=$MYTYPE make clean all
+
+Which fakes the master source logic, hxmd, xapply and what-not to
+transform the "master copy" you have into a "platform copy" under
+$TOPC, then runs "make" from that directory to rebuild and install
+it.  I hope that built.
+
+To install the program you'll have to be "root", you can put a "sudo"
+on the front of that command change the end to " install".
+	$ sodo ./mmsrc -yINTO=$TOPC/local/sbin/mmsrc -DHOST=localhost \
+		-DHOSTTYPE=$MYTYPE make install
+
+That's going to get easier after we finish the whole msrc process.
+To that end we must install all the programs from the distribution
+you unpacked to get this source.  Now that you've installed the
+boot-strap "mmsrc" program, and know your HOSTTYPE you can return
+to the top level and use the Makefile there to install the other
+programs.
+	$ cd ../../..
+	$ sudo make TOPC=$TOPC HOSTTYPE=$MYTYPE boot
+	   (also add an assignment for HOSTOS to some number if you know it)
+
+That should get you going.   The README in that directory should
+have sent you here for the boot-strap, now I'm sending you back there
+for the rest of that process.
+
+
+You'll come back to this directory after you've mastered all the other
+tools to see how to "restart" the chain (to change or upgrade mmsrc).
+Or to use "mmsrc" as part of a complex configuration management solution.
+
+
+For those that used the older master source (with distrib).
+
+The 5 macros msrc used have not changed, but you only need the three
+above to get started.
+	HOST -- the name of the host
+	HOSTTYPE -- the name ksb called this OS, or what you like
+	HOSTOS -- the version number in base 100 (e.g. 4.5.2 -> 40502) 
+and optionally:
+	HASSRC -- defined for "platform source hosts", not used much anymore
+	SHORTHOST -- a short name for some programs to use
+
+The "makeme" program computes some values that might help you get
+started, please sanity check them before you believe them.  Later
+you'll define all your hosts in one or more such files, or extract
+that file from your local CMS [configuration management service]
+to perform command and control functions across a vast number of
+hosts in parallel.
+
+This makes your job as a system admin much easier.  The whole tool-chain
+includes some other features that (all by themselves) would be worth
+installing.  See the (many) HTML documents for examples and tutorials.
+
+N.B. is you have the later chains installed you'll notice that this
+directory doesn't ever "msync" clean.  That's OK for now.  We have to
+leave the mmsrc.c and mmsrc.h files and some other exploded files here
+so we can bootstrap explode and mkcmd.  The error you'll see looks like:
+  msync: Makefile: might be missing 8 files from $SOURCE:
+        config.h config.h.in configure mkdtemp.c mmsrc.c mmsrc.h setenv.c
+	setenv.h
+and it is OK because this directory has files in it that we'd normally
+get from explode (but explode is not installed when we are built).
+
+--
+ksb, Oct 2008  (mmsrc @ spam dot ksb dot npcguild.org | s/spam .//)

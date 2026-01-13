@@ -1,0 +1,8 @@
+# any file with no extender						(ksb)
+# $Id: no-extender,v 5.0 1996/09/09 21:05:58 kb207252 Exp $
+
+$Info(*):	${echo-echo} "loaded with '%#!'"
+$Info(*):	${echo-echo} "no extender (`file %f |sed -e 's/[%f]*:[ \t][ \t]*//'`)"
+
+$*(*):	: 'no extender on %f, do not know how to %m(%s) it.' && ${false-false}
+$*(*):	: 'no extender on %f, do not know how to %m it.' && ${false-false}

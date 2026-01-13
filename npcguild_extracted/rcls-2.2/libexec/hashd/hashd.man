@@ -1,0 +1,73 @@
+.\" $Id: hashd.man,v 1.1 1999/07/31 21:38:04 ksb Exp $
+.\" by Kevin Braunsdorf
+.TH HASHD 1L LOCAL
+.SH NAME
+hashd \- provide network unique identifiers for Web single sign-on
+.SH SYNOPSIS
+.ds PN "hashd
+\fI\*(PN\fP [\-\fBi\fP] [\-\fBb\fP \fIstart:bits\fP] \fIcounter\fP
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.sp
+.SH DESCRIPTION
+The fd positional parameter \fIcounter\fP is
+a file that holds the counter value (in binary).
+
+.SH OPTIONS
+If the program is called as \fIhashd\fP then no options are forced.
+.TP
+\fB\-b\fP \fIstart:bits\fP
+Force bits at this position in the output.
+This option may only be given once.  Based on the present mapping
+from the seed to the hash bits 49 to 40 would be the best place to
+for bits into the hash.
+.TP
+\fB\-h\fP
+Print a help message.
+.TP
+\fB\-i\fP
+Remove the network return code from the output.  This allows the
+hashd to be called directly on the local machine, but it doesn't
+for the -b option to be the same as the local configuration.
+.TP
+\fB\-V\fP
+Show version information.
+
+.SH EXAMPLES
+.TP
+\fIhashd\fP \-b 49:000 /var/run/sequence
+Distribure unique hashes from \fI/var/run/sequence\fP but force
+bits 49,48,47 (out of 60..1) to be zero all the time. On another
+host in the network we would run with \-b 49:001 (an so on).
+This will prevent these hosts from providing the same hash values.
+.TP
+\fIhashd\fP -i /var/run/local.seq
+Use a local sequence file and just write the hash on \fBstdout\fP.
+
+.SH FILES
+.PP
+The option `-b' has a mkcmd built routine to read data from the function
+parameter \fIstart:bits\fP.
+These columns are converted from this input:
+.\" hunk 1
+.TP
+.CR iStart :
+start of forced bits
+.TP
+.CR pcBits \en
+list of bits to force
+.SH BUGS
+The \-b option shold force the incement routing to skip the
+force bits in the increment.  It will before we roll 30 bits worth.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Support
+.br
+ksbsa.fedex.com
+.SH "SEE ALSO"
+sh(1), nethash(1L)

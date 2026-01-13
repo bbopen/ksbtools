@@ -1,0 +1,424 @@
+# $Id: conserver.cf,v 8.16 1998/10/11 17:25:41 ksb Exp $
+# $Compile: cdmdmctl +rts +dtr /dev/ttyc5? && conserver -C %f ; sleep 90
+#
+# Change this file in the master source
+#	$Source: /usr/msrc/usr/local/lib/conserver.cf/RCS/conserver.cf,v $
+# then push it to info.sa.fedex.com and restart the console server
+# there, then push it to the effected host server and restart that one.
+# Others only if needed (viz. change of allowed list).
+#
+# TODO: the Benefits FTP servers are not console served anymore...
+#
+# List of consoles we serve:
+# name :[epasswd]:tty[@host]:baud[flow][parity]:logfile:[group][:power:line]
+#
+# host consit.prod [a] (HP715 with 16 ports, plus 2 builtin)
+# TCH01 support
+# our console /dev/tty00@consit.prod.fedex.com 9600p
+a_01::/dev/tty01@consit.prod.fedex.com:9600p:/archive/consoles/_01:
+gateit01:YGbBOv.ycFcIk:/dev/ttyc50@consit.prod.fedex.com:9600p:/archive/consoles/gateit01.log:+
+tchit01::/dev/ttyc51@consit.prod.fedex.com:38400p:/archive/consoles/tchit01.log:
+datait01::/dev/ttyc52@consit.prod.fedex.com:9600p:/archive/consoles/datait01.log:
+t101::/dev/ttyc53@consit.prod.fedex.com:38400p:/archive/consoles/t101.log:
+debug01::/dev/ttyc54@consit.prod.fedex.com:38400p:/archive/consoles/debug01.log:
+modem01::/dev/ttyc55@consit.prod.fedex.com:38400p:/archive/consoles/modem01.log:
+# TCH 02 + support
+gateit02:YGbBOv.ycFcIk:/dev/ttyc58@consit.prod.fedex.com:9600p:/archive/consoles/gateit02.log:+
+tchit02::/dev/ttyc59@consit.prod.fedex.com:57600p:/archive/consoles/tchit02.log:
+datait02::/dev/ttyc5a@consit.prod.fedex.com:9600p:/archive/consoles/datait02.log:
+t102::/dev/ttyc5b@consit.prod.fedex.com:38400p:/archive/consoles/t102.log:
+debug02::/dev/ttyc5c@consit.prod.fedex.com:38400p:/archive/consoles/debug02.log:
+modem02::/dev/ttyc5d@consit.prod.fedex.com:38400p:/archive/consoles/modem02.log:
+# spare port for arc1.dscm
+dscmarc1::/dev/ttyc57@consit.prod.fedex.com:9600p:/archive/consoles/dscmac1.log:3:
+# fpdata1 support
+a_56:YGbBOv.ycFcIk:/dev/ttyc56@consit.prod.fedex.com:9600p:/archive/consoles/_56.log:+
+fpdata1::/dev/ttyc5e@consit.prod.fedex.com:9600p:/archive/consoles/fpdata1.log:
+fpdata2::/dev/ttyc5f@consit.prod.fedex.com:9600p:/archive/consoles/fpdata2.log:
+#
+# host s01.sa [e] (FreeBSD with virtural console)
+#
+# host s03.sa [s] (HP715 virtuals and a MUX for the gold net)
+sacwatch::|exec /usr/local/lib/labwatch.boot@s03.sa.fedex.com:9600p:/usr/adm/labwatch.log:
+qmgr::|exec /usr/local/lib/qmgr.boot@s03.sa.fedex.com:9600p:/usr/adm/job.log:
+# our console /dev/tty00@s03.sa.fedex.com 9600p
+s_01::/dev/tty01@s03.sa.fedex.com:9600p:/archive/consoles/_01:
+s01.sa::/dev/ttyc40@s03.sa.fedex.com:9600p:/archive/consoles/s01:
+s02.sa::/dev/ttyc41@s03.sa.fedex.com:9600p:/archive/consoles/s02:
+s_c42::/dev/ttyc42@s03.sa.fedex.com:9600p:/archive/consoles/_c42:
+s04.sa::/dev/ttyc43@s03.sa.fedex.com:9600p:/archive/consoles/s04:
+s05.sa::/dev/ttyc44@s03.sa.fedex.com:9600p:/archive/consoles/s05:
+s06.sa::/dev/ttyc45@s03.sa.fedex.com:9600p:/archive/consoles/s06:
+temp1::/dev/ttyc46@s03.sa.fedex.com:9600p:/archive/consoles/temp1:+
+temp2::/dev/ttyc47@s03.sa.fedex.com:9600p:/archive/consoles/temp2:
+temp3::/dev/ttyc48@s03.sa.fedex.com:9600p:/archive/consoles/temp3:
+s10.sa::/dev/ttyc49@s03.sa.fedex.com:9600p:/archive/consoles/s10:
+crier:ZHrLzmXPNsSR.:/dev/ttyc4a@s03.sa.fedex.com:9600p:/archive/consoles/crier:+
+bailiff::/dev/ttyc4b@s03.sa.fedex.com:9600p:/archive/consoles/bailiff:
+executioner::/dev/ttyc4c@s03.sa.fedex.com:9600p:/archive/consoles/executioner:
+jury::/dev/ttyc4d@s03.sa.fedex.com:9600p:/archive/consoles/jury:
+fortress::/dev/ttyc4e@s03.sa.fedex.com:9600p:/archive/consoles/fortress:
+judge::/dev/ttyc4f@s03.sa.fedex.com:9600p:/archive/consoles/judge:
+#
+# host arc1.dscm [x] (IBM C10, virtuals only)
+arc1_backup:KWfNYVCsFR/VM:|exec /usr/local/etc/autologin -loperator@dscm-arc1.prod.fedex.com:9600p:/usr/adm/dscmarc1_backup.log:
+#
+# host pokey [p] (PC 5 ports)
+# ns is grant, BTW
+ns:6LKqGrXPmYynk:/dev/ttyd0@pokey.dpd.fedex.com:9600p:/archive/consoles/ns.log:0
+interlock:89SfZo9O1xJys:/dev/ttyd1@pokey.dpd.fedex.com:9600p:/archive/consoles/interlock.log:+
+ilbackup::/dev/ttyd2@pokey.dpd.fedex.com:9600p:/archive/consoles/ilbackup.log:
+#p_d3::/dev/ttyd3@pokey.dpd.fedex.com:9600p:/archive/consoles/p_d3.log:
+#
+# host trixie [i] (HP 715 with a ST-1032 32 ports I2)
+# our console /dev/tty00@ZZZ 9600p
+#
+i_00::/dev/tty00@trixie.sac.fedex.com:9600p:/archive/consoles/i_00:0
+i_01::/dev/tty01@trixie.sac.fedex.com:9600p:/archive/consoles/i_01:
+power::/dev/ttyC20@trixie.sac.fedex.com:9600p:/archive/consoles/power3.log:+
+zveegee::/dev/ttyC21@trixie.sac.fedex.com:9600p:/archive/consoles/zveegee.log:+
+groobee::/dev/ttyC22@trixie.sac.fedex.com:9600p:/archive/consoles/groobee.log:
+minga::/dev/ttyC23@trixie.sac.fedex.com:9600p:/archive/consoles/minga.log:
+tara::/dev/ttyC24@trixie.sac.fedex.com:9600p:/archive/consoles/tara.log:
+goo::/dev/ttyC25@trixie.sac.fedex.com:9600p:/archive/consoles/goo.log:
+gumby::/dev/ttyC26@trixie.sac.fedex.com:9600p:/archive/consoles/gumby.log:
+nopey::/dev/ttyC27@trixie.sac.fedex.com:9600p:/archive/consoles/nopey.log:
+puffball::/dev/ttyC28@trixie.sac.fedex.com:9600p:/archive/consoles/puffball.log:
+i_29::/dev/ttyC29@trixie.sac.fedex.com:9600p:/archive/consoles/i_29.log:+
+i_2a::/dev/ttyC2a@trixie.sac.fedex.com:9600p:/archive/consoles/i_2a.log:
+i_2b::/dev/ttyC2b@trixie.sac.fedex.com:9600p:/archive/consoles/i_2b.log:
+i_2c::/dev/ttyC2c@trixie.sac.fedex.com:9600p:/archive/consoles/i_2c.log:
+i_2d::/dev/ttyC2d@trixie.sac.fedex.com:9600p:/archive/consoles/i_2d.log:
+i_2e::/dev/ttyC2e@trixie.sac.fedex.com:9600p:/archive/consoles/i_2e.log:
+i_2f::/dev/ttyC2f@trixie.sac.fedex.com:9600p:/archive/consoles/i_2f.log:
+i_2g::/dev/ttyC2g@trixie.sac.fedex.com:9600p:/archive/consoles/i_2g.log:
+i_2h::/dev/ttyC2h@trixie.sac.fedex.com:9600p:/archive/consoles/i_2h.log:
+i_2i::/dev/ttyC2i@trixie.sac.fedex.com:9600p:/archive/consoles/i_2i.log:
+i_2j::/dev/ttyC2j@trixie.sac.fedex.com:9600p:/archive/consoles/i_2j.log:
+i_2k::/dev/ttyC2k@trixie.sac.fedex.com:9600p:/archive/consoles/i_2k.log:
+i_2l::/dev/ttyC2l@trixie.sac.fedex.com:9600p:/archive/consoles/i_2l.log:
+i_2m::/dev/ttyC2m@trixie.sac.fedex.com:9600p:/archive/consoles/i_2m.log:
+i_2n::/dev/ttyC2n@trixie.sac.fedex.com:9600p:/archive/consoles/i_2n.log:
+i_2o::/dev/ttyC2o@trixie.sac.fedex.com:9600p:/archive/consoles/i_2o.log:
+i_2p::/dev/ttyC2p@trixie.sac.fedex.com:9600p:/archive/consoles/i_2p.log:
+i_2q::/dev/ttyC2q@trixie.sac.fedex.com:9600p:/archive/consoles/i_2q.log:
+i_2r::/dev/ttyC2r@trixie.sac.fedex.com:9600p:/archive/consoles/i_2r.log:
+i_2s::/dev/ttyC2s@trixie.sac.fedex.com:9600p:/archive/consoles/i_2s.log:
+i_2t::/dev/ttyC2t@trixie.sac.fedex.com:9600p:/archive/consoles/i_2t.log:
+i_2u::/dev/ttyC2u@trixie.sac.fedex.com:9600p:/archive/consoles/i_2u.log:
+i_2v::/dev/ttyC2v@trixie.sac.fedex.com:9600p:/archive/consoles/i_2v.log:
+#
+# host groobee.sac [b] (HP715 with 16 ports, plus 2 builtin)
+# Pod B in the new room -- ksb
+# our console /dev/tty01@zveegee.sac.fedex.com 9600p
+b_01::/dev/tty01@groobee.sac.fedex.com:9600p:/archive/consoles/b_01.log:0
+power_b::/dev/ttyC20@groobee.sac.fedex.com:9600p:/archive/consoles/power_b.log:+
+wadm4::/dev/ttyC21@groobee.sac.fedex.com:9600p:/archive/consoles/wadm4.log:+
+comm2::/dev/ttyC22@groobee.sac.fedex.com:9600p:/archive/consoles/comm2.log:
+www8::/dev/ttyC23@groobee.sac.fedex.com:9600p:/archive/consoles/www8.log:
+ldap2::/dev/ttyC24@groobee.sac.fedex.com:9600p:/archive/consoles/ldap2.log:
+www2::/dev/ttyC25@groobee.sac.fedex.com:9600p:/archive/consoles/www2.log:
+cps2::/dev/ttyC26@groobee.sac.fedex.com:9600p:/archive/consoles/cps2.log:
+app2::/dev/ttyC27@groobee.sac.fedex.com:9600p:/archive/consoles/app2.log:
+cert2::/dev/ttyC28@groobee.sac.fedex.com:9600p:/archive/consoles/cert2.log:
+wapi2::/dev/ttyC29@groobee.sac.fedex.com:9600p:/archive/consoles/wapi2.log:
+msrc1::/dev/ttyC2a@groobee.sac.fedex.com:9600p:/archive/consoles/msrc1.log:
+lore2::/dev/ttyC2b@groobee.sac.fedex.com:9600p:/archive/consoles/lore2.log:
+www10::/dev/ttyC2c@groobee.sac.fedex.com:9600p:/archive/consoles/www10.log:
+mx1.dmz::/dev/ttyC2d@groobee.sac.fedex.com:9600p:/archive/consoles/mx1.dmz.log:
+dis::/dev/ttyC2e@groobee.sac.fedex.com:9600p:/archive/consoles/dis.log:
+ver1::/dev/ttyC2f@groobee.sac.fedex.com:9600p:/archive/consoles/ver1:
+cc1::/dev/ttyC2g@groobee.sac.fedex.com:9600p:/archive/consoles/cc1.log:
+crc2::/dev/ttyC2h@groobee.sac.fedex.com:9600p:/archive/consoles/crc2.log:
+b_2i::/dev/ttyC2i@groobee.sac.fedex.com:9600p:/archive/consoles/b_2i.log:
+b_2j::/dev/ttyC2j@groobee.sac.fedex.com:9600p:/archive/consoles/b_2j.log:
+b_2k::/dev/ttyC2k@groobee.sac.fedex.com:9600p:/archive/consoles/b_2k.log:
+b_2l::/dev/ttyC2l@groobee.sac.fedex.com:9600p:/archive/consoles/b_2l.log:
+b_2m::/dev/ttyC2m@groobee.sac.fedex.com:9600p:/archive/consoles/b_2m.log:
+b_2n::/dev/ttyC2n@groobee.sac.fedex.com:9600p:/archive/consoles/b_2n.log:
+b_2o::/dev/ttyC2o@groobee.sac.fedex.com:9600p:/archive/consoles/b_2o.log:
+b_2p::/dev/ttyC2p@groobee.sac.fedex.com:9600p:/archive/consoles/b_2p.log:
+h1.fw:ZHrLzmXPNsSR.:/dev/ttyC2q@groobee.sac.fedex.com:9600p:/archive/consoles/h1.fw.log:+
+b_2r::/dev/ttyC2r@groobee.sac.fedex.com:9600p:/archive/consoles/b_2a.log:
+b_2s::/dev/ttyC2s@groobee.sac.fedex.com:9600p:/archive/consoles/b_2s.log:+
+b_2t::/dev/ttyC2t@groobee.sac.fedex.com:9600p:/archive/consoles/b_2t.log:
+b_2u::/dev/ttyC2u@groobee.sac.fedex.com:9600p:/archive/consoles/b_2u.log:
+b_2v::/dev/ttyC2v@groobee.sac.fedex.com:9600p:/archive/consoles/b_2v.log:
+groobee.w::|exec /usr/local/lib/labwatch.boot@groobee.sac.fedex.com:9600p:/usr/adm/labwatch.log:+
+#
+# host minga.sac [m] (HPUX with 1 ST-1032 32 port + 1 builtin ports)
+m_01::/dev/tty01@minga.sac.fedex.com:9600p:/archive/consoles/_01:0
+powerc::/dev/ttyC20@minga.sac.fedex.com:9600p:/archive/consoles/powerc.log:+
+olrb2::/dev/ttyC21@minga.sac.fedex.com:9600p:/archive/consoles/olrb2.log:+
+crctest1::/dev/ttyC22@minga.sac.fedex.com:9600p:/archive/consoles/crctest1.log:
+s4.vo::/dev/ttyC23@minga.sac.fedex.com:9600p:/archive/consoles/s4.vo.log:
+www4::/dev/ttyC24@minga.sac.fedex.com:9600p:/archive/consoles/www4.log:
+www3::/dev/ttyC25@minga.sac.fedex.com:9600p:/archive/consoles/www3.log:
+s2.vo::/dev/ttyC26@minga.sac.fedex.com:9600p:/archive/consoles/s2.vo.log:
+mx2.zmd::/dev/ttyC27@minga.sac.fedex.com:9600p:/archive/consoles/mx2.zmd.log:+
+apptest2::/dev/ttyC28@minga.sac.fedex.com:9600p:/archive/consoles/apptest2.log:
+ebp2::/dev/ttyC29@minga.sac.fedex.com:9600p:/archive/consoles/ebp2.log:
+apptest1::/dev/ttyC2a@minga.sac.fedex.com:9600p:/archive/consoles/apptest1.log:
+cpstest1::/dev/ttyC2b@minga.sac.fedex.com:9600p:/archive/consoles/cpstest1.log:
+wwwtest1::/dev/ttyC2c@minga.sac.fedex.com:9600p:/archive/consoles/wwwtest1.log:
+www6::/dev/ttyC2d@minga.sac.fedex.com:9600p:/archive/consoles/www6.log:
+m_2e::/dev/ttyC2e@minga.sac.fedex.com:9600p:/archive/consoles/m_2e.log:+
+m_2f::/dev/ttyC2f@minga.sac.fedex.com:9600p:/archive/consoles/m_2f.log:
+m_2g::/dev/ttyC2g@minga.sac.fedex.com:9600p:/archive/consoles/m_2g.log:
+m_2h::/dev/ttyC2h@minga.sac.fedex.com:9600p:/archive/consoles/m_2h.log:
+m_2i::/dev/ttyC2i@minga.sac.fedex.com:9600p:/archive/consoles/m_2i.log:
+m_2j::/dev/ttyC2j@minga.sac.fedex.com:9600p:/archive/consoles/m_2j.log:
+m_2k::/dev/ttyC2k@minga.sac.fedex.com:9600p:/archive/consoles/m_2k.log:
+m_2l::/dev/ttyC2l@minga.sac.fedex.com:9600p:/archive/consoles/m_2l.log:
+m_2m::/dev/ttyC2m@minga.sac.fedex.com:9600p:/archive/consoles/m_2m.log:
+m_2n::/dev/ttyC2n@minga.sac.fedex.com:9600p:/archive/consoles/m_2n.log:
+m_2o::/dev/ttyC2o@minga.sac.fedex.com:9600p:/archive/consoles/m_2o.log:
+m_2p::/dev/ttyC2p@minga.sac.fedex.com:9600p:/archive/consoles/m_2p.log:
+m_2q::/dev/ttyC2q@minga.sac.fedex.com:9600p:/archive/consoles/m_2q.log:
+m_2r::/dev/ttyC2r@minga.sac.fedex.com:9600p:/archive/consoles/m_2r.log:
+m_2s::/dev/ttyC2s@minga.sac.fedex.com:9600p:/archive/consoles/m_2s.log:
+m_2t::/dev/ttyC2t@minga.sac.fedex.com:9600p:/archive/consoles/m_2t.log:
+land:iOwvctJRVHfE6:/dev/ttyC2u@minga.sac.fedex.com:9600p:/archive/consoles/land.log:+
+m_2v::/dev/ttyC2v@minga.sac.fedex.com:9600p:/archive/consoles/m_2v.log:
+#
+# host tara.sac [r] (HP715, a ST-1032B mux with 32 ports, plus 2 builtin)
+r_01::/dev/tty01@tara.sac.fedex.com:9600p:/archive/consoles/r_01:0
+powerd::/dev/ttyC20@tara.sac.fedex.com:9600p:/archive/consoles/powerd.log:+
+mx2.dmz::/dev/ttyC21@tara.sac.fedex.com:9600p:/archive/consoles/mx2.dmz.log:
+www5::/dev/ttyC22@tara.sac.fedex.com:9600p:/archive/consoles/www5.log:
+ver2::/dev/ttyC23@tara.sac.fedex.com:9600p:/archive/consoles/ver2.log:
+wwwbeta::/dev/ttyC24@tara.sac.fedex.com:9600p:/archive/consoles/wwwbeta.log:
+r_25::/dev/ttyC25@tara.sac.fedex.com:9600p:/archive/consoles/r_25.log:+
+r_26::/dev/ttyC26@tara.sac.fedex.com:9600p:/archive/consoles/r_26.log:
+r_27::/dev/ttyC27@tara.sac.fedex.com:9600p:/archive/consoles/r_27.log:
+cain::/dev/ttyC28@tara.sac.fedex.com:9600p:/archive/consoles/cain.log:
+abel::/dev/ttyC29@tara.sac.fedex.com:9600p:/archive/consoles/abel.log:
+ebptest1::/dev/ttyC2a@tara.sac.fedex.com:9600p:/archive/consoles/ebptest1.log:+
+frcdb1::/dev/ttyC2b@tara.sac.fedex.com:9600p:/archive/consoles/frcdb1.log:
+crc1::/dev/ttyC2c@tara.sac.fedex.com:9600p:/archive/consoles/crc1.log:
+www4::/dev/ttyC2d@tara.sac.fedex.com:9600p:/archive/consoles/www4.log:
+cc2::/dev/ttyC2e@tara.sac.fedex.com:9600p:/archive/consoles/cc2.log:
+www1::/dev/ttyC2f@tara.sac.fedex.com:9600p:/archive/consoles/www1.log:
+r_2g::/dev/ttyC2g@tara.sac.fedex.com:9600p:/archive/consoles/r_2g.log:
+r_2h::/dev/ttyC2h@tara.sac.fedex.com:9600p:/archive/consoles/r_2h.log:
+r_2i::/dev/ttyC2i@tara.sac.fedex.com:9600p:/archive/consoles/r_2i.log:
+r_2j::/dev/ttyC2j@tara.sac.fedex.com:9600p:/archive/consoles/r_2j.log:
+r_2k::/dev/ttyC2k@tara.sac.fedex.com:9600p:/archive/consoles/r_2k.log:
+r_2l::/dev/ttyC2l@tara.sac.fedex.com:9600p:/archive/consoles/r_2l.log:
+r_2m:ZHrLzmXPNsSR.:/dev/ttyC2m@tara.sac.fedex.com:9600p:/archive/consoles/r_2m.log:+
+h2.fw::/dev/ttyC2n@tara.sac.fedex.com:9600p:/archive/consoles/h2.fw.log:
+adm2.fw::/dev/ttyC2o@tara.sac.fedex.com:9600p:/archive/consoles/adm2.fw.log:
+g2.fw::/dev/ttyC2p@tara.sac.fedex.com:9600p:/archive/consoles/g2.fw.log:
+g1.fw::/dev/ttyC2r@tara.sac.fedex.com:9600p:/archive/consoles/g1.fw.log:
+a1.old:ZHrLzmXPNsSR.:/dev/ttyC2q@tara.sac.fedex.com:9600p:/archive/consoles/a1.fw.log:+
+a2.old::/dev/ttyC2s@tara.sac.fedex.com:9600p:/archive/consoles/a2.fw.log:
+c2.fw::/dev/ttyC2t@tara.sac.fedex.com:9600p:/archive/consoles/c2.fw.log:
+c1.fw::/dev/ttyC2u@tara.sac.fedex.com:9600p:/archive/consoles/c1.fw.log:
+adm1.fw::/dev/ttyC2v@tara.sac.fedex.com:9600p:/archive/consoles/adm1.fw.log:
+tara.w::|exec /usr/local/lib/labwatch.boot@tara.sac.fedex.com:9600p:/usr/adm/labwatch.log:+
+#
+# host zveegee.sac [z] (HP715 with ST-1616B mux 16 ports, plus 2 builtin)
+# Pod A in the new room -- ksb
+# our console /dev/tty01@groobee.sac.fedex.com 9600p
+z_01::/dev/tty01@zveegee.sac.fedex.com:9600p:/archive/consoles/z_01.log:0
+powera::/dev/ttyC20@zveegee.sac.fedex.com:9600p:/archive/consoles/powera.log:+
+mx1.zmd::/dev/ttyC21@zveegee.sac.fedex.com:9600p:/archive/consoles/mx1.zmd.log:+
+s3.vo::/dev/ttyC22@zveegee.sac.fedex.com:9600p:/archive/consoles/s3.vo.log:
+s1.vo::/dev/ttyC23@zveegee.sac.fedex.com:9600p:/archive/consoles/s1.vo.log:
+app1::/dev/ttyC24@zveegee.sac.fedex.com:9600p:/archive/consoles/app1.log:
+cps1::/dev/ttyC25@zveegee.sac.fedex.com:9600p:/archive/consoles/cps1.log:
+comm1::/dev/ttyC26@zveegee.sac.fedex.com:9600p:/archive/consoles/comm1.log:
+ldap1::/dev/ttyC27@zveegee.sac.fedex.com:9600p:/archive/consoles/ldap1.log:
+wapi1::/dev/ttyC28@zveegee.sac.fedex.com:9600p:/archive/consoles/wapi1.log:
+cert1::/dev/ttyC29@zveegee.sac.fedex.com:9600p:/archive/consoles/cert1.log:
+log1::/dev/ttyC2a@zveegee.sac.fedex.com:9600p:/archive/consoles/log1.log:
+wapi3::/dev/ttyC2b@zveegee.sac.fedex.com:9600p:/archive/consoles/wapi3.log:
+www9::/dev/ttyC2c@zveegee.sac.fedex.com:9600p:/archive/consoles/www9.log:
+lore1::/dev/ttyC2d@zveegee.sac.fedex.com:9600p:/archive/consoles/lore1.log:
+smrc::/dev/ttyC2e@zveegee.sac.fedex.com:9600p:/archive/consoles/smrc.log:
+grace:iOwvctJRVHfE6:/dev/ttyC2f@zveegee.sac.fedex.com:9600p:/archive/consoles/grace.log:+
+ftp1::/dev/ttyC2g@zveegee.sac.fedex.com:9600p:/archive/consoles/ftp1.log:+
+goku::/dev/ttyC2h@zveegee.sac.fedex.com:9600p:/archive/consoles/goku.log:
+ebp2::/dev/ttyC2i@zveegee.sac.fedex.com:9600p:/archive/consoles/ebp2.log:
+olrb1::/dev/ttyC2j@zveegee.sac.fedex.com:9600p:/archive/consoles/olrb1.log:
+cc3::/dev/ttyC2k@zveegee.sac.fedex.com:9600p:/archive/consoles/cc3.log:
+wadm4::/dev/ttyC2l@zveegee.sac.fedex.com:9600p:/archive/consoles/wadm4.log:
+www7::/dev/ttyC2m@zveegee.sac.fedex.com:9600p:/archive/consoles/www7.log:
+z_2n::/dev/ttyC2n@zveegee.sac.fedex.com:9600p:/archive/consoles/z_2n.log:
+z_2o::/dev/ttyC2o@zveegee.sac.fedex.com:9600p:/archive/consoles/z_2o.log:
+z_2p::/dev/ttyC2p@zveegee.sac.fedex.com:9600p:/archive/consoles/z_2p.log:
+z_2q::/dev/ttyC2q@zveegee.sac.fedex.com:9600p:/archive/consoles/z_2q.log:
+z_2r::/dev/ttyC2r@zveegee.sac.fedex.com:9600p:/archive/consoles/z_2r.log:
+z_2s::/dev/ttyC2s@zveegee.sac.fedex.com:9600p:/archive/consoles/z_2s.log:
+z_2t::/dev/ttyC2t@zveegee.sac.fedex.com:9600p:/archive/consoles/z_2t.log:
+z_2u::/dev/ttyC2u@zveegee.sac.fedex.com:9600p:/archive/consoles/z_2u.log:
+z_2v::/dev/ttyC2v@zveegee.sac.fedex.com:9600p:/archive/consoles/z_2v.log:
+#
+# host kachina [k] (PC with 5 ports)
+k_d0:ZHrLzmXPNsSR.:/dev/ttyd0@kachina.dpd.fedex.com:9600p:/archive/consoles/_d0.log:0
+brufw::/dev/ttyd2@kachina.dpd.fedex.com:9600p:/archive/consoles/_d2.log:
+k_d3::/dev/ttyd3@kachina.dpd.fedex.com:9600p:/archive/consoles/_d3.log:
+k_d4::/dev/ttyd4@kachina.dpd.fedex.com:9600p:/archive/consoles/_d4.log:
+bruweb::/dev/ttyd5@kachina.dpd.fedex.com:9600p:/archive/consoles/_d5.log:
+#
+# fortress.dpd [d] (PC builtins and virtuals)
+d_00::/dev/tty00@fortress.dpd.fedex.com:9600p:/archive/consoles/_00:0
+d_01::/dev/tty01@fortress.dpd.fedex.com:9600p:/archive/consoles/_01:
+labwatch:79Qy.BSsQGUMI:|/usr/local/etc/labwatch.boot@fortress.dpd.fedex.com:9600p:/var/log/labwatch:+
+#
+# host depot.dspd [t] (HPUX 715, 9.05 1 ST1600 16 port mux, 2 builtin)
+# has a head
+t_00::/dev/tty00@depot.dspd.fedex.com:9600p:/archive/consoles/_00:0
+t_01::/dev/tty01@depot.dspd.fedex.com:9600p:/archive/consoles/_01:
+sw0.sa::/dev/ttyc50@depot.dspd.fedex.com:9600p:/archive/consoles/sw0:+
+s03.sa::/dev/ttyc51@depot.dspd.fedex.com:9600p:/archive/consoles/s03:
+s06.sa::/dev/ttyc52@depot.dspd.fedex.com:9600p:/archive/consoles/s06:
+s01.sa::/dev/ttyc53@depot.dspd.fedex.com:9600p:/archive/consoles/s01:
+g07.sa::/dev/ttyc54@depot.dspd.fedex.com:9600p:/archive/consoles/g07:
+s07.sa::/dev/ttyc55@depot.dspd.fedex.com:9600p:/archive/consoles/s07:
+g05.sa::/dev/ttyc56@depot.dspd.fedex.com:9600p:/archive/consoles/g05:
+g06.sa::/dev/ttyc57@depot.dspd.fedex.com:9600p:/archive/consoles/g06:
+power::/dev/ttyc58@depot.dspd.fedex.com:9600p:/archive/consoles/power:+
+temp2.sa::/dev/ttyc59@depot.dspd.fedex.com:9600p:/archive/consoles/temp2:+
+temp3.sa::/dev/ttyc5a@depot.dspd.fedex.com:9600p:/archive/consoles/temp2:
+temp1.sa::/dev/ttyc5b@depot.dspd.fedex.com:9600p:/archive/consoles/temp1:
+t_c5c::/dev/ttyc5c@depot.dspd.fedex.com:9600p:/archive/consoles/_5c:
+t_c5d::/dev/ttyc5d@depot.dspd.fedex.com:9600p:/archive/consoles/_5d:
+judge::/dev/ttyc5e@depot.dspd.fedex.com:9600p:/archive/consoles/judge:+
+fortress::/dev/ttyc5f@depot.dspd.fedex.com:9600p:/archive/consoles/fortress:
+_40::/dev/ttyc40@depot.dspd.fedex.com:9600p:/archive/consoles/_40:+
+_41::/dev/ttyc41@depot.dspd.fedex.com:9600p:/archive/consoles/_41:
+_42::/dev/ttyc42@depot.dspd.fedex.com:9600p:/archive/consoles/_42:
+_43::/dev/ttyc43@depot.dspd.fedex.com:9600p:/archive/consoles/_43:
+_44::/dev/ttyc44@depot.dspd.fedex.com:9600p:/archive/consoles/_44:
+_45::/dev/ttyc45@depot.dspd.fedex.com:9600p:/archive/consoles/_45:
+_46::/dev/ttyc46@depot.dspd.fedex.com:9600p:/archive/consoles/_46:
+_47::/dev/ttyc47@depot.dspd.fedex.com:9600p:/archive/consoles/_47:
+s1-clone::/dev/ttyc48@depot.dspd.fedex.com:9600p:/archive/consoles/s1-clone:+
+_49::/dev/ttyc49@depot.dspd.fedex.com:9600p:/archive/consoles/_49:
+_4a::/dev/ttyc4a@depot.dspd.fedex.com:9600p:/archive/consoles/_4a:
+temp5.sa::/dev/ttyc4c@depot.dspd.fedex.com:9600p:/archive/consoles/temp5.sa:
+_4b:FRVr5go2fSnos:/dev/ttyc4b@depot.dspd.fedex.com:9600p:/archive/consoles/_4b:+
+_4d::/dev/ttyc4d@depot.dspd.fedex.com:9600p:/archive/consoles/_4d:
+_4e::/dev/ttyc4e@depot.dspd.fedex.com:9600p:/archive/consoles/_4e:
+_4f::/dev/ttyc4f@depot.dspd.fedex.com:9600p:/archive/consoles/_4f:
+t_20::/dev/ttyC20@depot.dspd.fedex.com:9600p:/archive/consoles/t_20:
+t_21::/dev/ttyC21@depot.dspd.fedex.com:9600p:/archive/consoles/t_21:
+t_22::/dev/ttyC22@depot.dspd.fedex.com:9600p:/archive/consoles/t_22:
+t_23::/dev/ttyC23@depot.dspd.fedex.com:9600p:/archive/consoles/t_23:
+t_24::/dev/ttyC24@depot.dspd.fedex.com:9600p:/archive/consoles/t_24:
+t_25::/dev/ttyC25@depot.dspd.fedex.com:9600p:/archive/consoles/t_25:
+t_26::/dev/ttyC26@depot.dspd.fedex.com:9600p:/archive/consoles/t_26:
+t_27::/dev/ttyC27@depot.dspd.fedex.com:9600p:/archive/consoles/t_27:
+t_28::/dev/ttyC28@depot.dspd.fedex.com:9600p:/archive/consoles/t_28:
+t_29::/dev/ttyC29@depot.dspd.fedex.com:9600p:/archive/consoles/t_29:
+t_2a::/dev/ttyC2a@depot.dspd.fedex.com:9600p:/archive/consoles/t_2a:
+t_2b::/dev/ttyC2b@depot.dspd.fedex.com:9600p:/archive/consoles/t_2b:
+t_2c::/dev/ttyC2c@depot.dspd.fedex.com:9600p:/archive/consoles/t_2c:
+t_2d::/dev/ttyC2d@depot.dspd.fedex.com:9600p:/archive/consoles/t_2d:
+t_2e::/dev/ttyC2e@depot.dspd.fedex.com:9600p:/archive/consoles/t_2e:
+t_2f::/dev/ttyC2f@depot.dspd.fedex.com:9600p:/archive/consoles/t_2f:
+t_2g::/dev/ttyC2g@depot.dspd.fedex.com:9600p:/archive/consoles/t_2g:
+t_2h::/dev/ttyC2h@depot.dspd.fedex.com:9600p:/archive/consoles/t_2h:
+t_2i::/dev/ttyC2i@depot.dspd.fedex.com:9600p:/archive/consoles/t_2i:
+t_2j::/dev/ttyC2j@depot.dspd.fedex.com:9600p:/archive/consoles/t_2j:
+t_2k::/dev/ttyC2k@depot.dspd.fedex.com:9600p:/archive/consoles/t_2k:
+t_2l::/dev/ttyC2l@depot.dspd.fedex.com:9600p:/archive/consoles/t_2l:
+t_2m::/dev/ttyC2m@depot.dspd.fedex.com:9600p:/archive/consoles/t_2m:
+t_2n::/dev/ttyC2n@depot.dspd.fedex.com:9600p:/archive/consoles/t_2n:
+t_2o::/dev/ttyC2o@depot.dspd.fedex.com:9600p:/archive/consoles/t_2o:
+t_2p::/dev/ttyC2p@depot.dspd.fedex.com:9600p:/archive/consoles/t_2p:
+t_2q::/dev/ttyC2q@depot.dspd.fedex.com:9600p:/archive/consoles/t_2q:
+t_2r::/dev/ttyC2r@depot.dspd.fedex.com:9600p:/archive/consoles/t_2r:
+t_2s::/dev/ttyC2s@depot.dspd.fedex.com:9600p:/archive/consoles/t_2s:
+t_2t::/dev/ttyC2t@depot.dspd.fedex.com:9600p:/archive/consoles/t_2t:
+t_2u::/dev/ttyC2u@depot.dspd.fedex.com:9600p:/archive/consoles/t_2u:
+t_2v::/dev/ttyC2v@depot.dspd.fedex.com:9600p:/archive/consoles/t_2v:
+#
+# host nopey.sac [n] (HP 715 with 1 ST-1032 32 ports)
+n_01::/dev/tty01@nopey.sac.fedex.com:9600p:/archive/consoles/n_01:
+powerg::/dev/ttyC20@nopey.sac.fedex.com:9600p:/archive/consoles/powerg:
+a2.fw:ZHrLzmXPNsSR.:/dev/ttyC21@nopey.sac.fedex.com:9600p:/archive/consoles/a2.fw:+
+d2.fw::/dev/ttyC22@nopey.sac.fedex.com:9600p:/archive/consoles/d2.fw:
+www20::/dev/ttyC23@nopey.sac.fedex.com:9600p:/archive/consoles/www20:+
+www22::/dev/ttyC24@nopey.sac.fedex.com:9600p:/archive/consoles/www22:
+www24::/dev/ttyC25@nopey.sac.fedex.com:9600p:/archive/consoles/www24:
+www26::/dev/ttyC26@nopey.sac.fedex.com:9600p:/archive/consoles/www26:
+www28::/dev/ttyC27@nopey.sac.fedex.com:9600p:/archive/consoles/www28:
+www30::/dev/ttyC28@nopey.sac.fedex.com:9600p:/archive/consoles/www30:
+www32::/dev/ttyC29@nopey.sac.fedex.com:9600p:/archive/consoles/www32:
+www34::/dev/ttyC2a@nopey.sac.fedex.com:9600p:/archive/consoles/www34:
+ship20::/dev/ttyC2b@nopey.sac.fedex.com:9600p:/archive/consoles/ship20:+
+ship21::/dev/ttyC2c@nopey.sac.fedex.com:9600p:/archive/consoles/ship21:
+ship22::/dev/ttyC2d@nopey.sac.fedex.com:9600p:/archive/consoles/ship22:
+n_2e::/dev/ttyC2e@nopey.sac.fedex.com:9600p:/archive/consoles/n_2e:
+n_2f::/dev/ttyC2f@nopey.sac.fedex.com:9600p:/archive/consoles/n_2f:
+n_2g::/dev/ttyC2g@nopey.sac.fedex.com:9600p:/archive/consoles/n_2g:
+n_2h::/dev/ttyC2h@nopey.sac.fedex.com:9600p:/archive/consoles/n_2h:
+n_2i::/dev/ttyC2i@nopey.sac.fedex.com:9600p:/archive/consoles/n_2i:
+n_2j::/dev/ttyC2j@nopey.sac.fedex.com:9600p:/archive/consoles/n_2j:
+n_2k::/dev/ttyC2k@nopey.sac.fedex.com:9600p:/archive/consoles/n_2k:
+n_2l::/dev/ttyC2l@nopey.sac.fedex.com:9600p:/archive/consoles/n_2l:
+n_2m::/dev/ttyC2m@nopey.sac.fedex.com:9600p:/archive/consoles/n_2m:
+wwwstage::/dev/ttyC2n@nopey.sac.fedex.com:9600p:/archive/consoles/wwwstage:
+wwwbeta1::/dev/ttyC2o@nopey.sac.fedex.com:9600p:/archive/consoles/wwwbeta1:
+log2::/dev/ttyC2p@nopey.sac.fedex.com:9600p:/archive/consoles/log2:
+app4::/dev/ttyC2q@nopey.sac.fedex.com:9600p:/archive/consoles/app4:
+app6::/dev/ttyC2r@nopey.sac.fedex.com:9600p:/archive/consoles/app6:
+cpsstage::/dev/ttyC2s@nopey.sac.fedex.com:9600p:/archive/consoles/cpsstage:
+cps4::/dev/ttyC2t@nopey.sac.fedex.com:9600p:/archive/consoles/cps4:
+appbeta::/dev/ttyC2u@nopey.sac.fedex.com:9600p:/archive/consoles/appbeta:
+wadm2::/dev/ttyC2v@nopey.sac.fedex.com:9600p:/archive/consoles/wadm2:
+#
+# host puffball.sac [u] (HP 715 with 1 ST-1032 32 ports)
+u_01::/dev/tty01@puffball.sac.fedex.com:9600p:/archive/consoles/u_01:
+powerh::/dev/ttyC20@puffball.sac.fedex.com:9600p:/archive/consoles/powerh:
+a1.fw:ZHrLzmXPNsSR.:/dev/ttyC21@puffball.sac.fedex.com:9600p:/archive/consoles/a1.fw:+
+d1.fw::/dev/ttyC22@puffball.sac.fedex.com:9600p:/archive/consoles/d1.fw:
+www21::/dev/ttyC23@puffball.sac.fedex.com:9600p:/archive/consoles/www21:+
+www23::/dev/ttyC24@puffball.sac.fedex.com:9600p:/archive/consoles/www23:
+www25::/dev/ttyC25@puffball.sac.fedex.com:9600p:/archive/consoles/www25:
+www27::/dev/ttyC26@puffball.sac.fedex.com:9600p:/archive/consoles/www27:
+www29::/dev/ttyC27@puffball.sac.fedex.com:9600p:/archive/consoles/www29:
+www31::/dev/ttyC28@puffball.sac.fedex.com:9600p:/archive/consoles/www31:
+www33::/dev/ttyC29@puffball.sac.fedex.com:9600p:/archive/consoles/www33:
+www35::/dev/ttyC2a@puffball.sac.fedex.com:9600p:/archive/consoles/www35:
+ship23::/dev/ttyC2b@puffball.sac.fedex.com:9600p:/archive/consoles/ship23:+
+ship24::/dev/ttyC2c@puffball.sac.fedex.com:9600p:/archive/consoles/ship24:
+ship25::/dev/ttyC2d@puffball.sac.fedex.com:9600p:/archive/consoles/ship25:
+u_2e::/dev/ttyC2e@puffball.sac.fedex.com:9600p:/archive/consoles/u_2e:
+u_2f::/dev/ttyC2f@puffball.sac.fedex.com:9600p:/archive/consoles/u_2f:
+u_2g::/dev/ttyC2g@puffball.sac.fedex.com:9600p:/archive/consoles/u_2g:
+u_2h::/dev/ttyC2h@puffball.sac.fedex.com:9600p:/archive/consoles/u_2h:
+u_2i::/dev/ttyC2i@puffball.sac.fedex.com:9600p:/archive/consoles/u_2i:
+u_2j::/dev/ttyC2j@puffball.sac.fedex.com:9600p:/archive/consoles/u_2j:
+u_2k::/dev/ttyC2k@puffball.sac.fedex.com:9600p:/archive/consoles/u_2k:
+u_2l::/dev/ttyC2l@puffball.sac.fedex.com:9600p:/archive/consoles/u_2l:
+u_2m::/dev/ttyC2m@puffball.sac.fedex.com:9600p:/archive/consoles/u_2m:
+u_2n::/dev/ttyC2n@puffball.sac.fedex.com:9600p:/archive/consoles/u_2n:
+comm5::/dev/ttyC2o@puffball.sac.fedex.com:9600p:/archive/consoles/comm5:
+comm7::/dev/ttyC2p@puffball.sac.fedex.com:9600p:/archive/consoles/comm7:
+app3::/dev/ttyC2q@puffball.sac.fedex.com:9600p:/archive/consoles/app3:
+app5::/dev/ttyC2r@puffball.sac.fedex.com:9600p:/archive/consoles/app5:
+appstage::/dev/ttyC2s@puffball.sac.fedex.com:9600p:/archive/consoles/appstage:
+cps3::/dev/ttyC2t@puffball.sac.fedex.com:9600p:/archive/consoles/cps3:
+cpstest2::/dev/ttyC2u@puffball.sac.fedex.com:9600p:/archive/consoles/cpstest2:
+wadm1::/dev/ttyC2v@puffball.sac.fedex.com:9600p:/archive/consoles/wadm1:
+#
+# host vulcan.sac [v] (FreeBSD PC with 6 ports)
+#v_d0::/dev/ttyd0@vulcan.sac.fedex.com:9600p:/archive/consoles/_d0.log:0
+#v_d1::/dev/ttyd1@vulcan.sac.fedex.com:9600p:/archive/consoles/_d1.log:
+#s1-clone:JTLYBLI1NLFMg:/dev/ttyd2@vulcan.sac.fedex.com:9600p:/archive/consoles/s1-clone.log:+
+#v_d3::/dev/ttyd3@vulcan.sac.fedex.com:9600p:/archive/consoles/_d3.log:
+#s2-clone::/dev/ttyd4@vulcan.sac.fedex.com:9600p:/archive/consoles/s2-clone.log:
+#v_d5::/dev/ttyd5@vulcan.sac.fedex.com:9600p:/archive/consoles/_d5.log:
+#
+# host w01.sac [q] for testing stuff
+qmgr::|/root/qmgr.boot@w01.sac.fedex.com:9600p:/var/log/jobs:+
+%%
+# list of clients we allow
+# type: machines/domains/ip
+trust: 127.0.0.1
+allowed: sa.fedex.com dpd.fedex.com dspd.fedex.com sac.fedex.com
+allowed: prod.fedex.com telecom.fedex.com network.fedex.com
+allowed: svr6.dscm.fedex.com svr5.dscm.fedex.com

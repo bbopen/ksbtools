@@ -1,0 +1,14 @@
+#!/usr/local/bin/ksh
+# $Id: Menu,v 5.0 1999/02/26 17:42:33 ksb Exp $
+# give this script `-mDisplay /lib/libc.a' for kicks
+#
+MK="-a" mk -n "$@"  >/tmp/menu$$ 2>&1
+PS3="Run? "
+IFS="
+"
+select cmd in `</tmp/menu$$`
+do
+	eval "$cmd"
+	break
+done
+rm -f /tmp/menu$$

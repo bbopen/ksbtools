@@ -1,0 +1,264 @@
+.\" by Kevin Braunsdorf
+.\" $Id: maketd.man,v 4.8 1993/02/09 11:13:47 ldv Beta $
+.\" $Laser: tbl %f | ltroff -man
+.TH MAKETD 1L PUCC
+.SH NAME
+maketd \- edit a makefile to update transitive dependencies
+.SH SYNOPSIS
+\fBmaketd\fP [\-\fB4CabcdfhlnrvVx\fP] [\-\fBD\fP \fIdefine\fP] [\-\fBL\fP \fIlib.a\fP] [\-\fBI\fP \fIincludedir\fP] [\-\fBU\fP \fIundefine\fP] [\-\fBj\fP \fIextender\fP] [\-\fBm\fP \fImakefile\fP] [\-\fBo\fP \fIdir\fP] [\-\fBs\fP \fIsuffix\fP] [\-\fBt\fP \fItarget\fP] [\fBfiles\fP]
+.SH DESCRIPTION
+.B Maketd
+computes dependencies for targets that are introduced through the
+C preprocessor's (cpp) \fI#include\fP directive.
+The development of this program resulted from
+.IR make ( 1 )'s
+inability to recognize transitive dependencies.  For example,
+given the following makefile fragment:
+.sp 1
+	xx.o: xx.c e.h
+.sp 1
+	e.h: struct.h /usr/include/local/const.h
+.sp 1
+\fIMake\fP will not recognize the target xx.o's dependency on struct.h.
+\fIMaketd\fP generates lines like:
+.sp 1
+	xx.o: xx.c e.h struct.h $L/const.h
+.sp 1
+Thus making the target xx.o not only dependent on all files that it includes,
+but also recursively on all files that the included files include.
+This is achieved by passing the source through the C preprocessor
+(\fI/bin/cc\fP \-\fIM\fP).
+.PP
+The directories used in the search for include files
+are identical to the ones used by the C compiler because the
+C preprocessor is used.  This also means that 
+.IR #define 's, 
+.IR #ifdef 's, 
+etc., are evaluated.
+It is necessary to recompute the dependencies when any source has been changed.
+The generated dependencies will be inserted after a line of the form 
+\*(lq# DO NOT DELETE...\*(rq (which will be inserted if \fBmaketd\fP
+finds the end of file).
+Everything after this line may be deleted or changed as \fBmaketd\fP edits
+the \fImakefile\fP (the portion of the makefile before this line is only
+examined for context).
+If no such line exists, a line of the expected form will be emitted,
+followed by the dependencies.
+.PP
+By default \fBmaketd\fP will search for the \fImakefile\fP
+to be edited in the same way \fImake\fP does; that is by first checking
+for the existence of \*(lqmakefile\*(rq, then \*(lqMakefile\*(rq.
+The \-\fBm\fP and \-\fBd\fP options override this default action (below).
+Before it is edited, \fImakefile\fP will be saved in
+\*(lq\fImakefile\fP.\fIextend\fP\*(rq
+(overwriting any existing file with the same name).
+This \fIextender\fP on the old version of \fImakefile\fP may
+be changed by using the \-\fBj\fP option (below).
+.SH OPTIONS
+.PP
+Options and arguments may be intermixed on the command line to modify
+\fBmaketd\fP's behavior on a per file basis.
+.TP
+.BI \-4
+Use 
+.IR m4 ( 1 )
+as the preprocessor rather than 
+.IR cc ( 1 ) .  
+This requires that modifications have been made to m4 and that 
+this program be compiled with CPP_M defined.  Use \*(lqmaketd \-h\*(rq 
+to check this.
+.TP
+.BI \-a
+Normally, dependencies on files in \*(lq/usr/include\*(rq are
+not included.  This option also includes dependencies on those files.
+This option should always be used for system level makefiles.
+.TP
+.BI \-b
+Generate dependencies for binaries rather than object files.
+This is equivalent to specifying a null suffix:  the \*(lq.o\*(rq 
+is stripped from the target.
+.TP
+.BI \-c
+Use cc to generate dependencies (rather than m4).  This is the default.
+.TP
+.BI \-d
+Dependencies are written to standard output instead of editing a makefile.
+The standard header and trailer, \*(lq# DO NOT DELETE...\*(rq are not printed.
+.\".TP
+.\".BI \-e rule
+.\"The given \fIrule\fP is ouptut under each of the following \fIfile\fP's
+.\"dependency lists.
+.\"For \fIprintf\fP-like percent (%) escapes are expanded to allow the
+.\"user to customize the rule.
+.\".sp 1
+.\".RS
+.\".TS
+.\"l l l.
+.\"escape  expands
+.\"%	a percent
+.\"F	the source file
+.\"I	the \fIcpp\fP flags for this file
+.\"O	the source dir
+.\"S	the source suffix
+.\"L	the library containing this file
+.\"T	the source basename
+.\"f	the full target file
+.\"o	the target dir (set by \-\fBo\fP)
+.\"s	the target suffix (set by \-\fBs\fP)
+.\"t	the target base name (set by \-\fBt\fP)
+.\".TE
+.\".RE
+.TP
+.BI \-f
+Force printing of header and trailer.
+Normally these are suppressed when the output file is the standard output.
+.TP
+.BI \-h
+Only output a usage summary.
+.TP
+.BI \-j extender
+Specify an extension for the backup makefile, rather than the default 
+\*(lqbak\*(rq extender.
+.TP
+.BI \-l
+Turn off the nonlocal object option, and make all targets local.
+.TP
+.BI \-m makefile
+Instead of editing \*(lqmakefile\*(rq, \fImakefile\fP is edited.
+.TP
+.BI \-n
+Generate nonlocal object dependency paths.
+These paths will match the source paths given.
+.TP
+.BI \-o dir
+Generate nonlocal object dependencies in the specified \fIdir\fP.
+This option generates dependencies of the form
+.sp 1
+	\fIdir\fP/a.o: a.c
+.sp 1
+which is useful for makefiles that produce the objects in
+a separate subdirectory.
+The name of the directory must not be empty (see \-\fBl\fP above).
+.TP
+.BI \-r
+Replace the dependencies for the target(s) mentioned on the command line.
+Do not alter any other dependencies that may have been in \fImakefile\fP.
+This option is of limited use and unlimited misuse: beware.
+.TP
+.BI \-s suffix
+Supply a suffix for the target.  The \fIsuffix\fP should
+start with a \*(lq.\*(rq.
+The target file name should have a suffix of some sort that
+is delimited by a \*(lq.\*(rq that is replaced by this suffix.
+.TP
+.BI \-t target
+Supply a new basename for the target rather than using the basename of the
+source file.
+.TP
+.BI \-v
+Be verbose.
+Extra output is directed to the standard error channel.
+.TP
+.BI \-V
+Show which version of \fImaketd\fP is running.
+.TP
+.BI \-x
+Do not shorten include files.
+The pathnames \*(lq/usr/include\*(rq and \*(lq/usr/include/sys\*(rq
+along with any pathnames specified with the \-I options, are abbreviated.
+Unused uppercase single letters are defined in \fImakefile\fP and used to
+compress pathnames.
+.TP
+.BI \-C
+Cancel all previous cpp flags (\-\fBD\fP, \-\fBI\fP, and \-\fBU\fP)
+and begin a new list.  This is useful for generating
+dependencies for more than one product with only one \fBmaketd\fP call.
+.TP
+.BI \-D define
+Specify a cpp (C preprocessor) definition.  See
+.IR cc ( 1 ).
+for a complete description.
+.\".TP
+.\".BI \-E
+.\"Cancel an explicit \fIrule\fP given by \-\fBe\fP.
+.\".TP
+.\".BI \-F gen-dep
+.\"The \fIgen-dep\fP shell command is expanded as a \-e \fIrule\fP would be
+.\"and given to the shell.  The resulting output must look like the
+.\"output of \fIcpp\fP \fI\-M\fP, that is contain only lines of the form:
+.\".sp 1
+.\"	\fItarget\fP\fB: \fP\fIdep\fP
+.\".sp 1
+.\"which should list of all the \fIdeps\fP on which \fItarget\fP
+.\"depends one per line.
+.TP
+.BI \-I includedir
+Specify a directory for cpp to search for include files.
+See
+.IR cc ( 1 )
+for a complete description.
+Note that \fIincludedir\fP is subject to abbreviation unless \-\fBx\fP is
+given.
+.TP
+.BI \-L lib.a
+This option produces a dependency that tells \fImake\fP(1) that the
+target is part of \fIlib.a\fP.
+.TP
+.BI \-U name
+Remove any initial definition of the (C preprocessor) variable
+.IR name .
+.SH EXAMPLES
+A typical application in a makefile might look like:
+.sp 1
+.RS
+.nf
+L=/usr/include/local
+INCLUDE=  \-I$L \-I../h
+CDEFS=	\-DPUCC \-DBSD4_2
+CFLAGS=	${DEFS} ${INCLUDE}
+
+SRC=	a.c b.c c.c
+HDR=	a.h b.h c.h
+
+\&. . .
+depend: ${SRC} ${HDR}
+	maketd \-a ${CDEFS} ${INCLUDE} ${SRC}
+
+# DO NOT DELETE THIS LINE \- maketd DEPENDS ON IT
+
+a.o: a.c a.h b.h c.h $L/goop.h
+
+b.o: b.c b.h $L/goop.h
+
+c.o: c.c c.h
+
+# *** Do not add anything here \- It will go away. ***
+.fi
+.RE
+.sp 1
+.SH BUGS
+.PP
+If a single letter macro name is used but never defined (in the makefile)
+\fBmaketd\fP might still use it for an abbreviation name.  This should not
+effect the makefile as all the dependencies and the redefinition of the
+macro will follow the users last usage of it.  This happens in DYNIX makefiles
+that use \*(lqP\*(rq to indicate that parallel compilation should be used.
+We suggest that Makefiles which use this trick put a
+.sp 1
+	P=
+.sp 1
+in the Makefile (above the all target) to keep \fImaketd\fP from using
+the macro \*(lqP\*(rq; the command line definition of P="&" will override
+the Makefile's definition.
+.PP
+Some more path compression could be done.
+.SH AUTHORS
+Stephan Bechtolsheim (a shell script), Purdue CS
+.br
+Stephen Uitti (a C version), Purdue CC
+.br
+Craig Norborg (m4 modifications), Purdue CC
+.br
+Kevin Braunsdorf (intermix options), Purdue CC
+.SH SEE ALSO
+make(1), cc(1), m4(1)

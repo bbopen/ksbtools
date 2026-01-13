@@ -1,0 +1,96 @@
+`#	$Id: Make.host,v 5.2 2000/06/20 14:09:17 ksb Exp $
+#
+#	Makefile for turnin, depends on project (being in ../project)
+#
+
+SHELL=/bin/sh
+PROG=	turnin
+BIN=	${DESTDIR}/usr/local/bin
+
+PROJECT=../project
+
+L=/usr/'ifelse(HOSTTYPE,`SUN5',`local/`include'',``include'/local')`
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE=
+DEBUG=	-O
+CDEFS=  -D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	${PROJECT}/machine.h
+SRC=	turnin.c
+GENC=	main.c strcasecmp.c
+GENH=	main.h
+GEN=	${GENC} ${GENH}
+OBJ=	main.o turnin.o'ifelse(
+HOSTTYPE,CONSENSYS,` strcasecmp.o')`
+DEP=	${GENC} ${SRC}
+OTHER=	turnin.m
+MAN=	turnin.man
+SOURCE=	Makefile ${HDR} ${SRC} ${MAN} ${OTHER}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}
+
+main.h: main.c
+
+main.c: turnin.m
+	mkcmd -I${PROJECT} turnin.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -rf prog.[ch]
+
+strcasecmp.c:
+	explode $@
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} *.o a.out core errs tags
+
+depend: ${HDR} ${SRC} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG}
+
+install: all FRC
+	install -cs -m 4755 -o root ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+main.o: main.c turnin.m
+
+turnin.o: ../project/machine.h main.h turnin.c
+
+strcasecmp.o: strcasecmp.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

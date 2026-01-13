@@ -1,0 +1,27 @@
+#!/bin/sh
+# extract a title from a html file					(bj/ksb)
+# $Id: extract-title,v 5.0 1996/09/09 20:19:26 kb207252 Exp $
+#
+# first pass takes text from <title> to </title>
+STRIP='/.*<[Tt][Ii][Tt][Ll][Ee]>/{
+	s///
+	: top
+	/<\/[Tt][Ii][Tt][Ll][Ee]>.*/{
+                s///
+                p
+                q
+        }
+        p
+	n
+        b top
+}
+d'
+
+# then strip out <em> ... </em> , leading white space, and blank lines
+for file
+do
+	sed <$file -n -e "$STRIP" | sed -e 's/.*<\([a-zA-Z]*\)>\(.*\)<\/\1>/\2/' -e 's/^[    ]*//' -e '/^$/d'
+done
+
+# we are happy
+exit 0

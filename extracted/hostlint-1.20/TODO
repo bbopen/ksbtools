@@ -1,0 +1,11 @@
+# $Id: TODO,v 1.3 2011/12/04 17:14:31 ksb Exp $
+
+Document why we had to include NETLINT_UINFO in the configuration.
+
+The check for `test' in repo.m4 needs to include the new naming
+convetion for ITO Ops.
+
+| head -1 on the HOST_CLASS setting
+
+--
+ksb, Dec 2011

@@ -1,0 +1,6 @@
+#!/bin/sh
+# $Id: is-texinfo,v 5.0 1996/09/09 20:19:26 kb207252 Exp $
+
+grep -s '^\\input\ texinfo' $1
+
+exit $?

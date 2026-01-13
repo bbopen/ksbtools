@@ -1,0 +1,139 @@
+.\" $Id: entomb.man,v 3.2 1994/07/18 09:10:26 ksb Exp $
+.\" man page for entomb
+.\" by Matthew Bradburn, PUCC Unix Group
+.\" Copyright 1988 Purdue Research Foundation
+.TH ENTOMB 8L PUCC
+.SH NAME
+entomb \- entomb files
+.SH SYNOPSIS
+.B /usr/local/lib/entomb [-C | -c] file
+.br
+.B /usr/local/lib/entomb -E
+.br
+.B /usr/local/lib/entomb -V
+.br
+.B /usr/local/lib/entomb -h
+
+.SH DESCRIPTION
+.PP
+\fIEntomb\fP(8L) saves files that are otherwise destroyed by commands such
+as \fIrm\fP(1), \fImv\fP(1), and \fIcp\fP(1), in effort to provide for user
+level file recovery.  When a user takes action
+that would destroy the contents of a file, \fIentomb\fP creates a back-up of
+the file and places the back-up in a special directory called a "tomb."
+
+.PP
+A tomb is a directory that contains many subdirectories called "crypts."
+There is normally only one tomb per file system, and one crypt per UID
+(User ID) per tomb.
+Crypts are named after a user's UID, and contain only that
+particular user's
+entombed files.  Normally, only the user "charon" (who is the keeper of 
+the tomb) may access the tomb.  However, since the programs
+\fIentomb\fP and \fIunrm\fP(1L)
+run set-GID "charon," they also may access the tomb.
+
+.PP
+Entombing occurs for file systems that have a directory named
+"tomb" residing at the root of the file system.  The directory must be
+owned by "charon," and should be mode 0770, "drwxrwx---."
+
+.PP
+\fIEntomb\fP should run set-UID "root" so that it can \fIchown\fP(8)
+entombed files
+to "charon," resulting in the user's quota being adjusted accordingly.
+However, over untrusted networks that map "root" to some other less
+priveleged user
+(like NFS),
+the change of ownership may fail.  The entombed file will still be counted
+against the user's quota until such a time that \fIpreend\fP(8L) (which runs
+as "root" on the file server) can \fIchown\fP the file to "charon."
+This problem may be alleviated by taking advantage of the copy options
+to entomb.
+
+.PP
+Normally, \fIentomb\fP moves files to the tomb with
+\fIlink\fP(2) and removes them from the current directory with
+\fIunlink\fP(2).  However, it is often times desirable to copy a file to the
+tomb instead of using \fIlink\fP and \fIunlink\fP.  While
+generally slower,
+the copy options to \fIentomb\fP have the advantage that since the file is
+copied to the tomb by the tomb owner (charon),
+the entombed file is owned by the tomb owner and thus does not
+count against the original owner's quota.
+For programs that use routines in \fIlibtomb.a\fP(3X), this
+behavior can be arranged by supplying the word "copy" in \fB$ENTOMB\fP.
+See the man page \fIlibtomb.a\fP(3X) for more information on how to set
+the \fBENTOMB\fP environment variable.
+
+.SH OPTIONS
+.TP
+.B \-c
+Copy the given file to the tomb.  The original remains intact.
+This is useful in situations where entomb may not be installed
+set-UID root (e.g. on an untrusted NFS client).  This option may
+also be used to eliminate cruft files like `.oldnewsrc'.  If an
+application entombs `.newsrc' under this option before it is
+opened then the user can get it back with \fIunrm\fP if the program
+crashes.
+
+.TP
+.B \-C
+Copy file to tomb and unlink original if successful.
+Also useful in situations where entomb may not be installed
+set-UID root.
+.TP
+.B \-E
+Show the value of the \fBENTOMB\fP environment variable as would
+be seen by the routines in \fIlibtomb.a\fP.  If
+\fBENTOMB\fP is not set, the
+default internal setting is shown.  Note: \fIEntomb\fP moves
+files to the tomb without regard to \fBENTOMB\fP.  It is the routines
+in \fIlibtomb.a\fP that are responsible for filtering their arguments
+through \fBENTOMB\fP and invoking \fIentomb\fP when appropriate.
+.TP
+.B \-h
+Print a short help message.
+.TP
+.B \-V
+Show current version information for this product.
+
+.SH EXAMPLES
+.TP
+entomb \fIfile\fP
+Move \fIfile\fP to the tomb.  (The original is removed.)
+.TP
+entomb -c \fIfile\fP
+Copy \fIfile\fP to the tomb.  (The original is left intact.)
+.TP
+entomb -C \fIfile\fP
+Copy \fIfile\fP to the tomb, and remove the original only if successful.
+
+.SH FILES
+.PP
+.TP
+/etc/mtab or /etc/fstab
+To find the names and device numbers of mounted file systems.
+
+.SH BUGS
+.PP
+\fIEntomb\fP should run and set-GID "charon" so that it may access the
+tombs, and set-UID "root" so that it can \fIchown\fP entombed files to "charon."
+If the tomb is NFS mounted over which "root" maps to an unpriveleged user, then
+\fIchown\fP will fail and the file will still count against the user's
+quota.  In this case, \fIentomb\fP need not be set-UID "root," but should still
+be set-GID "charon."
+
+.PP
+Some files are removed from the tomb with extreme prejudice.  See the man page
+\fIpreend\fP(8L) for a list.
+.SH AUTHORS
+Matthew Bradburn
+.br
+Greg Becker, becker@clam.com
+.br
+Kevin Braunsdorf, ksb@cc.purdue.edu
+.br
+PUCC Unix Group
+.SH "SEE ALSO"
+chown(1), cp(1), libtomb(3X), link(2), mv(1), preend(8L), rm(1), unlink(2), unrm(1L)

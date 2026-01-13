@@ -1,0 +1,109 @@
+.\" $Id: labc.man,v 2.1 1996/12/28 19:54:01 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH LABC 1L LOCAL
+.SH NAME
+labc \- control a running labd
+.SH SYNOPSIS
+.ds PN "labc
+\fI\*(PN\fP [\-\fBd\fP] [\-\fBm\fP \fIhostname\fP] [\fIcommands\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.sp
+.SH DESCRIPTION
+\fILabc\fP controls the running \fIlabd\fP via several simple commands.
+Commands are read from \fBstdin\fP if none are provided on the command line.
+Here is a list of the commands available:
+
+.TP
+\fBbounce\fP [\fItext\fP]
+Send a message to \fIlabd\fP to forward to \fIlabwatchf\P.
+This only works if we are controling \fBlocalhost\fP.
+.TP
+\fBcontrol\fP [\fIhost\fP]
+Move our control the the given \fIhost\fP, default is ``localhost''
+unless set with the \-\fBm\fP option.
+.TP
+\fBdisable\fP
+Make \fIlabd\fP act as if \-\fBN\fP were given on the command line.
+.TP
+\fBenable\fP
+Cancel any previous `disable' commands.
+.TP
+\fBhelp\fP
+Output a brief help message.
+.Tp
+\fBinterval\fP
+Display \fIlabd\fP's report interval and maximum number of silent
+intervals.
+.TP
+\fBmessage\fP
+Send this text to the \fIlabwatch\fP operator interface.
+.TP
+\fBping\fP
+Display an information packet from the running \fIlabd\fP.
+.TP
+\fBquit\fP
+Exit \fIlabc\fP.
+.TP
+\fBredirect\fP \fIhost\fP [\fIport\fP]
+Force the running \fIlabc\fP to act as if this \fIhost\fP and \fIport\fP
+were given on its command line.  The current \fIhost\fP should report
+us DEAD in short order.
+.TP
+\fBshoot\fP
+Terminate the running \fIlabd\fP.
+.TP
+\fBshutdown\fP \fIminutes\fP
+Tell \fIlabwatch\fP (via the running \fIlabd\fP) that this machine is
+about to reboot or shutdown.
+.TP
+\fBstatus\fP [\fIitem\fP]
+Report the current setting of \fIitem\fP for our \fIlabd\fP, one of
+\fBhost\fP, \fBport\fP, \fBtickets\fP or \fBwhere\fP.  The
+keyword \fBall\fP (the default) requests a single line summary of all settings.
+.TP
+\fBversion\fP
+Output our command set version information.
+
+.SH OPTIONS
+.TP
+.BI \-d 
+Run commands in debug mode.
+.TP
+.BI \-h 
+Print a breif help message.
+.TP
+.BI \-m hostname
+The target \fIlabd\fP to control is running on \fIhostname\fP.
+.TP
+.BI \-V 
+Show version information for the command line.
+
+.SH EXAMPLES
+.TP
+\fIlabc\fP "enable"
+Begin granting tickets (if the machine can grant \fIlabwatch\fP tickets).
+.TP
+\fIlabc\fP \-m lv426 "redirect sulaco.cc.purdue.edu"
+The running \fIlabd\fP on `lv426' sends all subsequent data to `sulaco'.
+.TP
+\fIlabc\fP 'message "help!  my filesystem is full!"'
+Send a message to the \fIlabwatch\fP server that this machine reports to.
+.SH BUGS
+Redirecting a \fIlabd\fP to a host which doesn't run \fIlabwatch\fP is
+not detected at all.  This is poor form, at best.
+.PP
+Much of the output not very user friendly.
+
+.SH AUTHOR
+Kevin Braunsdorf & Ben Jackson
+.br
+PUCC UNIX Group, Purdue CS
+.br
+ksb@cc.purdue.edu, bj@cc.purdue.edu
+.SH "SEE ALSO"
+labd(8L), labstat(1L), labwatch(8L)

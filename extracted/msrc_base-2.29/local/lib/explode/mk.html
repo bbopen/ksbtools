@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Emulate mktemp, mkstemp, mkdtemp, mkstemps</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: mk
+<BR>
+Authors: KSB Braunsdorf
+<BR>
+Mail: ksb@npcguild.org
+<BR>
+Version: 1.1
+<BR>
+Bugs: None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+FreeBSD and some other modern OpenSource UNIX systems include a
+more secure version of mktemp(3).  For those of us who support other
+flavors we include these emulation function.
+
+<H1>Configuration</H1>
+
+Provide a standard "<CODE>machine.h</CODE>" which defines:
+<DL>
+<DT>#define EMU_ARC4RANDOM
+<DD>
+Defined to be the integer <CODE>0</CODE> if the local UNIX
+flavor has arc4random() available.
+</DL>
+
+<H1>Synopsis</H1>
+<BLOCKQUOTE><PRE><CODE>extern char *mktemp(char *template);
+extern char *mkdtemp(char *template);
+extern int mkstemp(char *template);
+extern int mkstemps(char *template, int suffixlen);
+extern int mkutemp(char *template);
+extern int mkutemps(char *template, int suffixlen);
+extern int _mktemp(char *template, int suffixopt, int (*_chk)(char *, void *), void *pvParam);
+</CODE></PRE></BLOCKQUOTE>
+
+<H1>Description</H1>
+
+Each returns the same values as the FreeBSD manual page requires.
+See mktemp(3) for the explaination the "XXXXXX" replacement.
+
+<H1>Provides</H1>
+<DL>
+<DT><CODE>extern int mkstemp(char *template);</CODE>
+<DD>
+Return an open file descriptor on the new file, mode 0600;
+
+<DT><CODE>extern int mkstemps(char *template, int suffixlen);</CODE>
+<DD>
+return an open file descriptor, as above.  Do not replace and
+"X" characters in the last isuffixlen of the input template.
+
+<DT><CODE>extern char *mkdtemp(char *template);</CODE>
+<DD>
+Return the name of a new directory, mode 0700.
+
+<DT><CODE>extern int mkutemp(char *template);</CODE>
+<DT><CODE>extern int mkutemps(char *, int suffixlen);</CODE>.
+<DD>
+Return an open socket bound to a new unix domain socket.
+The suffixed version is also provided.
+
+<DT><CODE>extern char *_mktemp(char *template, int suffixopt, int (*chk)(char *, void *), void *pvparam);</CODE>
+<DD>
+This is the generic interface that all of the above uses.  A random filename
+is presented to the <code>chk</code> function for inspection.  A return
+of 0 accepts the proposed filename, any other value rejects it.  It
+<code>errno</code> is set to <code>ENOENT</code> another random name is
+proposed (else a NULL pointer is returned).  The <code>suffixopt</code>
+parameter is set to the length of the suffix to skip at the end of the
+template.
+</DL>
+
+<H1>EXAMPLE</H1>
+See the test driver embedded in the module.
+This is intended as an emulation, as such  the explaination is
+"it works like the original".
+
+
+<H1>Diagnostics</H1>
+None.
+
+<H1>See Also</H1>
+mktemp(3)
+
+<H1>To Do List</H1>
+None.  There is an unused function compiler warning in some explode cases,
+but that's just noise.
+
+<HR><PRE>
+$Id: mk.html,v 6.4 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

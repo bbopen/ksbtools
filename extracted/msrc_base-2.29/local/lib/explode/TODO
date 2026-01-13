@@ -1,0 +1,23 @@
+# $Id: TODO,v 1.6 2009/12/08 15:15:18 ksb Exp $
+
+In the dicer we implemented a transformational map hook (like Backus' FP)
+	%[1/2]  is the common "split on `/', take 2"
+	%[1/@.2]  maps all the strings after the split on `/' with .2
+in effect building a loop  %[1/1.2]/%[1/2.2]/...%[1/$.2] so
+	1.2.3.4/a.b.c.d/one.two.three.four
+becomes
+	2/b/two
+
+We should implement this with a table of 256 fucntion pointers.
+Each would prototype to take the same args as the Dicer, plus an
+interger that would specify the "split token" -1 for white space,
+'x' for the letter x.
+
+Given that the array['@'] is not (void *)0 the template "%[1/@racoon]"
+applied to the data "/usr/local/bin/oue" passes the escape code:
+	(*pfcEscape)(pcDest, & iMax, "racoon]", "/usr/local/bin/oue", '/')
+and expects the function to consume it's template, returning the rest
+or (char *)0 for failure.  The pcDest is the new pcData for the Dicer,
+if there is more to dice (so we'll have to strdup it).
+
+--ksb, Dec 2009

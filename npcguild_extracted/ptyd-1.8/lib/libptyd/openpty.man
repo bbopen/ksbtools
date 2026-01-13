@@ -1,0 +1,151 @@
+.\" openpty(3L) manual page
+.\"
+.TH OPENPTY 3L "November 1, 1989"
+.UC 3
+.SH NAME
+openpty, openrpty, forkpty, closepty \- claim pseudotty pairs
+.SH SYNOPSIS
+#include "openpty.h"
+.sp 1
+.nf
+fd = \fBopenpty\fP(pcSlave, pcMaster, fBits, uid)
+char *pcSlave, *pcMaster;
+int fBits;
+uid_t uid;
+.fi
+.sp 1
+.nf
+fd = \fBopenrpty\fP(pcSlave, pcMaster, fBits, uid, pcRemote)
+char *pcSlave, *pcMaster, *pcRemote;
+int fBits;
+uid_t uid;
+.fi
+.sp 1
+.nf
+fd = \fBforkpty\fP(pcSlave, pcMaster, fBits, uid, argv)
+char *pcSlave, *pcMaster, **argv;
+int fBits;
+uid_t uid;
+.fi
+.sp 1
+.nf
+\fBclosepty\fP(pcSlave, pcMaster, fBits, fd)
+char *pcSlave, *pcMaster;
+int fBits;
+fd_t fd;
+.fi
+.SH DESCRIPTION
+\fIOpenpty\fP requests a tty/pty pair from \fIptyd\fP(8L).
+When a user program needs a pseudotty it calls \fIopenpty\fP,
+which allocates a pair and returns a file descriptor open to the
+controlling pty.  (The user must open the slave side.)
+Both the pty and tty will have been chown'd to the specified
+\fIuid\fP, if the effective uid of the process supports such
+a change.
+.PP
+The buffers \fIpcSlave\fP and \fIpcMaster\fP are filled with the
+names of the allocated tty and pty respectively.
+These names must be saved to pass back to \fIclosepty\fP to
+close and de-allocate the pair.
+.PP
+The following flags may be set in \fIfBits\f to provide additional services:
+.sp 1
+.RS
+.TS
+l l.
+OPTY_NOP	nothing special
+OPTY_UTMP	make a utmp entry for the new owner
+OPTY_WTMP	make a wtmp entry for the new owner
+OPTY_SECURE	be sure it is a secure line
+OPTY_LOGIN	(OPTY_UTMP|OPTY_WTMP)
+.TE
+.RE
+.sp 1
+Normally OPTY_UTMP is only used for shells; for other commands
+use OPTY_NOP.
+.PP
+The \fIopenrpty\fP routine generates a utmp entry that lists
+\fIpcRemote\fP as the source machine of the connection rather
+than \*(lqlocalhost\*(rq.
+.PP
+The \fIforkpty\fP routine copies the tty modes of the current
+controlling tty to the slave tty and executes the command given by
+\fIargv\fP on that tty.
+.SH EXAMPLES
+.PP
+cc -I/usr/include/local -o foo foo.c -lpucc
+.sp 1
+.ta 0.75i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i +0.5i
+.ft CW
+.nf
+#include "openpty.h"
+
+/*
+ * drive the pty for an example program, like /bin/sh			(ksb)
+ */
+int
+main(argc, argv)
+int argc;
+char **argv;
+{
+	char acBuf[200];
+	int fd, cc;
+	long int r,w,x;
+	char acMaster[200], acSlave[200];
+
+	if ((char *)0 == argv[1]) {
+		static char *apcDef[] = { "forkpty", "/bin/sh", "-i", (char *)0 };
+		argv = apcDef;
+	}
+
+	save_tty();
+	if (-1 == (fd = forkpty(acSlave, acMaster, OPTY_UTMP, getuid(), argv+1))) {
+		fprintf(stderr, "%s: forkpty: %s\n", progname, strerror(errno));
+		exit(1);
+	}
+
+	r = (1 << fd) | (1 << 0);
+	w = 0;
+	x = 0;
+	signal(SIGCHLD, tellem);
+
+	hose_tty();
+	while (-1 != select(32, &r, &w, &x, (struct timeval *)0)) {
+		if (r & (1 << fd)) {
+			cc = read(fd, acBuf, 200);
+			write(1, acBuf, cc);
+		}
+		if (r & 1) {
+			cc = read(0, acBuf, 200);
+			if (dead && (cc == 0 || acBuf[0] == '\004')) {
+				break;
+			}
+			write(fd, acBuf, cc);
+		}
+		r = (1 << fd) | (1 << 0);
+	}
+	(void)closepty(acSlave, acMaster, OPTY_UTMP, fd);
+
+	restore_tty();
+
+	exit(0);
+}
+.fi
+.ft P
+.SH DIAGNOSTICS
+These routines all return -1 on failure.
+The global int \fIerrno\fP is set to indicate the cause.
+.SH FILES
+.TS
+l l.
+/usr/doc/local/ptyd/forkpty-ex.c	complete example for forkpty.
+.TE
+.SH BUGS
+If \fIptyd\fP is not running the fall-back code doesn't chown/chmod
+the tty/pty pair.  (The OPTY_SECURE option helps with this problem.)
+
+.SH SEE ALSO
+cc(1),
+ld(1),
+intro(2),
+ptyd(8L)

@@ -1,0 +1,831 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>xapply: Converting from GNU parallel, find, or dsh</TITLE>
+<link rel="stylesheet" type="text/css" href="https://carrera.databits.net/~ksb/msrc/css/code.css" />
+</HEAD><BODY>
+<h2 id="top">Replace lesser tools with the one and only xapply</h2>
+This document is meant to provoke you to try <code class="sh">xapply</code>.
+
+<h1 id="known">To understand this document</h1>
+This document assumes you are quite familiar with the
+standard UNIX&trade; shell, <code class="sh">sh</code>(1), and
+have an understanding of the UNIX process model and have used GNU
+<code class="sh">parallel</code> for a while.  Or if you've used
+<code class="sh">dsh</code> see the <A href="#dsh">section below</A>.
+If you've been using <code class="sh">find</code> as a parallel
+process tool, there is <A href="#find">help for that too</A>.
+
+<h2 id="difference">The difference between <code class="sh">parallel</code> and <code class="sh">xapply</code></h2>
+
+The main difference between the two is that <code class="sh">xapply</code>
+doesn't try to allow multiple sources of tasks to be mixed <i>ad hoc</i>.
+<code class="sh">Parallel</code> offers to include iterations elements
+from the command-line mixed with <code class="param">stdin</code> and
+fixed strings, while <code class="sh">xapply</code> acts more like a
+filter: items come from <code class="param">stdin</code>
+<strong>or</strong> from fixed words, not both.
+
+<p>
+<code class="sh">Xapply</code> takes the filter approach: if you want
+a stream of words, then build that stream with a program that does
+just that.  <code class="sh">Xapply</code> reads <code class="param">stdin</code>
+in two formats: <code class="markup">NUL</code> (<acronym title="also known as">aka.</acronym>
+<code class="markup">\000</code>) terminated and <code class="markup">NL</code>
+(aka. <code class="markup">\n</code>) terminated.  We don't need a way to
+mix files, fixed arguments, and <code class="param">stdin</code> built-in
+to the processor (we have <code class="sh">perl</code> for that).
+Actually I've almost never needed more than <code class="sh">sed</code>
+and <href="bin/oue/oue.html"><code class="sh">oue</code></A> to
+cleanup any iteration list.
+
+<h3 id="markup">Markup differences</h3>
+
+The secondary difference is that <code class="sh">parallel</code>'s markup
+tries to read your intent more than <code class="sh">xapply</code>'s.
+For example the markup
+<code class="markup">{.}</code> under <code class="sh">parallel</code> treats
+removing the dot-suffix from "sub.dir/foo.jpg" (.jpg is removed)
+differently than "sub.dir/bar" (nothing is removed), while
+<code class="sh">xapply</code> allows either
+<code class="markup">%[1/$.-$]</code> to remove the suffix on the basename,
+or <code class="markup">%[1.-$]</code> to remove a suffix that might
+include a slash (<code class="markup">/</code>).
+I believe <code class="sh">parallel</code>s' markup more likely to
+bleed complexity into other programs, and is less likely to solve any
+real-world problem.  (When you are not sure there is a dot-extender on
+the filename, then fix the invariant so you are sure.)
+
+<p>
+Every replacement markup in <code class="sh">parallel</code> is a unique case,
+each has a unique command-line option to change the spelling, and unique rules.
+<code class="sh">Xapply</code> uses a more complex markup, but every
+expansion supported by the dicer and mixer is general.  That is to say
+that the same dicer markup is used in <code class="sh">mk</code>,
+<code class="sh">oue</code>, and other tools.
+
+<h3 id="how">Simple command-line conversions</h3>
+
+<dl>
+<dt><code class="opt">-0</code> or <code class="opt">--null</code>
+<dd>
+Use <code class="opt">-z</code>.  This is always a good idea if you
+had to build an iterator script to output a mix of fixed strings,
+<code class="param">files</code>, and <code class="param">stdin</code>.
+
+<dt><code class="opt">-a</code> <code class="param">input-file</code>
+<dd>
+Use <code class="opt">-f</code> and list all
+<code class="param">input-files</code> as positional parameters.
+There is no interaction between <code class="param">stdin</code> and
+<code class="opt">-f</code> unless you specify a dash in the
+positional parameters, in which case the default for <code class="opt">-i</code>
+is changed to <code class="path">/dev/null</code>.
+
+<dt><code class="opt">--basefile</code> <code class="param">file</code>
+<dd>
+Use <code class="sh">msrc</code> to send files to a remote host (and
+recover any output files).
+
+<dt><code class="opt">--bg</code>
+<dd>
+This is what <code class="sh">nohup</code> and <code class="sh">daemon</code>
+are for.
+
+
+<dt><code class="opt">--cleanup</code>
+<dd>
+See <code class="sh">msrc</code>'s <code class="opt">-m</code> option,
+which may trigger any recipe cleanup required.
+
+<dt><code class="opt">--colsep</code> <code class="param">regexp</code>
+<dt><code class="opt">--delimiter</code> <code class="param">delim</code>
+<dt><code class="opt">--E</code> <code class="param">eof-str</code>
+<dd>
+Use any filter you like to process the arguments into
+a <code class="markup">NUL</code> terminated list, then use
+<code class="markup">-</code><code class="param">count</code> to
+set the number of column.  If you need a <code class="param">delim</code>
+do it in that filter.
+
+<dt><code class="opt">--dry-run</code>
+<dd>
+Use <code class="opt">-n</code>.
+
+<dt><code class="opt">--eta</code>
+<dd>
+There is no way to estimate the time it takes an arbitrary program to run.
+
+<dt><code class="opt">--group</code>
+<dt><code class="opt">--ungroup</code>
+<dd>
+Use <code class="opt">-m</code> and wrap your <code class="sh">xapply</code>
+in an explicit <code class="sh">xclate</code>, if you want even more
+features (like exit code processing).  Or use the <code class="sh">hxmd</code>
+program built on top of <code class="sh">xapply</code>.
+
+<dt><code class="opt">--halt-on-error</code>
+<dd>
+Use a <code class="markup">USR1</code> signal and <code class="markup">%p</code>
+markup to find the correct pid to signal <code class="sh">xapply</code> to
+stop adding more tasks.  Use <code class="sh">hxmd</code>'s retry
+logic to process any recovery logic (or code you own with
+<code class="sh">xclate</code>'s <code class="opt">-N</code> option).
+
+<dt><code class="opt">--joblog</code>
+<dd>
+There is no good way to produce the exact output from within
+<code class="sh">xapply</code>, but <code class="sh">hxmd</code>'s
+REDO logic could provide some of the same data.
+The date and run-time information could be provided by
+changing <code class="opt">-c</code>, but this would really need to
+be done in a script that called <code class="sh">hxmd</code> because
+the command-line would be quite long and complex.
+
+<dt id="order"><code class="opt">-k</code>
+<dd>
+The <code class="sh">xclate</code> manager doesn't have a way to
+force the order. If you want to collate the output, then write each
+output stream to a file named as a function of
+<code class="markup">%u</code>.  For example, one may build
+a temporary directory (<code class="path">/tmp/ksb</code>) to
+stash the output from several tasks:
+<blockquote class="file"><pre><code >$ xapply -P8 -f 'long-shot %1 &gt;/tmp/ksb/%u' moons</code></pre></blockquote>
+Now a second pass with the same list will match keys to output files:
+<blockquote class="file"><pre><code >$ xapply -f 'summary %W1 /tmp/ksb/%u' moons</code></pre></blockquote>
+
+<dt><code class="opt">-L</code> <code class="param">max-lines</code>
+<dd>
+Use <code class="opt">-f</code> and <code class="opt">-</code><code class="param">count</code> and <code class="opt">-p</code> <code class="param">pad</code>
+to get the same effect.
+
+<dt><code class="opt">--load</code> <code class="param">max-load</code>
+<dd>
+There is no way to make <code class="sh">xapply</code> do this.  A
+task manager like <code class="sh">hxmd</code> could sample the load
+before injecting tasks into an <code class="sh">xapply</code> queue.
+In my experience the system load average <strong>alone</strong> is
+not enough information to provide task manager with sufficient feed-back.
+It might have to sample any combination of swap space, available physical
+memory, disk input/output utilization, and network throughput.
+<dd>
+I have thought about coding one of these, but every 18 months I'm
+50% less likely to need it.
+
+<dt><code class="opt">--xargs</code>
+<dd>
+Use a filter like <code class="sh">fmt</code> or <code class="sh">adjust</code>
+to group arguments.
+
+<dt><code class="opt">--onall</code>
+<dd>
+You are looking for <code class="sh">hxmd</code>.
+
+<dt><code class="opt">--files</code>
+<dd>
+See <A href="#order"><code class="opt">-k</code></A> above.  Another
+way to for <code class="param">stdout</code> to a file is to prefix
+the command with "<code class="sh">exec >/tmp/ksb/%u;</code>" which
+doesn't limit the number of shell commands which might be listed in
+<code class="param">cmd</code>.
+
+<dt><code class="opt">--pipe</code>
+<dt><code class="opt">--block-size</code> <code class="param">size</code>
+<dd>
+Produce <code class="markup">NUL</code> terminated input blocks, and
+use <code class="opt">-z</code>.  Any processing you need to do to
+the input stream is better encoded in your own filter.
+
+<dt><code class="opt">--progress</code>
+<dd>
+There is no way to make <code class="sh">xapply</code> show you a
+progress status, since it doesn't know the total number of tasks
+it might run.  I have executed <code class="sh">xapply</code> processes
+that have run for weeks, reading their input clients connecting to a FIFO.
+
+<dt><code class="opt">--number-of-cpus</code>
+<dd>
+You are looking for <code class="sh">ptbw</code>.
+
+<dt><code class="opt">--interactive</code>
+<dd>
+Add a shell prompt to your command:
+<blockquote class="file"><pre><code >echo Run %W*? 1&gt;&amp;2;read a&lt;/dev/tty;expr "_$a" : "_[yY].*" &gt;/dev/null || exit 0</code></pre></blockquote>
+or wrap your command in such a program.
+
+<dt><code class="opt">--quote</code>
+<dd>
+Most people actually need quoting. <code class="sh">Xapply</code> supports
+3 levels of quoting:
+<dl>
+<dt><code class="markup">%q</code>
+<dd>
+Quote any character that is special inside shell (<code class="sh">sh</code>
+or <code class="sh">ksh</code>) double quotes.  That is any of these
+four characters: <code class="markup">\</code>, <code class="markup">"</code>,
+<code class="markup">$</code>, or <code class="markup">`</code>.
+<dt><code class="markup">%Q</code>
+<dd>
+Quote any character that is special to the shell, but not an default internal
+field separator (aka. from $<code class="env">IFS</code>):
+<code class="markup">`</code>,
+<code class="markup">$</code>,
+<code class="markup">\</code>,
+<code class="markup">"</code>,
+<code class="markup">~</code>,
+<code class="markup">*</code>,
+<code class="markup">?</code>,
+<code class="markup">[</code>,
+<code class="markup">|</code>,
+<code class="markup">&amp;</code>,
+<code class="markup">;</code>,
+<code class="markup">(</code>,
+<code class="markup">)</code>,
+<code class="markup">#</code>,
+<code class="markup">=</code>,
+<code class="markup">'</code>,
+<code class="markup">&lt;</code>, or
+<code class="markup">&gt;</code>.
+<dt><code class="markup">%W</code>
+<dd>
+Quote anything <code class="markup">%Q</code> would plus the
+standard <code class="env">IFS</code> list (space, tab, and newline).
+</dl>
+These prefixes allow some parameters to be quoted, while others
+are not.  For example:
+<blockquote class="file"><pre><code >xapply -2 -fp red '%1 %Q2' brush colors </code></pre></blockquote>
+
+
+<dt><code class="opt">--no-run-if-empty</code>
+<dd>
+Strip empty lines with <code class="sh">grep</code> or
+<code class="sh">sed</code>.
+
+<dt><code class="opt">--retries</code>
+<dd>
+<code class="sh">Xapply</code> doesn't know a computer name from from
+any other parameters, you are looking for <code class="sh">hxmd</code>.
+
+<dt><code class="opt">--return</code> <code class="param">filename</code>
+<dd>
+There are so many ways to get data back from a remote host that we don't
+need one in <code class="sh">xapply</code>.  If you are to structure a
+task to process data on a remote host and send return files back, I
+would use either <code class="sh">msrc</code> <code class="opt">-m</code>
+(see the <href="sbin/msrc/msrc.html#opt-m">HTML document</A>), or
+build on top of <code class="sh">hxmd</code>'s
+<href="sbin/hxmd/hxmd.html#cache">cache files</A>
+(see the <A href="#hxmd">example below</A>).
+
+<dt><code class="opt">--semaphore</code>
+<dd>
+I think you are looking for <code class="opt">-t</code>.  The
+<code class="sh">ptbw</code> token broker acts as a semaphore
+handler in most cases.
+
+<dt><code class="opt">--sshloginfile</code>
+<dd>
+You are looking for <code class="sh">hxmd</code>'s
+<code class="opt">-C</code> option.  Which lets you specify a
+whole lot more than a few fixed parameters.
+
+<dt><code class="opt">--tty</code>
+<dd>
+Use <code class="opt">-i/dev/tty</code>.
+
+<dt><code class="opt">--timeout</code> <code class="param">sec</code>
+<dd>
+If you want to kill a process based on time, either wrap it in a program that
+does that or set a resource limit.  I don't believe this is a job for
+<code class="sh">xapply</code>, in any case.  In a pinch you could use
+<code class="sh">mk</code>'s resource limits, but that's a little over-kill.
+<p>
+Here is an example of <code class="sh">mk</code> markup to do that:
+<blockquote class="file"><pre><code >#!/bin/sh
+# Use "mk -mLimit" to run with a 20 second wall-clock time limit:
+#	<em class="new">$Limit,clock=20: %f -t -P2</em>
+# ...</code></pre></blockquote>
+The <code class="sh">mk</code> <href="bin/mk/mk.html">HTML document</A>
+might be a good thing to read.
+
+<dt><code class="opt">--transfer</code>
+<dt><code class="opt">--trc</code>
+<dd>
+You are looking for <code class="sh">msrc</code>.
+
+<dt><code class="opt">--trim</code>
+<dd>
+You are looking for <code class="sh">sed</code>.
+
+<dt><code class="opt">--xapply</code>
+<dd>
+<strong>Blush.</strong>
+
+<dt><code class="opt">--shebang</code>
+<dd>
+You are looking for <code class="sh">mk</code> and <code class="sh">hxmd</code>.
+Since <code class="sh">hxmd</code> takes comments in the list of
+targets we embed a marked line (see <code class="sh">mk</code>'s
+<href="bin/mk/mk.html">HTML document</A>) to take what ever
+action is required.
+<blockquote class="file"><pre><code >#!/usr/bin/env -S mk -mRun
+# $Run: ${hxmd:-hxmd} -C%f <i>some-processor</i>
+<i>list-of-hosts and attributes</i></code></pre></blockquote>
+I do not think the pun of a configuration file as a script is a
+great idea, but local policy allows other things I don't like.
+Remember to <code class="sh">chmod</code> it
+<code class="markup">+x</code>.
+<dd>
+<p>
+Or you are looking for <code class="opt">-F</code>.  You can use
+<code class="sh">xapply</code> as an interpeter with something like:
+<blockquote class="file"><pre><code >#!/usr/bin/env -S xapply -P2 -F
+gzip -9 %1</code></pre></blockquote>
+</dl>
+
+<h3 id="hxmd">The push, remote execute, pull model</h3>
+
+The most useful meme encoded in <code class="sh">parallel</code> is
+the idea that one might visit a task on a list of hosts with some
+data file, then return the results back to the driving hosts.
+While that's not hard to explicitly spell under <code class="sh">xapply</code>,
+it is surely easier to cast with <code class="sh">parallel</code>.
+
+<p>
+In my tool chain this is best done with <code class="sh">msrc</code>
+(or plain <code class="sh">hxmd</code> if you'd rather walk).
+We break the task down into the orthonormal parts: the list of
+target hosts (<code class="path">site.cf</code>), the recipe
+(<code class="path">report/Cache.m4</code>) and the remote
+script to run (<code class="path">report/cmd</code>).  The last two,
+taken together, form an <code class="sh">hxmd</code>
+<href="sbin/hxmd/hxmd.html#cache">cache directory</A>
+which is a reusable element that many related tasks might share.
+(There are more parts to a well-constructed cache directory, but
+they are not necessary for this example.)
+
+<p>
+The list of hosts contains more than just the names of the hosts.
+In fact <strong>any</strong> attribute related to the host might
+be listed in the file.  See the <code class="sh">hxmd</code>
+<href="sbin/hxmd/hxmd.html#format">HTML document</A> for more
+details.  Here is a simple example of my test <code class="path">site.cf</code>:
+<blockquote class="file"><pre><code ># $Id:...
+</code>%<code class="attr">HOST	COLOR	CPUs</code><code >
+sulaco	black	2
+ripley	grey	4
+lv426	cream	1</code></pre></blockquote>
+<p id="cmdScript">
+Given that file we can process the three listed hosts.  I'll put the
+script I want to run in a file named <code class="path">report/cmd</code>:
+<blockquote class="file"><pre><code ># $Id:...
+date
+uptime
+exit 0</code></pre></blockquote>
+
+<p>
+The cache recipe file contains the parts of the process that are marked-up
+for every execution.  This reduces keyboard errors, makes the process
+more repeatable.  The recipe is run through <code class="sh">m4</code>
+for each host in <code class="path">site.cf</code> so that the attributes
+of the each host can tune the actions of the recipe.  Then the recipe is
+used as a <code class="sh">make</code> recipe file to build the required
+data for each target host, which is also marked-up in
+<code class="sh">m4</code> so that it can be processed for each
+target host to tweak the recipe for attribute values (like
+<code class="attr">CPUs</code>).
+Here is a very simple <code class="path">report/Cache.m4</code>:
+<blockquote class="file"><pre><code >`# $Id:...
+report: FRC
+	ssh -x 'ifdef(`REMOTE_LOGIN',`REMOTE_LOGIN@')HOST` /bin/sh &lt;cmd
+
+# Shell completion might put a trailing slash on our directory name -- ksb
+'HOST`: report
+
+FRC:
+'dnl</code></pre></blockquote>
+
+The file <code class="sh">cmd</code> in the <code class="markup">report</code>
+recipe allows us to push commands to the target host without
+quoting them from <code class="sh">m4</code>. <code class="sh">make</code>, and
+the shell.  We'll use the <code class="sh">cmd</code> script from 
+<A href="#cmdScript">above</A>.
+
+<p>
+By referencing the name of the cache directory on
+the <code class="sh">hxmd</code> command-line, we force
+the <code class="sh">m4</code> processing of
+the <code class="path">Cache.m4</code> recipe in that directory and
+the <code class="sh">make</code> update of the name of
+the directory (as the <code class="param">target</code>).
+The update rule for the <code class="attr">HOST</code> macro is only triggered
+when the directory name is suffixed with a slash, due to the rules
+<code class="sh">hxmd</code> uses to create the update taget.
+<blockquote class="file"><pre><code >$ hxmd -P10 -Csite.cf  cat report</code></pre></blockquote>
+Which outputs:
+<blockquote class="file"><pre><code >sulaco:
+Tue May  1 16:21:06 MDT 2012
+ 2:34PM  up 55 days, 23:54, ...
+ripley:
+Tue May  1 16:21:06 MDT 2012
+ 2:34PM  up 133 days, 10:00, ...
+lv426:
+Tue May  1 16:21:07 MDT 2012
+ 2:34PM  up 144 days, 20:32, ...</code></pre></blockquote>
+Change "<code class="opt">-P10</code>" to the options
+"<code class="opt">-dCX -P1</code>" to see how it works.
+
+<p>
+The file <code class="sh">cmd</code> in the <code class="markup">report</code>
+could take any actions required on the remote host (as long as it doesn't
+need to read <code class="param">stdin</code>).
+This model scales out to thousands of hosts with attribute tunes for as many
+cases a needed to meet your needs.
+
+<p>
+Note that every file may have a <strong>revision control comment in it</strong>,
+that is a very good idea.  Also note that <code class="attr">REMOTE_LOGIN</code>
+may be defined to map the local login to any remote login, even on a
+per-host basis.
+
+<p>
+We encapsulate each operation in a directory so we may reuse them in
+different combinations (and orders) to provide derived services.  It is
+possible to have any directory recursively call another, as well.
+
+<h3 id="msrc">Using <code class="sh">msrc</code> repeat that task</h3>
+
+To do that same task with <code class="sh">msrc</code> using a punned control
+recipe we need a <code class="sh">make</code> recipe to offer the required
+macros to <code class="sh">msrc</code> and with the report script encoded
+as an update rule, and nothing else:
+<blockquote class="file"><pre><code ># $Id:...
+INTO=/tmp/ksb.1
+IGNORE=+++
+
+report: FRC
+	date
+	uptime
+
+FRC:</code></pre></blockquote>
+
+<p>
+To run that for the same hosts:
+<blockquote class="file"><pre><code >$ <em class="new">msrc</em> -P10 -Csite.cf  <em class="new">make</em> report</code></pre></blockquote>
+
+<p>
+The little detail is that the <code class="sh">msrc</code> data recovery
+<strong>only</strong> goes to <code class="param">stdout</code>: with
+<code class="sh">hxmd</code> the data is actually cached in
+a local file, which makes it easier to use for
+additional processing.  Under <code class="sh">hxmd</code> we use
+<code class="sh">cat</code> to display the "report", while under
+<code class="sh">msrc</code> we use <code class="sh">make</code> to
+run the display on the remote host.  That is an important detail (the display
+runs on the remote host, not on the local host).
+
+<p>
+The real loss here is in the reuse we got from the combination for
+cache directories.  In the <code class="sh">msrc</code> tactic we
+code the <code class="path">cmd</code> code in the recipe, and must
+use <code class="sh">make</code> markup to quote dollar sign
+(<code class="markup">$</code>) and avoid command failures that
+would stop the process.
+
+<p>
+I usually use <code class="sh">msrc</code> for software builds,
+<code class="sh">hxmd</code> for process control scripts, and
+<code class="sh">xapply</code> for <i>ad hoc</i> status polling.
+
+<p>
+Using the cache directory above would fetch the report from the
+target host, then send it back as the file <code class="path">report</code>.
+This is most useful when the process includes and update to the
+content as it is processed (in at least one direction).  This would
+be triggered by including the name of the directory in the
+<code class="make">MAP</code> macro list.
+See the <code class="sh">msrc</code> <href="sbin/msrc/msrc.html#map">HTML document</A>.
+For most applications <code class="make">MAP</code>ed files are used
+much more than <code class="make">MAP</code>ed cache directories.
+
+<h3 id="wins">The common wins with <code class="sh">hxmd</code> and <code class="sh">msrc</code></h3>
+
+With these tools you can specify a subset of a whole population with
+some host selection options (which work for both tools exactly the
+same way).  For example you might target a single test host:
+<blockquote class="file"><pre><code >$ msrc <em class="new">-G prometheus</em> -Csite.cf make report</code></pre></blockquote>
+(I replaced "<code class="opt">-P10</code>" with an explicit host
+selection via <code class="opt">-G</code>.)
+<p>
+By limiting the changes to the command-line we allow rapid development of
+common tasks.  Then quick integration into existing automation.
+
+<p>
+By using a configuration file format with arbitrary attribute macros
+these 5 tools all read natively (<code class="sh">mmsrc</code>,
+<code class="sh">msrc</code>, <code class="sh">hxmd</code>,
+<code class="sh">efmd</code>, and <code class="sh">distrib</code>)
+and others can parse by proxy (via <code class="sh">efmd</code>), we
+can share the host data between interactive tasks, across political groups,
+and use them in diverse autotmation applications.
+<p>
+And everything should always be revision controlled.
+
+<h2 id="find">Conversions from <code class="sh">find</code>'s execution options to <code class="sh">xapply</code></h2>
+<code class="sh">Find</code> is a great utility for producing a source-stream
+for a parallel task.  Some non-standard additions have been made to
+<code class="sh">find</code> to reduce the number of check processes the
+<code class="opt">-exec</code> primative <code class="libc">fork</code>s to
+search the filesystem.  I think there are better ways to improve
+the overall through-put of a <code class="sh">find</code> pipeline.
+
+<p>
+Normally <code class="sh">find</code>'s <code class="opt">-exec</code>
+should be parallelized with:
+<blockquote class="file"><pre><code >$ find </code><code class="param">pathname</code> <i>...</i> <code class="param">expression</code> <code class="opt">-print0</code><code > |xapply </code><code class="opt">-mfzP</code> <code >'</code><code class="param">template</code><code >' -</code></pre></blockquote>
+
+This pipeline allows <code class="sh">find</code> to traverse the
+filesystem without any logic to manage <code class="libc">fork</code>ed
+processes.  We let <code class="sh">find</code> focus on the filesystem,
+while <code class="sh">xapply</code> manages the processes.  Tuning
+<code class="sh">xapply</code>'s the parallel factor (under
+<code class="opt">-P</code>) added more parallel processes, adding
+an <code class="sh">xclate</code> wrapper or <code class="sh">ptbw</code>
+governor, or status code stream is now possible, where it is not
+with <code class="sh">find</code> `managing' the execution.
+
+<h3 id="execdir"><code class="sh">Find</code>'s <code class="opt">-execdir</code></h3>
+
+This is a very powerful meme: by running a process in the context of
+a different directory we may leverage another invarient to increase
+our parallelism.  <code class="sh">Find</code> imposes a limit that
+we'll refactor here: the name of the file we locate <strong>must</strong> be
+the program we want to run.
+By using <code class="sh">xapply</code> we remove that restriction.
+
+<p>
+For example we might <code class="sh">find</code> a <code class="sh">make</code>
+recipe file (<code class="opt">-name '[mM]akefile'</code>) or a file
+with a locally meaningful extender (viz. ".lme"), neither of which
+need be the program we want to execute.  Using the dicer we can
+select the directory, then run the processor of our choice:
+<blockquote class="file"><pre><code >$ find </code><code class="param">pathname</code> <i>...</i><code > -name '[mM]akefile' </code><code class="opt">-print0</code><code > |
+	xapply </code><code class="opt">-mfzP8</code> <code >'cd %[1/-$] &amp;&amp; make -f %[1/$] <i>found</i>' -</code></pre></blockquote>
+
+
+<h3 id="find_plus"><code class="sh">Find</code>'s <code class="markup">+</code> hack is really a <code class="sh">binpack</code></h3>
+The OpenBSD hack to <code class="sh">find</code>
+(see <A href="http://www.openbsd.org/cgi-bin/man.cgi?query=find&amp;manpath=OpenBSD%20Current&amp;sektion=1&amp;format=html">the manual page</A>) allows
+multiple arguments to be joined into a single executrion of the
+target <code class="param">utility</code>, but it is really not
+portable across versions of <code class="sh">find</code>.
+<blockquote class="file"><pre><code >$ find </code><code class="param">pathname</code> <i>...</i> <code >-name '*.lme' </code><code class="opt">-exec</code> <code ><i>bundle-process</i> +</code></pre></blockquote>
+<p>
+It is much more portable to use <code class="opt">-print0</code> to
+build a path list that is <code class="markup">NUL</code>
+(<code class="markup">\000</code>) terminated.
+Then use <code class="sh">xapply</code> <code class="opt">-z</code> to process
+the list.
+<blockquote class="file"><pre><code >$ find </code><code class="param">pathname</code> <i>...</i> <code >-name '*.lme' </code><code class="opt">-print0</code> <code >|
+	xapply </code><code class="opt">-mfzP13 -8</code> <code >'<i>bundle-process</i> %W1 %W2 %W3 %W4 %W5 %W6 %W7 %W8' \
+		- - - - - - - -</code></pre></blockquote>
+
+If you want to group the maxumum number of elements for
+each command (like the OpenBSD <code class="markup">+</code> feature does)
+use the <code class="sh">binpack</code> <A href="/~ksb/cgi-bin/manpage.cgi?binpack&amp;1l">filter</A> under
+the <code class="opt">-zN</code> options to group the files, then
+feed the list to <code class="sh">xapply</code>.
+<blockquote class="file"><pre><code >$ find </code><code class="param">pathname</code> <i>...</i> <code class="opt">-print0</code> |
+	<code >binpack -zN <i>bundle-process</i> |
+	xapply </code><code class="opt">-mfP10</code><code > '' -</code></pre></blockquote>
+If you have a lot of filenames with special characters in them this
+may exceed <code class="markup">kern.argmax</code>, tune the limit down
+with <code class="opt">-b</code> (divide by 2 always works).  Since most
+filenames do not have shell meta-characters in them, this almost
+never happens.  (Or tune <code class="opt">-w</code> down to make less optimal
+bins.)
+
+<p>
+In addition to the permutations done by the output order from the
+parallel tasks, <code class="sh">binpack</code> permutes the order of
+the files as it packs them into bins.  If you require a (more) stable order,
+just use a simple <code class="sh">perl</code> filter to
+limit the command length.  Here is an example:
+<blockquote class="file"><pre><code >#!/usr/bin/env perl
+use Getopt::Std;
+use strict;
+
+# Example linear packer takes -b bytes and -z only, add others as needed --ksb
+my(%opts,$q,$l);
+my($overhead) = 8;	# 8 &gt;= sizeof(char *)
+getopts("b:z", \%opts);
+$/ = "\000" if ($opts{'z'});
+my($bsize) = $opts{'b'};
+if (!defined($bsize)) {
+	$bsize = `sysctl -a kern.argmax 2&gt;/dev/null` || 128*1024;
+	$bsize =~ s/.*([0-9]*)\s*$/$1/;
+	# bias bsize for environment space, ptr+"name=value\000" * envs
+	map { $bsize -= 2+length($_)+length($ENV{$_})+$overhead } keys(%ENV);
+}
+my($cur) = 0;
+while ($q = &lt;&gt;) {
+	chomp($q);
+	$q =~ s/([\"\'\\\#\`\$\&amp;;|*()?&gt;&lt;\{~=[])/\\$1/g;
+	$l = length($q)+$overhead;
+	if (0 == $cur) {
+		print "$q";
+		$cur = $l;
+	} elsif ($cur+$l+1 &lt; $bsize) {
+		print " $q";
+		$cur += $l+1;
+	} else {
+		print "\n$q";
+		$cur = $l;
+	}
+}
+if ($bsize &gt; 0) {
+	print "\n";
+}
+exit 0;</code></pre></blockquote>
+
+
+<h2 id="dsh">The difference between <code class="sh">dsh</code> and <code class="sh">hxmd</code></h2>
+The <code class="sh">dsh</code> application resembles
+<code class="sh">hxmd</code>, but worries more about
+the source host than the clients.
+Emphasis is on local resource utilization, over client configuration, and
+less on automation of client-side processes.  Most trivial cases might
+be implemented as straight <code class="sh">xapply</code> commands against
+a file which only contains a list of hostnames.
+
+<p>
+<code class="sh">Dsh</code>'s configuration structure breaks hosts into
+groups (posses in <code class="sh">hxmd</code> speak) by listing the
+members of a group in a file named for the group.
+<code class="sh">Hxmd</code> allows arbitrary posse relationships,
+via attribute macros and guards.
+The attribute macros also provide configuration options to scripts, recipes,
+and other files markup-up with <code class="sh">m4</code>.
+
+<h3 id="dshOpts">Conversion of <code class="sh">dsh</code> optons to <code class="sh">hxmd</code></h3>
+The <code class="sh">dsh</code> options are largely geared towards
+interactive use to drive an interactive process, while the
+<code class="sh">hxmd</code> options are more geared for
+completely automated tasks.
+<dl>
+<dt><code class="opt">-v</code> show execution process
+<dd>
+Under <code class="sh">hxmd</code> you may use <code class="opt">-v</code>,
+<code class="opt">-dC</code>, and <code class="opt">-dX</code> to
+show different aspected of the execution process.
+<dt><code class="opt">--quiet</code>
+<dd>
+By default <code class="sh">hxmd</code> is very quiet.
+<dt><code class="opt">--machine</code> <code class="param">machinenames</code>
+<dd>
+It is not possible to add a literal machine, which is not in any
+configuration files.  It is possible to specify a host the is in a
+configuration file with <code class="opt">-G</code> followed by
+the exact spelling of the hostname as it appears in the configuration file.
+<dt><code class="opt">--all</code>
+<dd>
+This is the default for <code class="sh">hxmd</code>.
+<dt><code class="opt">--group</code> <code class="param">groupname</code>
+<dd>
+Use a macro attribute like <code class="attr">SERVICE</code> to form a posse,
+see the <code class="sh">hxmd</code>
+<href="sbin/hxmd/hxmd.html#posseMethod">HTML document</A>.
+<dt><code class="opt">--file</code> <code class="param">machinefile</code>
+<dd>
+Use one of <code class="opt">-C</code>, <code class="opt">-X</code>, or
+<code class="opt">-Z</code> depending on what you really want.
+<dt><code class="opt">--remoteshell</code> <code class="param">shellname</code>
+<dt><code class="opt">--remoteshellopt</code> <code class="param">rshoption</code>
+<dd>
+Specify the action as part of the <code class="param">control</code>
+specification, or use the <code class="attr">HX_CMD</code> attribute
+macro to set the default action.
+<dt><code class="opt">-h</code>
+<dd>
+Exactly the same.
+<dt><code class="opt">--wait-shell</code>
+<dd>
+Set <code class="opt">-P1</code> for sequential commands.  Set a
+higher value for parallel access.
+Always set $<code class="env">PARALLEL</code> to a default that
+makes sense in any script or recipe file.
+<dt><code class="opt">--concurrent-shell</code>
+<dd>
+There is no way to do this with <code class="sh">hxmd</code> alone.
+Usually we start a <code class="sh">screen</code> or
+<code class="sh">tmux</code> instance, then drive that with
+<code class="sh">hxmd</code> or <code class="sh">xapply</code>.
+<dt><code class="opt">--show-machine-names</code>
+<dd>
+We could play games with <code class="sh">xclate</code> options, like
+<blockquote class="file"><pre><code >$ xclate -ms hxmd -Csite.cf -F2 -e XCLATE=-H%2 "%0ssh -n HOST uptime" "HOST"</code></pre></blockquote>
+But that only outputs the hostname as the first line of hosts that
+output something, which is actually more useful.
+<dt><code class="opt">--hide-machine-names</code>
+<dd>
+This is the default.
+<dt><code class="opt">--duplicate-input</code>
+<dt><code class="opt">--bufsize</code> <code class="param">buffer-size</code>
+<dd>
+This is where <code class="sh">tmux</code> is used.  But sending a shell
+script or <code class="sh">make</code> recipe to the host is a much better
+idea.  Fingers on keyboards cause mistakes.  Sending mistakes to many
+hosts in parallel is a recipe for trouble.
+<dt><code class="opt">-V</code>
+<dd>
+Exactly the same.
+<dt><code class="opt">--num-topology</code> <code class="param">N</code>
+<dd>
+Slave instances are driven by a recipe (script or more commonly an
+instance of <code class="sh">msrc</code>).
+<dt><code class="opt">--forklimit</code> <code class="param">fork-limit</code>
+<dd>
+Really you need the slow-start logic in <code class="sh">hxmd</code>
+more than a hard limit (which is set with <code class="opt">-P</code>).
+</dl>
+
+<p>
+Examples from the <code class="sh">dsh</code> <A href="http://www.netfort.gr.jp/~dancer/software/dsh.html.en">web site</A>:
+I'll assume $<code class="env">PARALLEL</code> is set to the parallel
+factor you want for these examples.
+<dl>
+<dt>Visit all hosts with display command (<code class="sh">uname</code>)
+<dd>
+<blockquote class="file"><pre><code >$ dsh -a -c -- uname -a
+$ hxmd -P 'ssh -n HOST uname -a'</code></pre></blockquote>
+
+<dt>Limit to a specified posse by file.
+<dd>
+<blockquote class="file"><pre><code >$ dsh -g children -c -- uname -a
+$ hxmd -C children.cf -P 'ssh -n HOST uname -a'</code></pre></blockquote>
+<dt>Limit to the hosts from a <code class="libc">netgroup</code>
+<dd>
+If we can use <code class="sh">ypmatch</code> to get the list of hosts
+we can feed them in as a configuration file:
+<blockquote class="file"><pre><code >$ dsh -g @nisgroup -- uname -a
+$ ypmatch <i>...</i> |hxmd -C - -P 'ssh -n HOST uname -a'</code></pre></blockquote>
+</dl>
+
+<p>
+For all of these you would actually embed the command in a recipe file:
+either a <code class="sh">mk</code>, <code class="sh">make</code>,
+<code class="sh">op</code> or other recipe processor, or in
+a shell script, function or alias.
+
+<p>
+The other option would be to use <code class="sh">msrc</code> with a
+simple <code class="path">Msrc.mk</code>, which makes the commands look
+more like
+<blockquote class="file"><pre><code >$ dsh -g children -c -- uname -a
+$ msrc -Cchildren.cf -P uname -a</code></pre></blockquote>
+<p>
+The minimal required recipe (to send no files) would be
+<blockquote class="file"><pre><code ># $Id<i>....</i>
+INTO=.
+SEND=.
+MAP=.
+IGNORE=+++</code></pre></blockquote>
+The nifty thing about that command is that the
+<strong>directory context</strong> supplies the default
+<code class="opt">-C</code> configuration and other parameters
+(via <code class="path">Msrc.hxmd</code>).  This saves a lot of typing
+for interactive use, and allows scripts to use the same spells over and
+over without recoding each service every time it is needed.
+<p>
+To save even more typing add an <code class="path">Msrc.hxmd</code>
+with the default <code class="opt">-C</code> and <code class="opt">-P</code>
+options:
+<blockquote class="file"><pre><code ># $Id<i>....</i>
+-Cchildren.cf
+-P10</code></pre></blockquote>
+Then the command becomes just:
+<blockquote class="file"><pre><code >$ msrc uname -a</code></pre></blockquote>
+(Use the <code class="opt">-z</code> command-line option to
+defeat the inclusion of options from that file.)
+
+<!-- amature hour is over, I read the code. -ksb
+<h3 id="iterate">Iterate</h3>
+
+A recent freecode project,
+<A href="http://freecode.com/projects/iterate">iterate</A>, is a bit
+like the first version of <code class="sh">xapply</code>, but uses
+<code class="markup">$</code> as the default meta-character. -->
+
+<h2 id="summary">Summary</h2>
+
+Any of these tools are better than typing lots of commands by hand.
+Pick the ones you like the best and use them, it might save your
+hands and wrists.
+
+<pre>
+-- ksb (KS Braunsdorf) Sep 2013</pre>
+<p>
+<A href="xapply.html#also">Back to <code class="sh">xapply</code></A>,
+or use your browser's back button.
+<HR><pre>
+
+$Id: parallel.html,v 3.21 2013/09/04 13:49:27 ksb Exp $ by <a rel="author" href="https://profiles.google.com/101982188326956345150">ksb</a>.</pre></BODY></HTML>

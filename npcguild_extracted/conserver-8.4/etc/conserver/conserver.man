@@ -1,0 +1,100 @@
+.\" @(#)conserver.8 01/06/91 OSU CIS; Thomas A. Fine
+.\" $Id: conserver.man,v 8.1 1998/06/07 16:24:55 ksb Exp $
+.TH CONSERVER 8L "LOCAL"
+.SH NAME
+conserver \- console server daemon
+.SH SYNOPSIS
+.B conserver [\-\fBdnsv\fP] [\-\fBa\fP \fItype\fP] [\-\fBC\fP \fIconfig\fP] [\fIlines\fP]
+.br
+.B conserver \-\fBh\fP
+.br
+.B conserver \-\fBV\fP
+
+.SH DESCRIPTION
+.B Conserver
+is the daemon for the
+.IR console (1L)
+program.
+It provides remote access to the server consoles,
+and logs all console data.
+Slave hosts which have no current connection might produce important
+error messages, these unloved errors are each labeled with a machine name
+on stdout.
+.PP
+When started, it forks a child for each group in /usr/local/etc/conserver.cf,
+and assigns each process a port number to listen on.
+The \fIconsole\fP client program knows how to request port numbers and
+forwards to find the various slave \fIlines\fP.
+.PP
+.B Conserver
+completely controls any connection to a controlled host.
+The server handle all escape sequenes, except the suspend sequence which is
+sent as an out-of-band command to the client.
+.PP
+The
+.B conserver
+parent process automatically respawns any child process that dies.
+If the parent process receives a SIGTERM, it will propogate the signal
+to its children.
+
+.SH OPTIONS
+.TP
+.BI \-a type
+The default client access permission is set to \fItype\fP.
+Valid \fItype\fP selections are \fBtrusted\fP, \fBallowed\fP, and
+\fBdeny\fP (only the first letter is actually examined).
+Any use of \fBtrusted\fP shows a lack of "reasonable care".
+.TP
+.BI \-C config
+With this option the invoker may specify an alternate confguration.
+The default \fIconfig\fP is /usr/local/lib/conserver.cf.
+.TP
+.B \-d
+Variaous debug messages may (or may not) be enabled.  Depends on
+compile time switches and the phase of the moon.
+.TP
+.B \-h
+Output a brief help message.
+.TP
+.B \-n
+The \fIconserver\fP will \fBnot\fP output unloved console output to
+stdout.
+.TP
+.B \-s
+Enables soft carrier on all ports.  Most useful for installation
+debugging.
+.TP
+.B \-v
+Echo the configuration as it is being read (be verbose).
+Also display usage (login/logout) messages to stdout.
+.TP
+.B \-V
+Output the version of the console server (only) and exit.
+
+.SH EXAMPLES
+conserver: expert: login ksb
+.br
+tyro: panic: my brain hurts
+.br
+conserver: ksb shifts from expert to tyro
+.br
+conserver: tyro: logout ksb
+.br
+\...
+
+.SH FILES
+.TS
+l l.
+/usr/local/lib/conserver.cf	description of console terminal lines
+/var/log/consoles/\fIhost\fP	log files for \fIhost\fP's console
+/dev/tty??	terminal line device files
+\fIstdout\fP	summary of unloved console errors
+.TE
+
+.SH AUTHORS
+Kevin S Braunsdorf, Purdue University Computing Center
+.br
+Thomas A. Fine, Ohio State Computer Science
+
+.SH "SEE ALSO"
+console(1L), conserver.cf(5L), autologin(8L)

@@ -1,0 +1,201 @@
+.\" $Id: xapply.man,v 3.2 1997/11/21 16:47:49 ksb Exp $
+.\" by Kevin Braunsdorf
+.TH XAPPLY 1 LOCAL
+.SH NAME
+xapply \- extended apply and xargs replacement
+
+.SH SYNOPSIS
+.ds PN "xapply
+\fI\*(PN\fP \-\fBf\fP [\-\fBn\fP\fBv\fP] [\-\fIcount\fP] [\-\fBa\fP \fIc\fP] [\-\fBi\fP \fIinput\fP] [\-\fBp\fP \fIpad\fP] [\-\fBP\fP\fIjobs\fP] [\-\fBS\fP \fIshell\fP] \fIcmd\fP [\fIfiles\fP]
+.br
+\fI\*(PN\fP [\-\fBn\fP\fBv\fP] [\-\fIcount\fP] [\-\fBa\fP \fIc\fP] [\-\fBi\fP \fIinput\fP] [\-\fBP\fP\fIjobs\fP] [\-\fBS\fP \fIshell\fP] \fIcmd\fP [\fIargs\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.sp
+.SH DESCRIPTION
+.PP
+Extended apply is intended to be a complete replacement for
+the \fIapply\fP and \fIxargs\fP commands.
+In the normal mode \fIxapply\fP emulates the best features of
+\fIapply\fP (substitutes limited percent escapes to form and 
+execute shell commands).
+Under \fB\-f\fP it emulates a \fIxargs\fP-like processor.
+.PP
+Unlike \fIxargs\fP this program deals in fixed argument lists.
+Each positional parameter (or input line) is treated as a single
+argument for the expanded command (embedded blanks, tab, quotes
+and the like are \fBnot\fP special).
+If a variable argument list is required it may be built with
+\fIfmt\fP or \fIadjust\fP (or any other text processor) and
+passed in pre-formatted (see BUGS).
+.PP
+The fixed argument list is built from a hunk of \fIcount\fP
+parameters from the command line.
+These parameters are usually interpreted as fixed strings, but
+under \fB\-f\fP they are taken as \fIfiles\fP whose lines are
+each taken sequentially as arguments.
+.PP
+The pointer positional parameter \fIcmd\fP is the
+template command to control each task.
+In this template each occurance of the escape character \fIc\fP,
+percent (%) by default, followed by a digit ([1-9]) is replaced by
+the current argument for that slot.
+If no such expansions occur in a template the whole argument list is
+catenated on the end of \fIcmd\fP
+(prefixed by a blank when needed).
+.PP
+To extend this a bit we also allow curly braces to enclose larger
+integer value (e.g. %{15}) as make(1) does for macro names.
+In addition the value zero (in either case) is taken to mean
+no expansion is expected; this supresses the default catenation of
+the whole argument list as well.
+.PP
+To keep up with more complex structures a final form is allowed to
+extract subfields from input parameters:
+.sp
+	\fB%[\fP\fIparam\fP \fIseparator\fP \fIfield\fP \fB]\fP
+.sp
+The positional parameter \fIparam\fP is broken into fields at
+the character \fIseparator\fP.  The resultant \fIfield\fP is
+the substituted.  The special field dollar sign ($) is taken
+as the last field.
+.PP
+When a literal blank is used as the \fIseparator\fP it matches
+any number of white space characters.  The universal escape character
+backslash (\e) may be used to quote any of blank, backslash, close
+bracket, or any digit to supress its special meaning.
+Additional \fIseparator\fP and \fIfield\fP pairs may be used to
+further limit the expansion.
+
+.SH OPTIONS
+.TP
+\fB\-\fIcount\fP
+Each expanded command requires \fIcount\fP of arguments.
+.TP
+\fB\-a\fP \fIc\fP
+Change the escape character from percent (%) to \fIc\fP.
+.TP
+\fB\-f\fP
+Arguments are read one per line from the input \fIfiles\fP.
+Each file is opened and scanned for arguments (which are only
+separated by newlines).
+Note that all references to the stdin ("-") stream share the stream:
+that is, arguments are taken round-robin from each active reference.
+Files are hunked together by the \-\fIcount\fP option as fixed
+parameters would be.
+.TP
+\fB\-h\fP
+Print a help message.
+.TP
+\fB\-i\fP \fIinput\fP
+Under \fB\-f\fP sub-tasks competing for input with
+\fIxapply\fP lead to madness.
+\fIXapply\fP opens all sub-tasks stdin to a shared stream from \fIInput\fP.
+Under \fB\-f\fP this deafults to \fB/dev/null\fP.
+.TP
+\fB\-n\fP
+Do not execute commands, trace only. (Implies \fB\-v\fP.)
+.TP
+\fB\-p\fP \fIpad\fP
+Files with inadequate length are padded with this token.
+.TP
+\fB\-P\fP\fIjobs\fP
+Number of tasks to run in parallel.
+\fIXapply\fP tries to keep at most \fIjobs\fP processes running in
+parallel.
+If the environment variable \fBPARALLEL\fP is set then it is
+read for a default value.
+\fIxapply\fP waits for all tasks to finish before it exits.
+.TP
+\fB\-S\fP \fIshell\fP
+Specify shell to run tasks under.
+\fIXapply\fP looks for the environment variable \fBSHELL\fP
+or uses the built-in default \fB/bin/sh\fP.
+In any case \fIshell\fP must take \fB\-c\fP as sh(1) does.
+.TP
+\fB\-v\fP
+Be verbose.  Echo shell commands to stdout.
+.TP
+\fB\-V\fP
+Show version information.
+
+.SH EXAMPLES
+.TP
+\fIxapply\fP '(cd %1 && make all)' */
+Change context to each directory in the current directory in turn and
+run \fBmake all\fP.
+.TP
+\fIxapply\fP \-f 'diff %1 ../version5/%1' manifest | more
+Compare the files in \fBmanifest\fP to the ones with the same name
+in \fB../version5\fP
+.TP
+\fIxapply\fP \-p/dev/null \-f 'diff %1 %2' manifest1 checklist1
+Compare (with \fBdiff\fP) each file in \fBmanifest1\fP to the same
+file in \fBchecklist1\fP.  Substitute \fB/dev/null\fP for missing
+files on the end.
+{This is only useful if the input files are known to have
+the arguments in a stable order.}
+.TP
+\fIxapply\fP 'indent' *.c
+Run \fBindent\fP for each C source file in the current directory.
+.TP
+find ~ksb/bin \-type f ! \-perm \-111 \-print | \fIxapply\fP \-f \-v 'chmod a+x' \-
+Find plain files in my bin which are not executable by all, let
+\fIxapply\fP try to fix each (and show me the progress).
+.TP
+find */ \-... | fmt 960 1024 | \fIxapply\fP \-f \-i /dev/tty 'vi' \-
+Run \fIvi\fP on blocks of files from the \fIfind\fP command.
+This is \fBso\fP clever.
+.TP
+find ... | \fIxapply\fP \-f \-5 \-i /dev/tty 'vi' \- \- \- \- \-
+Edit five files at a time (until the last edit).
+.TP
+\fIxapply\fP \-fn "" /etc/passwd
+A slower version of \fBcat\fP(1).
+.TP
+tr ':' '\e012' < /etc/passwd | \fIxapply\fP \-7 \-nf 'chown %1 %6' \- \- \- \- \- \- \-
+Shows how to get the fields of the password file into \fIxapply\fP escapes.
+.TP
+\fIxapply\fP \-V
+Output \fIxapply\fP's version information.
+.TP
+\fIxapply\fP '[ \-d %1/RCS ] || echo %1' */
+Output each subdirectory that does not have an RCS cache.
+.TP
+\fIxapply\fP -f '[ \-f %1 ] && echo %1' List | ...
+Output the pathnames from \fIList\fP that presently exist (note the
+inverse could be accomplished as well).
+
+.SH BUGS
+.PP
+Some more escapes might be useful.  (Of course I'd say that.)
+.PP
+Should have a filter buddy that knows \fBxargs\fP's input rules to
+convert a input stream to our style.  But then again who uses
+the broken \fBxargs\fP quoting rules?
+.PP
+Modern \fIfmt\fP is too smart and won't work on file names that
+start with dot (it thinks they are nroff directives).  This crosses
+that fine line I always talk about.
+One can use a \fBsed\fP filter, viz.
+.RS
+sed \-e 's,^\.//*,,' | fmt ...
+.RE
+to repair the damange.
+
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+DSPD UNIX Support
+.br
+ksb@fedex.com
+
+.SH "SEE ALSO"
+sh(1), cat(1),
+apply(1), xargs(1),
+fmt(1) or adjust(1),
+make(1), find(1), vi(1), sed(1)

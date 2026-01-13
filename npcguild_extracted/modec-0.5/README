@@ -1,0 +1,37 @@
+# $Id: README,v 1.2 2000/08/05 02:47:02 ksb Exp $
+
+This package is a little harder to build.  You have to have the
+"install" package installed, and "vinst" needs to reuse code out
+of that package's instck program.
+
+If you unpack this and build it you'll only get "sbp", which would
+be well worth it.  If you mv the "vinst" directory into /usr/msrc
+where it goes it'll build (/usr/msrc/local/bin/vinst) or if you
+tell it (via LOCALSRC=/usr/src/Pkgs/install-8.5) where the install
+source is, you can build it as well.
+
+For example I build the "intall" package in /usr/src/Pkgs on my
+workstation, then ran:
+	$ /usr/src/Pkgs/modec-0.5/bin/vinst
+	$ make clean
+	$ PATH=/usr/local/etc:/usr/local/bin:$PATH
+	$ make LOCALSRC=/usr/src/Pkgs/install
+	$ ./vinst -V
+	vinst: $Id: vinst.m,v 1.14 1999/06/01 17:27:17 ksb ...
+	vinst: default shell /usr/local/bin/ksh
+	vinst: install path /usr/local/bin/install
+	vinst: installus path /usr/local/etc/installus
+	vinst: vi path /usr/bin/vi
+	vinst: diff path /usr/bin/diff
+	vinst: instck path /usr/local/etc/instck
+	$ su
+	# make install
+
+The modecanon program itself is far too dangerous in its present
+state to release.  Someday, soon.  I've trashed 2 hosts with it...
+
+Read the INSTALl in sbp for lots of cool ideas to use it.  I've
+wrapped "vinst -U" several time to solve access problems.
+
+--
+ksb, June 2000

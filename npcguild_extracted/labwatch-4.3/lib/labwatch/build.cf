@@ -1,0 +1,32 @@
+# build.sa -- lab hosts
+# SAC lab
+t1.sac
+t2.sac
+t3.sac
+t4.sac
+t5.sac
+t6.sac
+t7.sac
+t8.sac
+t9.sac
+t10.sac
+t12.sac
+t13.sac
+t13.sac
+t14.sac
+t15.sac
+t16.sac
+t17.sac
+t18.sac
+%%status -- The CGI status report
+   Report   Host      Load  Status
+@ %{@:r} %{@:h} %{@:l} %{@:x} %{@:f}
+%%motd -- the message of the day
+This is one way to track clients and servers.  The code is from
+	ksb@sa.fedex.com
+The programs are labd, labc, labwatch, and labstat.  The configuration is in
+labwatch.cf (in /usr/local/lib or /root).
+
+	-- ksb
+%%version -- the version of this configuration file
+$Id: build.cf,v 1.1 1999/01/09 16:05:50 ksb Exp $

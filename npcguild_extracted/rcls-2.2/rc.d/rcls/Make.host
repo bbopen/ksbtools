@@ -1,0 +1,55 @@
+`# $Id: Make.host,v 2.0 2000/06/06 00:40:23 ksb Exp $
+#
+#	master Makefile for wise startup sequence
+
+PROG=	rcls
+BIN=	${DESTDIR}/etc/init.d
+RC=	${DESTDIR}/etc/rc3.d
+DOC=	${DESTDIR}/usr/local/man
+
+MAN=	
+OTHER=	README TODO
+SOURCE=	Makefile ${OTHER} ${MAN}
+
+all: ${SRCl} ${PROG}
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: FRC
+
+dirs: ${BIN} ${RC}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} ${RC}/S82wise ${RC}/K82wise HOST
+
+install: all dirs FRC
+	install -c -S${RC}/S80rcls:${RC}/K80rcls ${PROG} ${BIN}/${PROG}
+
+lint: FRC
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+${BIN} ${RC}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

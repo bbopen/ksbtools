@@ -1,0 +1,84 @@
+#!/bin/sh
+# $Id: template,v 4.8 1993/09/06 17:57:15 ksb Exp $
+# $1 is our only argument, a %s (full path to tar file)
+#  we were invoked from project -g with something like
+#	project -g "grade7 %s" seven
+
+# you should replace the "cs101" below with a unique course id (3-7 chars)
+COURSE=cs101
+
+# since we start off in the division/section directory of the student
+# we need to get to someplace to make a temp directory
+# ($$ is a sort of random number, see sh(1))
+cd /tmp
+mkdir $COURSE$$
+cd $COURSE$$
+
+# tell the system not to entomb any temp files
+ENTOMB=no
+export ENTOMB
+
+# now output a message indicating who we are working on for this file
+echo "----------"
+echo "--  $1"
+echo "----------"
+tar xvf $1
+echo ""
+
+# remove crufty a.out he may have submitted (by mistake, of course)
+rm -f a.out core
+
+# compile the project in your favorite language
+pc -l *.p
+#cc *.c
+#g++ *.C
+#f77 *.f
+#fortran *.f
+#make a.out
+
+# we could check to see what langauge he used, like C or Pascal
+#if [ -f Makefile -o -f makefile ]; then
+#	make a.out
+#elif [ "`echo *.c`" != "*.c" ]; then
+#	cc *.c
+#elif [ "`echo *.p`" != "*.p" ]; then
+#	pc *.c
+#else
+#	echo "unrecognized language (not C or Pascal)"
+#	ls
+#fi
+
+# above we could use lots more commands to check for things.
+# we could draw input from a data file
+#	./a.out < /usere/ksb/data2
+# which could be argument $2
+#	./a.out < $2
+#
+# we can limit resources through a csh line (see csh(1))
+#	csh -fc "limit cpu 30; ./a.out"
+#
+# we can run many files
+#	for DATA_FILE in /usera/ksb/data/d7.*
+#	do
+#		./a.out <$DATA_FILE
+#	done
+#
+# we can mix any of the above
+
+
+# if it did not build an a.out he loses
+if [ -f ./a.out ]; then
+	./a.out 				; : "(#) see below"
+	if [ -f core ]; then
+		echo "DROPPED CORE"
+	fi
+else
+	echo "NO a.out generated"
+fi
+
+# now we remove the compiled program so we don't fill up a file system!
+cd ..
+rm -rf $COURSE$$
+
+# and exit with a happy face (important feature)
+exit 0

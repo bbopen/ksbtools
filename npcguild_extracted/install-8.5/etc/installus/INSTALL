@@ -1,0 +1,9 @@
+# $Id: INSTALL,v 2.1 1997/10/15 20:38:29 ksb Exp $
+
+# make
+
+# make install mkcat
+# cp Owners $DEST/.owners
+# vi $DEST/.owners
+
+# exit

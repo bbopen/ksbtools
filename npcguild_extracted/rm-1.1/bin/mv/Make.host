@@ -1,0 +1,85 @@
+`#	$Id: Make.host,v 1.6 1997/11/24 03:43:55 ksb Exp $
+#
+#	Makefile for mv
+#
+
+PROG=	mv
+BIN=	${DESTDIR}/bin
+DOC=	${DESTDIR}/usr/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE= -I$L
+DEBUG=	-O
+CDEFS=  'ifelse(
+HOSTTYPE,`SUN3',` -Bstatic',
+HOSTTYPE,`SUN4',` -Bstatic',
+HOSTTYPE,`SUN4M',` -Bstatic',
+HOSTTYPE,`SUN4C',` -Bstatic',
+HOSTTYPE,`SUN5',` -Bstatic -DHAS_DIRENT',
+HOSTTYPE,`IBMR2',` -DPUCC_ENTOMB -DHAS_DIRENT',
+`')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	
+ONEC=	mv.c
+MAN=	mv.man
+OTHER=	README
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${ONEC}
+
+all: ${PROG}
+
+${PROG}: ${ONEC}
+	${CC} -o $@ ${CFLAGS} ${ONEC} 'ifelse(
+HOSTTYPE,`SUN5',`/usr/local/lib/libtomb.a',`-L/usr/local/lib -ltomb')`
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} a.out *.o core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${HDR} ${ONEC} FRC
+	maketd -b ${CDEFS} ${INCLUDE} ${ONEC}
+
+dirs: ${BIN} ${LIB}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all dirs FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${ONEC} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${ONEC}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${ONEC}
+	ctags -t ${HDR} ${ONEC}
+
+/ ${BIN} ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

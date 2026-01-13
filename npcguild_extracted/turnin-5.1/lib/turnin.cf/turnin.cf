@@ -1,0 +1,21 @@
+# $Id: turnin.cf,v 4.10 1996/07/14 18:49:25 kb207252 Exp $
+# turnin(1), which is setuid, reads this file for transaction limits. (ksb)
+#
+# Add new entries toward the top, delete any old entry by the same name.
+# Entries look like:
+#	course : login : dir : adm-group : sections
+#
+# a sections may be "ALL" for one happy lump.
+#
+# Project -i generates these lines and e-mails them to "enroll-info" or
+# some such for a human to install them in this file.
+#
+# Permanent entries
+consult:consult:turnin:cnsltadm:ALL
+#
+# Present maintainers
+bio541:bio541:submit:bio541:ALL
+cs145:cs145:submit:cs145adm:tue930,tue1130,tue130,tue330,thu930,thu1130,thu130
+cs414:cs414:turnin:csusers:1130sec,1300sec
+cs151:cs151:submit:cs151:ALL
+cs110p:cs110p:submit:cs110p:T412,T512,W212,F212,F412

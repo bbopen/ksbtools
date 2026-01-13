@@ -1,0 +1,10 @@
+# perl source file							(ksb)
+# $Id: pl,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	${perl-perl} -u %s %f ; echo "Now run undump"
+$Compile(*):	${perl-perl} -u %f ; echo "Now run undump"
+
+$Run(*):	${perl-perl} %s %f
+$Run(*):	${perl-perl} %f
+
+$Info(*):	${echo-echo} "perl source"

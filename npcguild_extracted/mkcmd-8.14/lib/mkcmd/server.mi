@@ -1,0 +1,7 @@
+/* define buffer for socket type (ksb)
+ * $Id: server.mi,v 1.2 1997/10/06 20:02:06 ksb Beta $
+ */
+
+%@foreach "socket_server"
+%/* SOCK_DESCR u_SD%n%; */
+%@endfor

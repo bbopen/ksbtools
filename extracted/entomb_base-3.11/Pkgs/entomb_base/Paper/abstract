@@ -1,0 +1,38 @@
+.\" $Id: abstract,v 3.0 1992/04/22 13:21:59 ksb Stab $
+.\" $Compile: nroff -ms %f | ${PAGER-more}
+.\"
+.RP
+.TL
+.br
+\*Qrm \(**  .o\*U vs. the Novice User
+.AU
+Matthew J. Bradburn
+.AI
+Purdue University Computing Center
+.br
+West Lafayette, IN 47907
+.AB
+.LP
+This paper addresses the need for a mechanism to
+recover accidentally deleted files.  We consider various procedures for
+saving (\*Qentombing\*U) the these files
+and the relative merits of each.
+.LP
+Many of our users occasionally have reason to require the
+restoration of some file, or group of files, which has been
+accidentally deleted.  Currently, each user must create his own file
+backup procedure which may not be efficient, effective, or secure, and
+which may cause some inconvenience by consuming a large portion of the
+user's allotted disk space, or they must burden the Computing Center
+staff with requests to retrieve files from backup tape, a procedure
+which may involve the loss of many hours' work and which may not result
+in the recovery of the file.
+.LP
+While we recognize that the most comprehensive method of solving this
+problem is to do so at the kernel level, we feel that practical
+considerations (including portability) make other solutions more
+attractive.  Our system of file entombing can be added to any program
+without source code changes by recompiling it with our entombing library.
+This causes our subroutines to be substituted for system calls which
+commonly destroy files.
+.AE

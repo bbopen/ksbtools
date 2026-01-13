@@ -1,0 +1,26 @@
+.\" $Id: remote.man,v 1.2 1993/09/02 19:54:16 ksb Exp $
+.\" by Kevin Braunsdorf
+.TH REMOTE 8L LOCAL
+.SH NAME
+remote, xremote \- provide terminal services for remote machines
+.SH SYNOPSIS
+\fI/usr/local/etc/remote\fP
+.sp
+.SH DESCRIPTION
+A system account (usually \fBterminal\fP) provides access to this program.
+Customers who do not have any account on a work station may use that
+work station as a `dumb' terminal via a login to this account.
+.PP
+The X varient of this program runs an XDM session reather than an rlogin.
+.SH OPTIONS
+None.
+.SH EXAMPLES
+
+.SH BUGS
+None.
+.SH AUTHOR
+Stolen from ECN, cleanup by Kevin Braunsdorf (PUCC UNIX Group)
+.br
+Check for XDM before we hang by Ben Jackson.
+.SH "SEE ALSO"
+login(1), XDM source

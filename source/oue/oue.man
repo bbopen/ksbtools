@@ -1,0 +1,749 @@
+.\" $Id: oue.man,v 2.42 2012/10/07 16:01:40 ksb Exp $
+.\" by KS Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: ${groff:-groff} -Tascii -man %f |${PAGER:-less}
+.\" $Display(*): ${groff:-groff} -T%s -man %f
+.\" $Install: %b -mDeinstall -D DESTDIR=${DESTDIR} %o %f && cp %f ${DESTDIR}/usr/local/man/man1/oue.1
+.\" $Deinstall: ${rm-rm} -f ${DESTDIR}/usr/local/man/man1/oue.1*
+.TH OUE 1 LOCAL
+.SH NAME
+oue - only unique element filter, dicer version
+.SH SYNOPSIS
+.ds PN "oue
+\fI\*(PN\fP [\fB\-cdilNsSvz\fP] [\-\fIspan\fP] [\fB\-a\fP\~\fIc\fP] [\fB\-b\fP\~\fIlength\fP] [\fB\-D\fP\~\fIstate\fP] [\fB\-e\fP\~\fIevery\fP] [\fB\-f\fP\~\fIfirst\fP] [\fB\-k\fP\~\fIkey\fP] [\fB\-p\fP\~\fIpad\fP] [\fB\-r\fP\~\fImemory\fP] [\fB\-R\fP\~\fIreport\fP] [\fIfiles\fP]
+.br
+\fI\*(PN\fP \fB\-I\fP\~\fIprev\fP [\fB\-cdilNsSvz\fP] [\-\fIspan\fP] [\fB\-a\fP\~\fIc\fP] [\fB\-b\fP\~\fIlength\fP] [\fB\-B\fP\~\fIreplay\fP] [\fB\-D\fP\~\fIstate\fP] [\fB\-e\fP\~\fIevery\fP] [\fB\-f\fP\~\fIfirst\fP] [\fB\-k\fP\~\fIkey\fP] [\fB\-p\fP\~\fIpad\fP] [\fB\-r\fP\~\fImemory\fP] [\fB\-R\fP\~\fIreport\fP] [\fB\-x\fP\~\fIextract\fP] [\fIfiles\fP]
+.br
+\fI\*(PN\fP \fB\-h\fP
+.br
+\fI\*(PN\fP \fB\-H\fP
+.br
+\fI\*(PN\fP \fB\-V\fP
+
+.SH DESCRIPTION
+The common shell idiom to get a unique list of elements in a pipeline is:
+.br
+.RS
+.nf
+\fBsort \-u\fP
+.fi
+.RE
+which waits for the entirety of \fIstdin\fP to be
+processed before any output is delivered to \fIstdout\fP.  That delay is
+easily avoided with the common \fBperl\fP idiom to "touch" an element in
+a hash at the top of a loop to protect the body of the loop from
+duplicate elements (via a guarded next):
+.br
+.RS
+.nf
+\fBperl \-e 'while (<>) { next if $s{$_}; $s{$_}=1; print $_;}'\fP
+.fi
+.RE
+.P
+\fIOue\fP provides an approximation of the perl idiom for pipelines.
+Input elements (lines or groups of lines) are only output the
+first time they are parsed.
+Optionally, the record of unique elements may be shared with other
+processes (in sequence, or parallel) via a GDBM \fIstate\fP file.
+.P
+Version 1.x of this program was, in fact, a perl program.  Later
+versions are not, because they use the dicer to
+process groups of lines into keys and memories.  The later versions
+are incompatible with the original, which was never widely released.
+
+.SH "DATA MODEL"
+\fIOue\fP expects a stream of lines to process.  The \-\fIspan\fP
+option sets the number of lines it takes to form an element.
+The last element in a file might be short, in which case
+the \fIpad\fP string is repeated to fill in any missing lines.
+Once a complete element is read \fI\*(PN\fP builds a name for the record with the
+\fIkey\fP dicer expression.  If this name is already in the \fIstate\fP
+GDBM the record is discarded.  Otherwise a \fIprev\fP GDBM is
+consulted, when specified: any key from that GDBM with the same name also
+excludes processing (this restriction may be inverted by \fI\-v\fP below).
+.P
+When the element has been allowed by the previous checks
+\fI\*(PN\fP builds a memory for
+the element from the \fImemory\fP dicer expression.
+The name/memory pair is then stored in the \fIstate\fP GDBM to
+prevent any future repetition of the name.
+.P
+In both of the above dicer expression the \fIspan\fP lines are
+available, as markup, starting at 1, so %1 is the first, %2 is the second, and
+so on.  Some of the same dicer expression that \fBxapply\fP uses are
+allowed on those elements: brackets for the dicer,
+parenthesis for the character mixer, and curlys to group numbers.
+In addition to the numbered lines there are a few others (see \fB\-H\fP output
+for a complete list):
+.TP
+.nf
+\fB%f\fP
+.fi
+The file which provided the element.  The expander \fB%i\fP represents
+the position of that file on the command-line (1st, 2nd, ... Nth).  Under
+\fB\-i\fP elements from the \fIprev\fP file are from file number zero.
+.TP
+.nf
+\fB%n\fP
+.fi
+The line number of the first line of the current element from the above file.
+Replay elements are from line zero.
+.TP
+.nf
+\fB%u\fP
+.fi
+The count of the unique elements discovered so far from the current
+process, not counting this one (so 0, 1, 2, ... ).  Note this spans
+input files, and could be aligned with \fBxapply\fP's expander with the
+same name.
+.TP
+.nf
+\fB%*\fP
+.fi
+The element's lines joined with spaces.
+.TP
+.nf
+\fB%@\fP
+.fi
+The element's lines joined with newlines (viz. '\en').
+.TP
+.nf
+\fB%$\fP
+.fi
+The last line in the element, as in \fBxapply\fP.
+.TP
+.nf
+\fB%0\fP
+.fi
+The empty string, for compatibility with \fBxapply\fP(1l).
+.TP
+.nf
+\fB%%\fP
+.fi
+A literal percent character (which works for any \fIc\fP specified under \fB\-a\fP).
+
+.P
+A report of each of these unique elements is produced on \fIstdout\fP
+via the \fIreport\fP dicer expression.  In this context there are
+at least two additional dicer data sources:
+.TP
+.nf
+\fB%k\fP
+.fi
+The name (aka. key) for the element built from the \fIkey\fP dicer
+.TP
+.nf
+\fB%m\fP (also spelled \fB%r\fP)
+.fi
+The memory built from the \fImemory\fP dicer
+.TP
+.nf
+\fB%v\fP
+.fi
+Under \fB\-v\fP the previous memory (from the \fIprev\fP GDBM)
+.TP
+.nf
+\fB%c\fP
+.fi
+The count of the number of occurrences of this key from the input \fIfiles\fP.
+Allowed via \fB\-c\fP, but most useful under \fB\-l\fP and/or \fB\-e\fP.
+.TP
+.nf
+\fB%o\fP
+.fi
+The old count of the occurrences from any \fIprev\fP record, see \fB\-x\fP.
+.TP
+.nf
+\fB%t\fP
+.fi
+The total of all occurrences (so far).
+.TP
+.nf
+\fB%e\fP
+.fi
+The element accumulator bound to the current key (described below).
+.TP
+.nf
+\fB%p\fP
+.fi
+The previous value of \fB%e\fP for the current key (also below).
+.TP
+.nf
+\fB%U\fP\fIabove\fP (or \fB%L\fP\fIabove\fP)
+.fi
+The results of the expander are folded to upper (lower) case.
+
+
+.P
+The default \fIreport\fP outputs only the name of the record (%k),
+except under \fB\-c\fP when the default is "%t %k".
+Any \fIprev\fP GDBM has the same report generated when \fB\-i\fP
+is specified, unless \fB\-B\fP specifies a different template.
+Any data in \fIstate\fP is not reported on, unless
+it is also specified as the \fIprev\fP GDBM.  In this context the
+numbered lines of the element are only available for new elements,
+any element from the \fIprev\fP GDBM sees the \fIpad\fP value for
+every line (as the only part of the original lines stored in the GDBM is
+the part recorded by the \fImemory\fP dicer).  A single reminder of
+this fact displayed to \fIstderr\fP helps debug this (a little).
+
+.P
+The space allocated for the construction of names, memories, and reports
+is limited by the \fIlength\fP value specified under \fB\-b\fP.
+The default of "10k" is usually enough for a name, \fIlength\fP is multiplied
+by \fIspan\fP for the construction of the memory and report strings.
+
+.P
+Three additional modes are available to produce other useful reports:
+count mode (under \fB\-c\fP),
+duplicate mode (under \fB\-d\fP), and
+last occurrence mode (under \fB\-l\fP).  Each of these may require
+\fI\*(PN\fP to buffer all output until the end of the input.  This
+causes the output to be shuffled by the GDBM code used to track the
+status of each element.  To output the results in the input order
+specify \fB\-s\fP below, be aware this slows the output for large
+files a lot.  Under any of these the switch \fB\-S\fP silently
+compresses sequential duplicate keys into the first occurrence.
+
+.SH ACCUMULATORS
+
+Some reports would be impossible without an "accumulator" to gather
+information about the lines as they are processed.  Two specifications
+are used to control a per-key buffer (markup as \fB%e\fP) that may
+contain facts gathered while processing each element that maps to
+the same \fIkey\fP.
+.P
+The first instance of each \fIkey\fP initializes the accumulator to
+the expansion of \fIfirst\fP, by default the empty string.
+For every instance of each \fIkey\fP the accumulator is copied to
+\fB%p\fP "the previous value" and the \fIevery\fP specification is
+expanded to fill the accumulator again.
+.P
+The value of \fB%e\fP is most useful under \fB\-l\fP, as in other
+cases it will continue to update as the lines are processed, but
+there is no way to output the final value (since the first instance of
+each key output the only notification).
+
+.SH OPTIONS
+If the program is called as \fI\*(PN\fP then no options are forced.
+
+.TP
+.nf
+\fB\-\fP\fIspan\fP
+.fi
+Specify the number of input lines read to form an element.
+The default is 1 line per element.
+
+.TP
+.nf
+\fB\-a\fP \fIc\fP
+.fi
+As in \fBxapply\fP, change the escape character to \fIc\fP from the
+default percent (%).
+
+.TP
+.nf
+\fB\-b\fP \fIlength\fP
+.fi
+.nf
+Specify a bigger dicer buffer size.  This value is a scaled
+integer using the common 'k' for kilobytes (specify '?' for help).
+The default is "10k" (10240 bytes).  Basically if you are keying on
+more than 132 characters you might want to think about this solution
+a little.
+
+.TP
+.nf
+\fB\-B\fP \fIreplay\fP
+.fi
+Rather than using the \fIreport\fP expression to replay the elements from
+\fIprev\fP use this template.  All the markup described above
+works as specified.
+The line number (\fB%n\fP) is always zero for pairs from \fIprev\fP,
+and \fB%f\fP is \fIprev\fP as specified on the command line.
+
+.TP
+.nf
+\fB\-c\fP
+.fi
+.nf
+Process keys for their total count, rather than just uniqueness.
+Similar to \fBuniq\fP's \fB\-c\fP option, but the input keys do \fBnot\fP
+have to be sorted.  This mode combines with \fB\-l\fP and/or \fB\-d\fP
+as needed.
+The \fIprev\fP GDBM may specify a starting count for each element
+(the recorded value is taken as an integer count if possible).
+When the count is not the first item in the memory use \fB\-x\fP to
+specify a dicer expression to extract the count from \fIprev\fP.
+Note that the output is not in stable order unless \fB\-s\fP is also
+specified.
+
+.TP
+.nf
+\fB\-d\fP
+.fi
+Accept only keys that are \fBnot\fP unique (duplicated) in the input
+stream.  This is also similar to \fBuniq\fP's \fB\-d\fP option.
+The starting count is gathered from \fIprev\fP as under \fB\-c\fP.
+Note that the output is not in stable order in combination with
+\fB\-l\fP or \fB\-c\fP, unless \fB\-s\fP is also specified.
+
+.TP
+.nf
+\fB\-D\fP \fIstate\fP
+.fi
+Record the elements seen in the GDBM file \fIstate\fP, which
+is usually spelled with a \fB.db\fP on the end.  Subsequent runs
+provisioned with the same file will not repeat any elements from
+previous runs (see \fB\-i\fP below).
+.sp
+The default \fIstate\fP is a file created under $TMPDIR, see
+environ(7), which is removed on exit.  If $TMPDIR specifies a
+nonexistent directory \fI\*(PN\fP tries /tmp and /var/tmp as a fallback.
+
+.TP
+.nf
+\fB\-e\fP \fIevery\fP
+.fi
+Set the update dicer expanded into the per-key accumulator for each
+occurrence of every \fIkey\fP.  A good example value would
+be "%p,%n" which adds the current line number to the previous
+value -- causing the catenation each line number to the end of the
+accumulator.  There are several ways to remove the leading comma
+that results from this markup: replace the "%p" with "%P" (which
+asks \fI\*(PN\fP to consume any markup from the dicer expression to
+the next escape (\fIc\fP) or the end of string when the value
+expanded is the empty string), or when you present the "%e" remove
+the first character with the mixer "%(e,2-$)", or use the dicer to
+remove the first field on commas "%[e,-1]".  The first way works
+for multi-character separators better.
+
+.TP
+.nf
+\fB\-f\fP \fIfirst\fP
+.fi
+Set the dicer markup which generates the new per-key accumulator when
+a key is first discovered in the input elements.  A good example would
+be "%n", which sets the accumulator to the name of the file that
+created the \fIkey\fP.
+
+.TP
+.nf
+\fB\-h\fP
+.fi
+Print a brief help message.
+
+.TP
+.nf
+\fB\-H\fP
+.fi
+Print a brief reminder of the markup escapes.
+
+.TP
+.nf
+\fB\-i\fP
+.fi
+.nf
+Report on the elements drawn from the \fIprev\fP GDBM (below).
+This allows the \fIprev\fP GDBM to act as a `replay device' to form
+a union operation on the \fIstate\fP set.
+The keys from \fIprev\fP are always filtered from the \fIstate\fP
+GDBM processing (viz. never added to \fIstate\fP itself).
+
+.TP
+.nf
+\fB\-I\fP \fIprev\fP
+.fi
+Repeat all the elements recorded in the tied GDBM \fIprev\fP.  Often
+used after many runs in a summary report.
+New lines are accepted as
+usual, to provide just the list the common convention is to
+explicitly list \fB/dev/null\fP as the only member of \fIfiles\fP.
+
+.TP
+.nf
+\fB\-k\fP \fIkey\fP
+.fi
+Build the element name from the lines via the dicer expression \fIkey\fP.
+The default \fIkey\fP includes the whole element, which is fine for
+single lines most of the time.  Setting the \fIkey\fP to a fixed
+string yields exactly one unique element, of course.  This is often
+done by (not) changing \fIc\fP while the specification of \fIkey\fP uses
+a different (the old) value.
+
+.TP
+.nf
+\fB\-l\fP
+.fi
+Rarely a process needs to select the \fBlast\fP instance of an element
+rather than the first.  This is an expensive operation for long element
+lists with repeated keys, but it is better than the alternatives.
+Works in combination with both \fB-c\fP and \fB-d\fP.
+Note that the output is not in stable order unless \fB\-s\fP is also
+specified.
+
+.TP
+.nf
+\fB\-N\fP
+.fi
+All shared accesses to the \fIstate\fP and \fIprev\fP database files
+are protected with GDBM's locking, unless this flag is set.
+
+.TP
+.nf
+\fB\-p\fB \fIpad\fP
+.fi
+Complete short records with this token.  The default is the empty string.
+There is no way to drop incomplete elements, which might be a bug.
+Elements are not allowed to span files: if you want that apply
+the \fBcat\fP filter to the \fIfiles\fP.
+
+.TP
+.nf
+\fB\-r\fB \fImemory\fP
+.fi
+Rather than recording the whole element in the \fIstate\fP GDBM
+this dicer expression creates the memory for the element.
+The default \fImemory\fP is the string ".", because, for most
+applications, the name is all that is required.  In this context
+the \fB%k\fP data source is also available.
+
+.TP
+.nf
+\fB\-R\fB \fIreport\fP
+.fi
+Report on name/memory pairs as they are recovered or created.
+To suppress the report for elements recovered from \fIprev\fP
+either do not specify \fB\-i\fP or specify \fB\-B\fP as the
+empty string (which defeats \fB\-i\fP).
+.sp
+The empty \fIreport\fP string suppress all output, acting as
+\fBgrep\fP's \fB\-s\fP option.  This builds the \fIstate\fP file slightly
+faster than using \fB>/dev/null\fP.
+
+.TP
+.nf
+\fB\-s\fP
+.fi
+Output in stable order.  Produce the \fIstate\fP GDBM and report output after
+reading all input, in the order the elements were first encountered.
+This creates another temporary file, which may slow performance.
+
+.TP
+.nf
+\fB\-S\fP
+.fi
+Compress sequential duplicate keys into a single occurrence.  This is
+useful to remove noise from an otherwise clear signal.  Reset for each
+input file (that is to say sequential keys across file boundries are
+unique occurrences).  This really only impacts the counts under \fB\-c\fP.
+
+.TP
+.nf
+\fB\-v\fP
+.fi
+Invert the sense of the \fIprev\fP GDBM.  Any key which doesn't
+exist in \fIprev\fP is discarded without consulting \fIstate\fP.
+This allows a intersection operation between element lists.
+The option is named for \fBgrep\fP's inversion option.  This also
+works in combination with \fB\-d\fP to select non-duplicated elements from
+the input stream.  (Under \fB\-c\fP and \fB\-d\fP each
+selected element should have a count of 1.)
+
+.TP
+.nf
+\fB\-V\fP
+.fi
+Show version ksb-style information.
+
+.TP
+.nf
+\fB\-x\fP \fIextract\fP
+.fi
+When counting under either \fB\-c\fP or \fB\-d\fP use \fIextract\fP to
+parse the previous memory value (or key) to find the last count.
+The default value is "\fB%v\fP" which draws the count from the
+a leading integer in the previous value.  If the integer were the last
+word (separated by white-space) the value "\fB%[v $]\fP" (quoted from
+the shell) would extract it.  After the extraction any leading
+white-space is removed before \fBstrtoul\fP converts the digits with a base
+set to 0 (numbers in hex, octal, or decimal are converted correctly).
+
+.TP
+.nf
+\fB\-z\fP
+.fi
+Expect find's \-print0 output as input files.  All input lines
+are terminated with a NUL character rather than a NL.  Any output is
+sent with the same encoding as the input, which is not always what you'd
+want -- but might be what \fBxapply\fP wants.
+See ascii(7) and find(1).
+
+.SH DETAILS
+
+The \fIstate\fP and \fIprev\fP specifications may indicate the same
+GDBM file.  In that case the the \fB\-i\fP flag replays the elements from
+the common file, then additional elements are processed into that
+same file, if no \fB\-i\fP flag is presented the specification of a
+\fIprev\fP file which is the same as the \fIstate\fP file is a no-op.
+
+.P
+Like \fBcomm\fP(1), \fB\*(PN\fP is often used to perform set operations on
+key lists:
+
+.P
+To union two key lists use the same \fIstate\fP file for both.
+.P
+To intersect two key lists build a state file from the first list
+with output to \fB/dev/null\fP, then use that as \fIprev\fP under
+\fB\-v\fP for the other.
+.P
+To disjunction two key lists build the intersection in a state file,
+then use that as \fIprev\fP for both lists.  This is the long way
+around, but it works.
+.P
+The intersection operation may be done in a single pass if it is
+an invariant that each list has only unique elements: use \fB\-d\fP
+with both files as input.
+
+.SH EXAMPLES
+.TP
+.nf
+spell /etc/motd | oue | fmt
+.fi
+Check the message of the day file for unique misspellings.
+.TP
+.nf
+jot \-r 10 1 100 | \fI\*(PN\fP | fmt
+.fi
+Sometimes outputs less than 10 elements (about 37.2% of the time).
+.\" Exactly 37.184349044470528% of the time (1.0 \- 100*99*..*91/100^10).
+.\" It outputs only 1 number 1 in 10^18 times, that's going to take a while.
+.TP
+.nf
+jot \-r 10 1 100 | \fI\*(PN\fP \-D memory.db | fmt
+.fi
+As this command is repeated it outputs fewer and fewer numbers,
+until at last all 100 integers have been selected.
+.TP
+.nf
+\fI\*(PN\fP \-iI memory.db /dev/null | wc \-l ; rm memory.db
+.fi
+See how many of possible integers we hit after some updates to
+\fBmemory.db\fP, then zero the score board.
+.TP
+.nf
+generate-host-names |\fI\*(PN\fP |xapply \-f \-P4 ... \-
+.fi
+Visit each host in the list generated only once, visit four of
+them in parallel.
+.TP
+.nf
+\~... |xapply \-mf \-P4 'expose %1 |\fI\*(PN\fP \-D dupes.db' \-
+.fi
+Eliminate duplicates from each peer process before they are output to
+the common \fIstdout\fP.
+.TP
+.nf
+\fI\*(PN\fP \-k '%[1:7]' /etc/passwd
+.fi
+Output each unique shell from "/etc/passwd".
+.TP
+.nf
+\fI\*(PN\fP \-c \-k '%[1:7]' /etc/passwd
+.fi
+Output the count of the unique shells from "/etc/passwd".
+.TP
+.nf
+\fI\*(PN\fP \-k %[1:7] \-r %[1:1] \-R "%m uses %k" /etc/passwd
+.fi
+Output the first login from "/etc/passwd" that uses a unique shell.
+.TP
+.nf
+\fI\*(PN\fP \-ck %[1:7] \-r %[1:1] \-R "%t use %k (first %m)" /etc/passwd
+.fi
+Report the first login from "/etc/passwd" that uses a unique shell, and
+how many others use the same one.
+.TP
+.nf
+\fI\*(PN\fP \-l \-ck %[1:7] \-r %[1:1] \-R "%t use %k (last %m on %f:%n)" /etc/passwd
+.fi
+Same as the above, but report the \fBlast\fP use of the shell, and which
+line specified it.
+.TP
+.nf
+\fI\*(PN\fP \-d \-k '%[1:1]' /etc/group
+.fi
+Report duplicate group names (change to field 3 to catch duplicate gids).
+.TP
+.nf
+\fI\*(PN\fP \-dc \-k '%[1:3]' \-R "%t %1" /etc/group
+.fi
+Report the count of duplicate group gids with the count of offending lines.
+Without the \fB\-c\fP switch the output always reports only a count of
+two, the rest are ignored as the key met the duplicate criteria.
+.TP
+.nf
+\fI\*(PN\fP \-dl \-k '%[1:3]' \-R "%t %1" /etc/group
+.fi
+The same output as above, for a different reason.  We asked for the last
+offending element (so we get the larger counts).
+.TP
+.nf
+\fI\*(PN\fP \-k "%[1 1]" \-r "%[1 \-1]" \-R "%k %m"
+.fi
+Compute uniqueness based on the first word in each line, but report
+the whole line.  When a line has no spaces the first word is repeated,
+which might be a bug or a feature. There are many ways to filter
+the incoming stream for format before \fI\*(PN\fP parses it.
+.TP
+.nf
+\fI\*(PN\fP \-k "%[1 1]" \-r "%1" \-R "%m"
+.fi
+Same a above but don't duplicate the first word when it is alone.
+This makes the \fIstate\fP GDBM a bit bigger as is saves two
+copies of the first word for each unique line.
+.TP
+.nf
+jot 98 2 |xapply \-f factor \- |sed \-n \-e 's/^\e([0-9]*\e): \e1$/\e1/p' |\fI\*(PN\fP \-D prime.db >/dev/null
+.fi
+Build a GDBM file of the primes below 100, which is referenced below.
+.TP
+.nf
+jot \-r 10 1 100 | \fI\*(PN\fP \-I prime.db | fmt
+.fi
+Same as the first example, but never include any prime below 100.
+.TP
+.nf
+jot \-r 10 1 100 | \fI\*(PN\fP \-I prime.db \-D memory.db | fmt
+.fi
+Same as the second example, but never include a prime below 100.
+The primes are not included in the \fBmemory.db\fP GDBM as well.
+.TP
+.nf
+yes dup | head \-100 | oue \-clS
+.fi
+Reports 1 unique occurrence of the word \*(lqdup\*(rq; all 100
+are adjacent so the \fB\-S\fP compresses them into a single match.
+.TP
+.nf
+last | \fI\*(PN\fP \-k '%[1 1]' \-R %1 | less
+.fi
+Report just the last login time for each account.  This uses
+\fI\*(PN\fP's percent markup to select just the login from each line,
+but report the whole line.
+.TP
+.nf
+\fI\*(PN\fP \-ld \-e '%P,%[1:1]' \-k '%[1:3]' \-R '%k:%e' /etc/group
+.fi
+Report any duplicate group ids from /etc/group, and the list of groups
+that share each.
+.TP
+.nf
+\fI\*(PN\fP \-ld \-e '%P,%[1:1]' \-k '%[1:4]' \-R '%k:%e' /etc/passwd
+.fi
+Report logins from /etc/passwd that share a common primary login group.
+.TP
+.nf
+grep . *.report | \fI\*(PN\fP \-k '%[1:-1]' \-R '%[1.1]:%[1:-1]'
+.fi
+Search each report file for unique notifications.
+Report the name of the reporting host and the unique message.
+Add a \fIprev\fP file which includes all the noise lines and
+you've got something to filter nightly reports.
+.TP
+.nf
+\fI\*(PN\fP \-V
+.fi
+Output the standard version information.
+.TP
+.nf
+\fI\*(PN\fP \-b '?' /dev/null
+.fi
+Output the scalar table for the \fIlength\fP specification.
+.TP
+.nf
+find ... \-print0 | \fB\*(PN\fP \-z ... | tr '\e000' '|'
+.fi
+Change the NUL character separator used by \fBfind\fP(1) and \fI\*(PN\fP into
+a pipe (\fB|\fP) with \fBtr\fP(1).
+(This leaves an extra pipe on the end of the output, sadly.)
+.TP
+.nf
+\fI\*(PN\fP \-k "%[1 1]" \-r "%f:%n" \-R "%k from %m" ...
+.fi
+A more useful record of where \fB\*(PN\fP found each unique element.
+Note that \fIstdin\fP is reported as the file named \*(lq-\*(rq.
+.TP
+.nf
+find . \-name RCS \-prune \-o \-type f \-name *,v \-print 2>/dev/null | \e
+	oue \-k '%[1/\-$]' \-R '%1'
+.fi
+Report the first RCS delta file from each non-RCS directory below the
+current.  See rcs(1).
+.TP
+.nf
+rm \-f /tmp/my.db ; \fI\*(PN\fP \-D /tmp/my.db /dev/null ; \e
+	xapply 'oue \-D /tmp/my.db <%1 >%u && mv %1 %u' *.cl
+.fi
+Replace each file in the current directory that matches the \fB*.cl\fP
+glob with only the lines not repeated in any other file.
+.TP
+.nf
+rm \-f /tmp/my.db ; \fI\*(PN\fP \-D /tmp/my.db known.ok >/dev/null ; \e
+	xapply 'oue \-D /tmp/my.db <%1 >%u && mv %1 %u' *.cl
+.fi
+To make the previous spell more useful, include a file of
+common lines to suppress in every file (and redirect the output to
+the null device).
+.TP
+.nf
+oue \-I /tmp/my.db ../old/*.cl
+.fi
+As a follow-up to the last two examples: show unique lines from
+the sibling \fBold\fP directory's \fB*.cl\fP files that are not
+present in any file matched in the current directory.
+.TP
+.nf
+TDB=`mktemp \-t twentyone`
+find */ \-type f \-mtime \-21 \-print |oue \-SD $TDB \-k '%[1/-$]' >/dev/null
+find * \-type d \-print |oue \-I $TDB
+rm $TDB
+.fi
+Find all the directories under the current that have no files updated in
+the last 21 days.  Faster and more clear than using \fBcomm\fP(1).
+
+.SH BUGS
+
+.\" \-M is not documented at all (the duplicate threshold)
+
+.P
+The overload of \fB\-v\fP to both invert the \fIprev\fP selection and
+invert duplicate selection may force some filters to be split into
+2 processes.
+
+.P
+The use of \fBrm\fP to remove state files (viz. \fIprev\fP or \fIstate\fP)
+is quite likely to race with parallel instances of \fI\*(PN\fP.
+Some protocol-specific invariant should be used to assure that
+any targeted state files are not (soon to be) in use.
+.P
+This is not compatible with the perl version, but it is far more useful.
+.\" And you never used the perl version, didja?
+.P
+There is no easy way to merge \fIstate\fP GDBM files, but the C program to
+do it is trivial.  I've also never needed to do a merge.
+One may use \fBcp\fP(1) to copy GDBM files, as long as
+they are not presently open.
+
+.SH AUTHOR
+KS Braunsdorf
+.br
+NonPlayer Character Guild
+.br
+oue swirl spam dot ksb dot npcguild.org remove spam dot.
+
+.SH "SEE ALSO"
+.hlm 0
+sort(1), uniq(1), xapply(1l), rm(1), jot(1) or seq(1), wc(1), gdbm(3),
+comm(1), rcs(1), apply(1), perl(1)

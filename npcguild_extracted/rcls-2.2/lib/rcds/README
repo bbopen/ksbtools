@@ -1,0 +1,79 @@
+# $Id: README,v 2.3 2000/06/12 19:17:36 ksb Exp $
+
+The class library and the test driver to check it out.  Kinda primative
+as of today.
+
+We force-load (preload in the manual page) the btree module when rcds
+starts up.  The gtree module can be symbolic linked to as many tree
+names as you like (pref, addr, hist, and the like).  It attaches to the
+btree module for each new tree.  (That way we share a Berk DB environment
+between all the btree modules).
+
+The flat-file and ndbm modules don't have to have this complex system.
+
+
+To test this:
+	install rcds (../../libexec/rcds) and start it up
+
+	Then from the host that is running rcds:
+	(These should all return 0, and some useful looking data)
+
+		./utester -N localhost
+
+		./utester -E localhost
+
+		./utester -u btree -M localhost 
+
+		./utester -u btree -S test=thing -P localhost 
+
+		./utester -u btree -S test -G localhost 
+
+		./utester -u btree -S test2 -P localhost 
+
+		./utester -u btree -S test2 -G localhost 
+
+		./utester -u btree -Q localhost
+
+		./utester -u btree -o te -R localhost
+
+		./utester -u btree -o te= -R localhost
+
+	These are not module specific (and should return 0): 
+
+		./utester -I localhost 
+
+		./utester  -o mods -q localhost
+
+		./utester  -o units -q localhost
+
+	There should return a failure
+		./utester -U WwXxYyZz0o -E localhost
+			(doesn't exist 1)
+
+		./utester -N localhost
+			(already exists 2)
+
+		./utester -o unknown -q localhost
+			(unknown command -1)
+
+		./utester -u unknown -M localhost
+			(unknown subcommand -2)
+
+		./utester -u btree -S unknown -G localhost 
+			(missing data -30994)
+
+More advanced usage: build a subtree for prefs:tiger
+		./utester -u prefs:tiger -M localhost 
+		./utester -u prefs:kitty -M localhost 
+		./utester -u prefs:lion -M localhost 
+
+		./utester -u prefs: -o "" -R localhost 
+
+		./utester -u prefs:lion -S color=yellow -P localhost 
+		./utester -u prefs:tiger -S color=orange -P localhost 
+		./utester -u prefs:kitty -S color=tabby -P localhost 
+
+		./utester -u prefs:tiger -S color -G localhost 
+
+--
+ksb

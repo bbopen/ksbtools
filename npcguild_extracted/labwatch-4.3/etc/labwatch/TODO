@@ -1,0 +1,11 @@
+# $Id: TODO,v 3.2 1997/06/29 17:58:58 ksb Exp $
+
+fix -T and do something with unique users
+
+make ops cmd to reload map part of config file (all of config file?)
+
+make "passive clients" work (asymetric networks like dial nets)
+	+ server polls every so often
+	+ clients are not dead as easy
+	- not as good a check and might need advanced timer support
+	- how do we denote a passive client in the expect list?

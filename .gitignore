@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor backups
+*~
+*.swp
+*.swo
+.*.swp
+
+# Build artifacts that may be generated
+*.o
+*.a
+*.so
+*.dylib

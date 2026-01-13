@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>mmsrc - mini-master source bootstrap for version 2008</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+<H1>The outline</H1>
+
+To boot ksb's master source tools you need to dig a pretty
+big trench.  Once you've done it <em>for one server</em> the others
+are really easy. "Trust me," I said with a straight face.
+
+<P>
+First we need to build <code class="sh">mmsrc</code> which is a
+C program that includes most of the features of <code class="sh">msrc</code>
+and some of <code class="sh">hxmd</code> in a single stand-alone program.
+We are going to use this too install 11 programs from their
+master source directories, then we can install the other 60
+with <code class="sh">msrc</code> (or you can keep using <code class="sh">mmsrc</code>).
+
+<P>
+Other hosts will use the <code class="sh">msrc</code> binary on this host
+to get a "platform copy" of the tools which won't require this
+long boot-strap process.
+
+<H2>Which programs do I need?</H2>
+
+These programs get to up to installing <code class="sh">msrc</code>, with
+all the support you need to build the rest of the tool chain I use:
+<OL>
+<LI><code class="sh">mmsrc</code> from sbin/mmsrc
+<LI><code class="sh">mkcmd</code>'s bin from bin/mkcmd
+<LI><code class="sh">mkcmd</code>'s lib from lib/mkcmd
+<LI><code class="sh">explode</code>'s lib from lib/explode
+<LI><code class="sh">explode</code> 's binfrom bin/explode
+<LI><code class="sh">install</code> from bin/install.d  ?
+<LI><code class="sh">ptbw</code> from bin/ptbw
+<LI><code class="sh">xclate</code> from bin/xclate
+<LI><code class="sh">xapply</code> from bin/xapply
+<LI><code class="sh">hxmd</code> from sbin/hxmd
+<LI><code class="sh">hxmd</code>'s lib from lib/hxmd
+<LI><code class="sh">msrc</code> from sbin/msrc
+</OL>
+
+<H2>How to I do it?</H2>
+
+Download the most recent boot source packages for ksb's tools.
+Unpack them under a directory that is <strong>not</strong>
+rooted at /usr/src.  For example /home/lv426/bob, or /usr/msrc.
+
+<P>
+You should find a copy of this file in the unpacked directory.
+You can read that one for a more up-to-the-minute version of,
+but this one should give you a good idea of what
+you'll see there.
+
+<P>
+There is a makefile and a shell script that runs in 3 steps.
+See that Makefile for more information.  <!-- ZZZ -->
+
+<pre>
+$Id: boot.html,v 1.4 2010/08/13 17:31:42 ksb Exp $
+</pre>
+</BODY></HTML>

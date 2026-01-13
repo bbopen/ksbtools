@@ -1,0 +1,23 @@
+`# $Id: Makefile.host,v 8.8 2009/12/18 16:17:49 ksb Exp $
+# makefile for install_base package master source bundle
+'changequote([,])dnl
+[O=`
+Q=']
+changequote(`,')dnl
+`SHELL=/bin/sh
+SUBDIR= bin/install.d lib/install.cf sbin/purge sbin/instck sbin/installus \
+	bin/vinst bin/mk lib/mk bin/op
+
+# Missing sbin/modecanon, which is still to dangerous to release!
+# Note that the programs from "etc" were all moved to "sbin" in this release.
+SOURCE=	Makefile README
+MAKE=make
+
+all clean install: ${SOURCE} FRC
+	xapply "${MAKE} -C %1 ${MFLAGS} DESTDIR=${Q}${DESTDIR}${Q} $@" ${SUBDIR}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

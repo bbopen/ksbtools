@@ -1,0 +1,92 @@
+#!/bin/ksh
+# $Id: makeme,v 4.7 2008/01/17 23:20:48 ksb Exp $
+# This hack won't work for every trick you can play with /usr/msrc.
+# If the Distfile sends different files to the various platforms, or
+# builds a file on the meta source machine with a special tool or
+# database you are toast.  {N.B. mk's lib, rdist, mkcmd have issues.}
+
+# if we have a local.defs read it for umask, PATH, and such.
+[ -f /usr/local/lib/distrib/local.defs ] && . /usr/local/lib/distrib/local.defs
+
+# It does work for the tools that build the meta source system itself,
+# of course (mkcmd, distrib, rcsvg, and the like).  You can use it to
+# process the Make.host file through m4 for localhost.
+
+# distrib: default column headers: %HOST SHORTHOST HOSTTYPE HOSTOS HASSRC
+HOST=`expr "$HOST" : '\([^ :]*\)[ :].*' \| "$HOST" \| "$(uname -n 2>/dev/null)" \| "$(hostname 2>/dev/null)"`
+if [ -z "$HOST" ] ; then
+	echo "$0: cannot find hostname"
+	exit 125
+fi
+if [ -z "$SHORTHOST" ] ; then
+	SHORTHOST=`expr "$HOST" : '\([^ .]*\)[. ].*' \| "$HOST"`
+fi
+if [ -z "$HOSTTYPE" ] ; then
+	case `uname -sr || uname -a` in
+	AIX*)
+		HOSTOS=`expr \`uname -v\` '*' 100 + \`uname -r\``00
+		HOSTTYPE="IBMR2" ;;
+	HP-UX*7.*)
+		HOSTTYPE="HPUX9" ;;
+	HP-UX*8.*)
+		HOSTTYPE="HPUX9" ;;
+	HP-UX*9.*)
+		HOSTTYPE="HPUX9" ;;
+	HP-UX*10.*)
+		HOSTTYPE="HPUX10" ;;
+	HP-UX*11.*)
+		HOSTTYPE="HPUX11" ;;
+	*NEXT*)
+		HOSTTYPE="NEXT2" ;;
+	*Solaris*|*[Ss]un[Oo][Ss]*)
+		HOSTTYPE="SUN5" ;;
+	FreeBSD*)
+		raw=`uname -r | tr '[A-Z]' '[a-z]'`
+		maj=`expr "$raw" : '\([0-9]*\)\..*'`
+		minor=`expr "$raw" : "$maj\.\\([0-9]*\\).*" \| 0`
+		patch=`expr "$raw" : '.*p\([0-9]*\)' \| 0`
+		HOSTOS=`expr $maj \* 10000 + $minor \* 100  + $patch`
+		HOSTTYPE="FREEBSD" ;;
+	N[eE][tT]BSD*)
+		HOSTTYPE="NETBSD" ;;
+	OpenBSD*)
+		HOSTTYPE="OPENBSD" ;;
+	BSDI*)
+		HOSTTYPE="BSDI" ;;
+	Linux*|LINUX*)
+		HOSTTYPE="LINUX" ;;
+	*)
+		echo 1>&2 "$0: set HOSTTYPE and export it by hand."
+		exit 2 ;;
+	esac
+fi
+if [ -z "$HOSTOS" ] ; then
+	HOSTOS=`uname -r | sed -e 's/^[A-Za-z .]*//' -e 's/-[A-Za-z]*//' -e 's/\.\([0-9][0-9]\)/\1/g' -e 'y/./0/' -e 's/^0*//' | sed -e 's/$/00000/' -e 's/\(.....\)0*/\1/'`
+fi
+
+if [ $# -eq 1  -a  _-V = _"$1" ] ; then
+	echo "$0: "'$Id: makeme,v 4.7 2008/01/17 23:20:48 ksb Exp $'
+	echo "$0: makeme as: $MAKEME"
+	RUN='cat'
+elif [ -f Make.host ] ; then
+	RUN='(m4 - Make.host |make MAKE="$0" -f - ${1:+"$@"})'
+elif [ -f Makefile ] ; then
+	exec mmsrc -DHOST="$HOST" -DSHORTHOST="$SHORTHOST" -DHOSTTYPE="$HOSTTYPE" -DHOSTOS="$HOSTOS" -DMYTYPE="$HOSTTYPE" -DMYOS="$HOSTOS" -DHASSRC=yes -DMSRC_BOOT="${MSRC_BOOT:-yes}" make ${1+"$@"}
+else
+	echo 1>&2 "$0: not in a master source directory, no Make.host or Makefile"
+	exit 126
+fi
+
+# Now fake the Distrib @file@ (or hxmd) expansion and hope the rest works out.
+# Some make's mistakenly think you must call fork() to get a SIG-child...
+# so they barf out errors for this -- they should learn UNIX.  (ksb)
+eval "$RUN" <<!
+define(\`HOST',\`$HOST')dnl
+define(\`SHORTHOST',\`$SHORTHOST')dnl
+define(\`HOSTTYPE',\`$HOSTTYPE')dnl
+define(\`MYTYPE',\`$HOSTTYPE')dnl
+define(\`HOSTOS',\`$HOSTOS')dnl
+define(\`MYOS',\`$HOSTOS')dnl
+define(\`HASSRC',\`yes')dnl
+define(\`MSRC_BOOT',\`${MSRC_BOOT-yes}')dnl
+!

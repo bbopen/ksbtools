@@ -1,0 +1,70 @@
+# $Id: chalktalk.sac.fedex.com,v 2.12 2000/07/21 12:55:23 ksb Exp $
+# host chalktalk [c] (SUN 10S with a ST-1032 32 ports + builtin, I2C)
+# our console /dev/ttyC29@trixie.sac.fedex.com 9600p
+powers::/dev/sts/ttyC20@chalktalk.sac.fedex.com:9600p:/var/consoles/powers:+
+sso1::/dev/sts/ttyC21@chalktalk.sac.fedex.com:9600p:/var/consoles/sso1:+
+sso2::/dev/sts/ttyC22@chalktalk.sac.fedex.com:9600p:/var/consoles/sso2:
+sso3::/dev/sts/ttyC23@chalktalk.sac.fedex.com:9600p:/var/consoles/sso3:
+# will be ejb1 someday soon -- ksb
+o_sso4::/dev/sts/ttyC24@chalktalk.sac.fedex.com:9600p:/var/consoles/ejb1:
+o_sso5::/dev/sts/ttyC25@chalktalk.sac.fedex.com:9600p:/var/consoles/sso5:
+o_sso6::/dev/sts/ttyC26@chalktalk.sac.fedex.com:9600p:/var/consoles/sso6:
+ssotest1::/dev/sts/ttyC27@chalktalk.sac.fedex.com:9600p:/var/consoles/ssotest1:
+cps3::/dev/sts/ttyC28@chalktalk.sac.fedex.com:9600p:/var/consoles/cps3:+
+wwwtest4::/dev/sts/ttyC29@chalktalk.sac.fedex.com:9600p:/var/consoles/wwwtest4:
+gto2::/dev/sts/ttyC2a@chalktalk.sac.fedex.com:9600p:/var/consoles/gto2:
+gto1::/dev/sts/ttyC2b@chalktalk.sac.fedex.com:9600p:/var/consoles/gto1:
+ejb6::/dev/sts/ttyC2c@chalktalk.sac.fedex.com:9600p:/var/consoles/ejb6:
+c_2d::/dev/sts/ttyC2d@chalktalk.sac.fedex.com:9600p:/var/consoles/c_2d:
+ejb5::/dev/sts/ttyC2e@chalktalk.sac.fedex.com:9600p:/var/consoles/ejb5:
+www45::/dev/sts/ttyC2f@chalktalk.sac.fedex.com:9600p:/var/consoles/www45:
+lib01::/dev/sts/ttyC2g@chalktalk.sac.fedex.com:9600p:/var/consoles/lib01:+
+sso4::/dev/sts/ttyC2h@chalktalk.sac.fedex.com:9600p:/var/consoles/sso4:
+c_2i::/dev/sts/ttyC2i@chalktalk.sac.fedex.com:9600p:/var/consoles/c_2i:
+gto5::/dev/sts/ttyC2k@chalktalk.sac.fedex.com:9600p:/var/consoles/gto5:
+ejb3::/dev/sts/ttyC2l@chalktalk.sac.fedex.com:9600p:/var/consoles/ejb3:
+gto3::/dev/sts/ttyC2m@chalktalk.sac.fedex.com:9600p:/var/consoles/gto3:
+www43::/dev/sts/ttyC2n@chalktalk.sac.fedex.com:9600p:/var/consoles/www43:
+gto7::/dev/sts/ttyC2o@chalktalk.sac.fedex.com:9600p:/var/consoles/gto7:
+gto4::/dev/sts/ttyC2p@chalktalk.sac.fedex.com:9600p:/var/consoles/gto4:
+c_2q::/dev/sts/ttyC2q@chalktalk.sac.fedex.com:9600p:/var/consoles/c_2q:
+c_2r::/dev/sts/ttyC2r@chalktalk.sac.fedex.com:9600p:/var/consoles/c_2r:
+c_2s::/dev/sts/ttyC2s@chalktalk.sac.fedex.com:9600p:/var/consoles/c_2s:
+c_2t::/dev/sts/ttyC2t@chalktalk.sac.fedex.com:9600p:/var/consoles/c_2t:
+c_2u::/dev/sts/ttyC2u@chalktalk.sac.fedex.com:9600p:/var/consoles/c_2u:
+www41::/dev/sts/ttyC2v@chalktalk.sac.fedex.com:9600p:/var/consoles/www41:
+s1::/dev/sts/ttyC40@chalktalk.sac.fedex.com:9600p:/var/consoles/s1:+
+s2::/dev/sts/ttyC41@chalktalk.sac.fedex.com:9600p:/var/consoles/s2:
+s5::/dev/sts/ttyC44@chalktalk.sac.fedex.com:9600p:/var/consoles/s5:
+s6::/dev/sts/ttyC45@chalktalk.sac.fedex.com:9600p:/var/consoles/s6:
+s7::/dev/sts/ttyC46@chalktalk.sac.fedex.com:9600p:/var/consoles/s7:
+s8::/dev/sts/ttyC47@chalktalk.sac.fedex.com:9600p:/var/consoles/s8:
+s9::/dev/sts/ttyC48@chalktalk.sac.fedex.com:9600p:/var/consoles/s9:+
+s10::/dev/sts/ttyC49@chalktalk.sac.fedex.com:9600p:/var/consoles/s10:
+ejb1::/dev/sts/ttyC4a@chalktalk.sac.fedex.com:9600p:/var/consoles/ejb1:
+s12::/dev/sts/ttyC4b@chalktalk.sac.fedex.com:9600p:/var/consoles/s12:
+s13::/dev/sts/ttyC4c@chalktalk.sac.fedex.com:9600p:/var/consoles/s13:
+s14::/dev/sts/ttyC4d@chalktalk.sac.fedex.com:9600p:/var/consoles/s14:
+s15::/dev/sts/ttyC4e@chalktalk.sac.fedex.com:9600p:/var/consoles/s15:
+c_4f::/dev/sts/ttyC4f@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4f:
+c_4g::/dev/sts/ttyC4g@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4g:+
+c_4h::/dev/sts/ttyC4h@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4h:
+c_4i::/dev/sts/ttyC4i@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4i:
+c_4k::/dev/sts/ttyC4k@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4k:
+c_4l::/dev/sts/ttyC4l@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4l:
+c_4m::/dev/sts/ttyC4m@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4m:
+# cps2 is on this mux to avoid a single point of failure with cps3, that
+# is also on chalktalk, but the other MUX.
+cps2::/dev/sts/ttyC4n@chalktalk.sac.fedex.com:9600p:/var/consoles/cps2:
+i2.fw:ZHrLzmXPNsSR.:/dev/sts/ttyC4o@chalktalk.sac.fedex.com:9600p:/var/consoles/i2.fw:+
+j1.fw::/dev/sts/ttyC4p@chalktalk.sac.fedex.com:9600p:/var/consoles/j1.fw:
+k2.fw::/dev/sts/ttyC4q@chalktalk.sac.fedex.com:9600p:/var/consoles/k2.fw:
+b1.fw::/dev/sts/ttyC2j@chalktalk.sac.fedex.com:9600p:/var/consoles/b1.fw:
+b2.fw::/dev/sts/ttyC4j@chalktalk.sac.fedex.com:9600p:/var/consoles/b2.fw:
+h3.fw::/dev/sts/ttyC42@chalktalk.sac.fedex.com:9600p:/var/consoles/s3:
+h4.fw::/dev/sts/ttyC43@chalktalk.sac.fedex.com:9600p:/var/consoles/s4:
+mems1.fw:ZHrLzmXPNsSR.:/dev/sts/ttyC4r@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4r:+
+c_4s::/dev/sts/ttyC4s@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4s:
+c_4t::/dev/sts/ttyC4t@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4t:
+c_4u::/dev/sts/ttyC4u@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4u:
+mems2.fw::/dev/sts/ttyC4v@chalktalk.sac.fedex.com:9600p:/var/consoles/c_4v:

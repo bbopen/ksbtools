@@ -1,0 +1,101 @@
+`# $Id: Make.host,v 1.3 2000/06/19 16:46:48 ksb Exp $
+#
+#	master Makefile for sync-backup-partitions
+
+PROG=	sbp
+BIN=	${DESTDIR}/usr/local/etc
+DOC=	${DESTDIR}/usr/local/man
+SHELL=/bin/sh
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE=
+DEBUG=	-O
+CDEFS=  -D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+CC=gcc
+YFLAGS=	
+
+GENC=	main.c
+GENH=	main.h
+GEN=	${GENC} ${GENH}
+HDR=	read.h sbp.h machine.h
+SRC=	read.c sbp.c
+DEP=	${GENC} ${LINKC} ${SRC}
+OBJ=	main.o read.o sbp.o
+MAN=	sbp.man
+OTHER=	README TODO
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ} -lm
+
+main.h: main.c
+
+main.c: ${PROG}.m
+	mkcmd ${PROG}.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} ${LINK} *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} ${LINK} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${BIN}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all dirs FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${BIN}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+main.o: main.c sbp.m read.h sbp.h
+
+sbp.o: sbp.c main.h sbp.h read.h machine.h
+
+read.o: read.c main.h sbp.h read.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

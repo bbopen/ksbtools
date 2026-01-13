@@ -1,0 +1,198 @@
+.\" $Id: instck.man,v 8.8 2010/08/13 19:10:52 ksb Exp $
+.\" Copyright 1990 Purdue Research Foundation, West Lafayette, Indiana
+.\" 47907.  All rights reserved.
+.\" $Compile: Display%h
+.\" $Display: ${groff-groff} -Tascii -tbl -man %f | ${PAGER:-less}
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man8/instck.8
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]8/instck.8*
+.\" $Laser: ${tbl-tbl} %f | ${ltroff-ltroff} -man
+.\"
+.\" Written by Kevin S Braunsdorf, ksb@cc.purdue.edu, purdue!ksb
+.\"	       Jeff Smith, jsmith@cc.purdue.edu, purdue!jsmith
+.\"
+.\" This software is not subject to any license of the American Telephone
+.\" and Telegraph Company or the Regents of the University of California.
+.\"
+.\" Permission is granted to anyone to use this software for any purpose on
+.\" any computer system, and to alter it and redistribute it freely, subject
+.\" to the following restrictions:
+.\"
+.\" 1. Neither the authors nor Purdue University are responsible for any
+.\"    consequences of the use of this software.
+.\"
+.\" 2. The origin of this software must not be misrepresented, either by
+.\"    explicit claim or by omission.  Credit to the authors and Purdue
+.\"    University must appear in documentation and sources.
+.\"
+.\" 3. Altered versions must be plainly marked as such, and must not be
+.\"    misrepresented as being the original software.
+.\"
+.\" 4. This notice may not be removed or altered.
+.TH INSTCK 1L PUCC
+.SH NAME
+instck \- check, repair, or record the modes of files
+.SH SYNOPSIS
+\fBinstck\fP [\-\fBdlLqSv\fP] [\-\fBC\fP\~\fIchecklist\fP] [\-\fBg\fP\~\fIgroup\fP] [\-\fBm\fP\~\fImode\fP] [\-\fBo\fP\~\fIowner\fP] \fIdirectories\fP
+.br
+\fBinstck\fP \-\fBi\fP [\-\fBdlLSvy\fP] [\fB\-C\fP\~\fIchecklist\fP] [\fB\-g\fP\~\fIgroup\fP] [\fB\-m\fP\~\fImode\fP] [\fB\-o\fP\~\fIowner\fP] \fIdirectories\fP
+.br
+\fBinstck\fP \fB\-G\fP [\-\fBR\fP | \-\fBd\fP] [\fB\-lLSvx\fP] [\-\fBg\fP\~\fIgroup\fP] [\fB\-m\fP\~\fImode\fP] [\fB\-o\fP\~\fIowner\fP] \fIdirectories\fP
+.br
+\fBinstck\fP \fB\-h\fP
+.br
+\fBinstck\fP \fB\-V\fP
+
+.SH DESCRIPTION
+.PP
+.I Instck
+inspects the modes of files in a directory structure.
+.PP
+It has two major methods of operation:
+.br
+ \fIscanning\fP, to generate a "good" list, and
+ \fIchecking\fP, to see if the "good" list is being honored.
+.br
+.PP
+For instance, your system might have the file \fI/usr/local/lib/install.cf\fP,
+which would contain a "good" list that states /bin/sh should be installed mode
+0755, owned by user root and group wheel. In a weak moment, your local SA used
+install to put a new version of sh on the machine via:
+.br
+	install \-m7555 \-o root \-g wheel sh /bin
+.br
+(note the extra \`5\').  Instck would find this error if it were to check
+/bin/sh against your "good" list.
+.PP
+In checking mode, the default action is to report (not act on) files that do
+not comply with the expected values from the checklist.  The default checklist
+is /usr/local/lib/install.cf.
+.SH OPTIONS
+.TP
+.BI \-C checklist
+Search \fIchecklist\fP for the expressions to match the
+installed files, see \fIinstall.cf\fP(5L).
+.TP
+.B \-d
+Do not check the contents of a directory, as in \fIls\fP(1).
+.TP
+.BI \-g group
+Set the default group for all installed files.
+.TP
+.B \-G
+This option will generate a checklist file for the given directories.
+\fBInstck\fP outputs some crass comments on the end of the lines describing
+each node, so some editing is recommended.
+However one should reflect carefully on these before deleting them.
+.TP
+.B \-h
+Print a summary of \fIinstck\fP's usage.
+.TP
+.B \-i
+Prompt the user with suggested shell commands, for example if /tmp was
+the wrong mode \fIinstck\fP might prompt with:
+.sp 1
+	instck: `/tmp' mode 0777 doesn't have bits to match drwxrwxrwt (1777)
+.br
+	instck: chmod 1777 /tmp [nfhqy]
+.sp 1
+A reply of `y' or `Y' will run the proposed command, `f' will skip to
+the next file.  For other choices see `h'.  If your job holds little value,
+`-y' will make subsequent prompts assume a `y'.  Careful, this one bites.
+.TP
+.B \-l
+A long list will be made of all the files that didn't match any rule.
+Under \-\fBG\fP generate no default pattern, list all nodes.
+.TP
+.B \-L
+Allows `link format' in the configuration file.  Link format records
+where a hardlink points or where a symbolic link points.  This is quite
+useful for programs that carry a link with them, like \fBvi\fB and \fBex\fP.
+.TP
+.BI \-m mode
+Set the default mode for all installed files.
+.TP
+.BI \-o owner
+Set the default owner for installed files.
+.TP
+.B \-R
+Recursively descend from each directory given into all subdirectories,
+like \fIls\fP(1).
+.TP
+.B \-S
+Run as if \fIgeteuid\fP(2) returned zero.
+.TP
+.B \-q
+Suppress warnings about dangerous unchecked files.
+.TP
+.B \-v
+Be more verbose.  Under \-\fBG\fP do not use double quote (") to
+copy values from the preceding lines.
+.TP
+.B \-V
+Give version information about \fIinstck\fP itself.
+.TP
+.B \-x
+In the \-\fBgG\fP output, separate plain files by execute bit.  Those
+with any execute bits set will be higher in the output.  This tends to
+allow more of the double quote short-hand.
+.TP
+.B \-y
+Under \-\fBi\fP fake a `yes' response to each confirmation,
+like \fIfsck\fP(8).
+Note that some operations are too dangerous to allow this option to
+force their action.  For these few this option changes the default
+answer to yes.  The author thinks this might cross the fine
+line between clever and stupid.
+.SH EXAMPLES
+.TP
+\fBinstck\fP /bin /usr/bin /usr/ucb /usr/local/bin /etc
+Report inconsistent installations in the listed directories, using
+/usr/local/lib/install.cf as the reference point.
+.TP
+\fBinstck\fP \-v /etc
+Report inconsistent installations in /etc, be very verbose.  Since the default
+checklist doesn't have much specific information about files in /etc this may
+not provide much useful information.
+.TP
+\fBinstck\fP \-GdLx /etc/*  > /tmp/etc.cf
+Generate a list of only the directories in /etc/. Like \fIls\fP, -d and -R are
+exclusive to one another.
+.TP
+\fBinstck\fP \-GRLx /usr > /tmp/usr.cf
+Generate a recursive checklist for /usr and all the files in /usr.
+.TP
+\fBinstck\fP \-ilvC/tmp/usr.cf /usr
+Use the previously generated checklist to check /usr for changes.  Prompt for
+what repairs might be required.
+.TP
+\fBinstck\fP \-V
+Report version information, e.g.
+.br
+.RS
+.TS
+l s s
+l s s
+l l l.
+instck: version: $\&Id: instck.m,v 8.22 2006/12/30 03:21:06 ksb Exp $
+instck: configuration file: /usr/local/etc/install.cf
+instck: defaults: owner=root	group=binary	mode=\-rwxr\-xr\-x
+.TE
+.RE
+.SH FILES
+.TS
+l l.
+/usr/local/lib/instck.cf	the default \fIchecklist\fP file
+.TE
+.SH AUTHOR
+KS Braunsdorf, NPC Guild.org
+.br
+console at-hate-spam ksb.npcguild.org
+.br
+Copyright \*(co 1990 Purdue Research Foundation.  All rights reserved.
+This is a modified version of that code-base.
+.SH SEE ALSO
+ls(1), chgrp(1), chmod(1), install(1L), ranlib(1), strip(1),
+geteuid(2),
+syslog(3),
+install.cf(5L), purge(8),
+chown(8), fsck(8)

@@ -1,0 +1,79 @@
+.\" $Id: vinst.man,v 1.7 2010/08/13 19:06:29 ksb Exp $
+.\" by Kevin Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: ${groff:-groff} -Tascii -man %f | ${PAGER:-less}
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man1/vinst.1
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]1/vinst.1*
+.TH VINST 1L LOCAL
+.SH NAME
+vinst, vinstus \- visually update and install a file
+.SH SYNOPSIS
+.ds PN "vinst
+\fI\*(PN\fP [\-\fBU\fP] \fItarget\fP [\fIinstall-opts\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.sp
+
+.SH DESCRIPTION
+When a change is made to a file it is good form to use \fIinstall\fP
+to provide a back-out path.
+\fIVinst\fP makes it painless to use \fIinstall\fP every time.
+.PP
+The \fItarget\fP file is copied to a temporary name either in the
+OLD directory for the target file, or in \fB$TMPDIR\fP or in /tmp.
+The User's editor is found as \fB$VISUAL\fP, \fB$EDITOR\fP, vi, or
+edit (which ever it finds first in the their \fB$PATH\fP).
+
+.PP
+After the editor exits, \fIvinst\fP asks the User if they
+want to \fBinstall\fP the results, re-edit, view the changes made, or
+discard the temporary file.
+
+.PP
+In some error conditions a ``Quit or Continue'' prompt is forced.
+Quit is always the safe choice, but it discards the temporary file.
+
+.SH OPTIONS
+If the program is called as \fIvinst\fP then no options are forced.
+If the program is called as \fIvinstus\fP then ``-U'' is forced to
+call \fIinstallus\fP rather than \fBinstall\fP.
+.TP
+\fB\-h\fP
+Print a help message.
+.TP
+\fB\-U\fP
+Use \fIinstallus\fP rather than \fIinstall\fP to update the \fItarget\fP.
+.TP
+\fB\-V\fP
+Show version information.
+
+.SH EXAMPLES
+.TP
+vinst /etc/service
+Edit \fB/etc/services\fP and install the changes with \fIinstall\fP.
+On some platforms \fI/etc/services\fP is a symbolic link to
+\fI/etc/inet/services\fP: on such systems the "Quit or Continue" prompt
+is issues before the target file is changed to the contents of the
+symbolic link.
+
+.TP
+vinst /etc/init.d/labd -v -H/etc/rc2.d/S74labd
+Edit \fIlabd\fP's boot sequence and install the results with the hard
+link from /etc/rc2.d maintained.
+
+.SH BUGS
+The template for a missing file could be read from an environment
+variable at least.  The internal default is silly.
+.\" $VINST_TEMPLATE is too long -- ksb
+
+.SH AUTHOR
+Kevin S Braunsdorf
+.br
+NPC Guild Toolsmith
+.br
+install@ksb.npcguild.org
+
+.SH "SEE ALSO"
+sh(1), vi(1), edit(1), install(1), installus(1), purge(8)

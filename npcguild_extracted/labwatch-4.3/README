@@ -1,0 +1,39 @@
+# $Id: README,v 4.1 1997/11/16 20:52:29 ksb Exp $
+
+This is the labwatch package.  It is an add-on to the console server
+(or I guess you could run it w/o the console server) that lets operation
+monitor _lots_ of client machines in remote locations for uptime and
+problems.
+
+It is intended to produce some real time notification for almost any
+problem a client is likely to have (missing network parts included).
+As a side effect the clients report low load averages to a "heap" that
+would let people or progams select an "idle" client to run a job on.
+
+
+That parts:
+	labstat Four - the user interface to find out "stuff" about clients.
+		Admins use it to find problems, user solutions.
+
+	labwatch Three - the operations interface.  Usually run on a virtural
+		console through the console server, but could be on a
+		real console (dumb terminal, xterm, anything).
+		Spews realtime message for operation on stdout.
+
+	labd Three - the client automation.  Runs all the time (very light CPU
+		load, like 7 seconds a day or less) sending little UPD
+		packets to labwatch.
+
+	labc Two - an optional client agent for real time messages directed to
+		operations (like RSTS "please"), NOT a replacement for syslog
+
+	labwatch.cf One - example configuration file and manual page
+
+	docs - some operations notes we've use at Purdue.
+
+
+Follow the INSTALL notes and you should be able to install it, you will need
+mkcmd-7.21 or better to build it (of course).
+
+--
+ksb

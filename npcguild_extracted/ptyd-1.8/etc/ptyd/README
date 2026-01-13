@@ -1,0 +1,7 @@
+# $Id: README,v 1.2 1993/02/09 14:17:50 ksb Exp $
+
+The PUCC pty daemon allows non-setuid root programs to have a pty
+owned by there effective (or real) uid.  This is done over a UNIX
+domain socket.  The details will be explained below, someday.
+
+kayessbee

@@ -1,0 +1,6 @@
+# $Id: README,v 5.0 1996/09/09 21:08:18 kb207252 Exp $
+
+Todo:
+	edit - edit the object with the std editor or
+		convert to text and edit with ${VISUAL-${EDITOR-vi}}
+

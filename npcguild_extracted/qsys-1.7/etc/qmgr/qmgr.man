@@ -1,0 +1,75 @@
+.\" $Id: qmgr.man,v 1.2 1997/01/06 02:51:28 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH QMGR 1L LOCAL
+.SH NAME
+qmgr \- manage a queue system job queue
+.SH SYNOPSIS
+.ds PN "qmgr
+\fI\*(PN\fP [\-\fBn\fP\fBv\fP] [\-\fIpara\fP] [\-\fBd\fP \fIdir\fP] [\-\fBs\fP \fIseconds\fP]
+.br
+\fI\*(PN\fP \-\fBC\fP \fIvariable\fP [\-\fBn\fP\fBv\fP] [\-\fIpara\fP] [\-\fBd\fP \fIdir\fP] [\-\fBs\fP \fIseconds\fP] \fIresources\fP
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.sp
+.SH DESCRIPTION
+.PP
+The number parameter \fIpara\fP represents the
+number of jobs to run in parallel.  The default is to run all
+jobs serially.  Values should be less then ten.
+.PP
+When a queue is totally depleted the system falls back to a
+polling mode.  The \-\fBs\fP option controls the sleep time
+between polls on a empty queue.
+.PP
+Under the \-\fBC\fP option each resource string presented
+on the command line is assigned in turn to the \fIvariable\fP
+in the environment (see environ(7)) of an active job.
+This could be used (for example) to assign dialers to task
+queue that needs a device to do its job.
+.sp
+.SH OPTIONS
+.Tp
+.BI \-C variable
+Use this variable to pass resource names to each activated job.
+.TP
+.BI \-d dir
+Specify the spool directory the queue lives in.  This directory
+must be built with \fIqinit\fP(8L).
+.BI \-h 
+Print a brief help message.
+.TP
+.BI \-n 
+Just output a trace of commands run.  This is only used for debugging.
+.TP
+.BI \-s seconds
+Sleep time between polls on empty queues (default 300).
+Very short sleep times are forced by the system to at least 120 seconds.
+.TP
+.BI \-v 
+Be verbose.
+.TP
+.BI \-V 
+Show version information.
+.SH EXAMPLES
+.TP
+qmgr -s90 2
+Run the system default queue with a short sleep and two jobs
+eligable to run concurrently.
+.TP
+qmgr -C MODEM 3 /dev/cu01 /dev/cu02 /dev/cu03 /dev/cu04 -d telemarket
+Keep three of the four call UNIX devices busy running telephone marketing.
+You know I don't want you to think I'd do that...
+.SH FILE
+\fI/usr/spool/qsys\fP	the default job queue
+.SH BUGS
+None known.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Group
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+qinit(8L), qadd(1L), qrm(1L), qstat(1L), qlock(8L)

@@ -1,0 +1,62 @@
+.\" $Id: requirements,v 3.0 1992/04/22 13:23:07 ksb Stab $
+.\" $Compile: nroff -ms %f | ${PAGER-more}
+.\" $Laser: ltroff -ms %f
+.LP
+.NH
+Design Goals
+.LP
+The primary requirement we made for our entombing system is that it be
+effective.  Our feeling was that most accidental deletions are
+performed with \fIcp\fP, \fImv\fP, \fIrm\fP, and 
+redirection from the shell.  However, we were concerned that a shell
+that entombed files would adversely affect the performance of shell 
+scripts.  Since the most commonly used shell, \fIcsh\fP(1) provides
+protection
+against accidentally overwriting files, (with the \fInoclobber\fP
+option) we decided to have only the \fIcp\fP,
+\fImv\fP, and \fIrm\fP commands
+entomb any files they destroy.  But we wanted to leave open the
+option of entombing for the shells.
+.LP
+We also required that the file entombing system be secure.  That is, a
+user must not be able to disrupt the entombing of files for other
+users or see the names of files entombed for others.  Users
+should not be able to use the entombing system to read files they could
+not otherwise read, nor should they be able to annoy other users in
+ways they could not otherwise.
+.LP
+We also kept efficiency in mind: 
+although we wanted to provide a way to
+prevent files from being entombed, (for those who want to free disk
+space, for instance) our effort would be wasted if the file entombing
+system is so slow that people use this
+option to cause their files never to be entombed.
+.LP
+A file entombing scheme must keep novice users in mind, because novice
+users make more mistakes than experienced users.  Therefore file entombing
+should take place as transparently as possible and
+entombed files should not contribute toward the user's quota.  (An
+error message about exceeding a quota would be confusing, especially
+since it could occur after an operation that does not obviously
+increase the amount of disk space used.)  Users should not have to do
+anything special to have their files entombed; this should be the default.
+.LP
+We must be able to entomb multiple files with the same name, because
+it is possible for people to remove two files with the same name in
+one episode of confusion, and these people may have wanted to save
+the first but not the second.  Since this will allow multiple
+\*Qversions\*U of a file in the tomb at one time, there should be a
+utility to aid users'
+decisions about which files they want restored.  This utility should
+insulate users from the actual implementation details of the entombing
+scheme and the way files are stored in the tomb.
+.LP
+Finally, the entombing scheme should avoid filling our filesystems, and
+entombed files must be removed from the tomb.  Files
+should be removed from filesystems according to the remaining capacity
+of the
+filesystem (files should be left in the tomb longer if the filesystems
+aren't very full), the size of the file (large files should be removed
+first, so that the most files are entombed for the longest time), and
+the type of the file (if cores go away first, more important files can
+stay longer).

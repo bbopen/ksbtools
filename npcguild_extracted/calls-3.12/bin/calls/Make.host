@@ -1,0 +1,93 @@
+`# $Id: Make.host,v 3.12 2000/06/20 14:10:03 ksb Exp $
+#
+#	kayessbee  (Kevin S Braunsdorf, Purdue, ksb@cc.purdue.edu)
+#
+# $Compile: make calls; make graph
+
+SHELL=/bin/sh
+BIN=	${DESTDIR}/usr/local/bin
+
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE=
+DEBUG='ifelse(HOSTTYPE,`V386',`',`-O')`
+CDEFS= -D'HOSTTYPE`
+CFLAGS=	${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	'ifelse(MKCMD,`no',`main.h ')`calls.h scan.h machine.h
+SRC=	'ifelse(MKCMD,`no',`main.c ')`calls.c scan.c
+GENc=	'ifelse(MKCMD,`no',`',`main.c')`
+GENh=	'ifelse(MKCMD,`no',`',`main.h')`
+GEN=	${GENc} ${GENh}
+DEP=	${SRC} ${GENc}
+OBJ=	main.o calls.o scan.o
+MAN=	calls.man
+SOURCE=	Makefile README TODO calls.m ${HDR} ${SRC} ${MAN}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: calls
+
+calls:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}
+
+'ifelse(MKCMD,`no',`',
+`main.h: main.c
+
+main.c: calls.m
+	mkcmd std_help.m calls.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -rf prog.[ch]
+')`
+
+graph: calls ${GEN} ${SRC} ${HDR}
+	./calls -l4 -vx ${INCLUDE} ${CDEFS} ${DEP}
+
+clean: FRC
+	rm -f Makefile.bak calls ${GEN} prog.[ch] *.o a.out core errs tags
+
+depend: ${GEN} ${SRC} ${HDR} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+distrib: FRC
+	distrib -c ${BIN}/calls HOST
+
+install: all FRC
+	install -cs calls ${BIN}/calls
+
+lint: ${GEN} ${SRC} ${HDR} FRC
+	lint -ph ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"calls source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR} ${GEN}
+	ctags -t ${SRC} ${HDR} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+main.o: calls.h main.c machine.h
+
+calls.o: calls.c calls.h main.h scan.h machine.h
+
+scan.o: calls.h scan.c scan.h machine.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

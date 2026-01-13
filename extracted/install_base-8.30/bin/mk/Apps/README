@@ -1,0 +1,12 @@
+# $Id: README,v 5.0 1999/02/26 17:42:33 ksb Exp $
+
+The files in this directory are all mk applications -- that is mk
+is used to do various things.
+
+Menu	Provide a novice user with some suggestions as to what to do
+	to a file.  (takes mk options)
+
+Recipe	Like a Makefile, but always builds everything.  Useful under valid.
+
+Info	Kinda like the 'file' command, in fact is calls the file command if
+	mk cannot recognize the file type.

@@ -1,0 +1,112 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<!-- $Id: binpack.html,v 6.7 2010/08/13 17:26:00 ksb Exp $ -->
+<TITLE>Pack items into bins, binpacking</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: binpack
+<BR>
+Authors: Kevin Braunsdorf, Marc W Mengel
+<BR>
+Mail: ksb@npcguild.org
+<BR>
+Version: 1.5
+<BR>
+Bugs: None known
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+The classic CS problem with whose perfect solution in O(2**N), but we can
+do a pretty good one in order N memory and order N time.
+
+<H1>Configuration</H1>
+
+The shell variable <em>$MACHINE_H</em> is taken as the name of the
+<i>machine.h</i> file by an explode directive in <code class="path">binpack.c</code>.
+
+<DL>
+<DT>typedef ... VE;
+<DD>
+A typedef for the in-core type for an element in a bin.
+<P>
+A bin itself is vector of these, that is pointer to the first one and
+a <strong>size_t</strong> count of the number in the bin.
+
+<DT>typedef ... VEWEIGHT;
+<DD>
+The scalar type for a weight (or size) that is the number that
+reflects the size on a given <strong>VE</strong> in a bin.
+
+<DT>#define VE_MASS(Mx)  (Mx)
+<DD>
+Wraps any VE expression passed to the run-time functions
+(viz. <code class="param">w</code> below)
+that compute a VEWEIGHT from a VE.  This allows the
+selection of only part of the VE, or the address of the VE
+to be passed to the function.
+<P>
+The default passes the whole contents.
+<DT>#define VE_MASS_DECL	VE
+<DD>
+Define the type a VEWEIGHT function (viz. <code class="param">w</code> below)
+accepts.  The default in <code class="path">binpack.h</code> is the VE type.
+</DL>
+
+<H1>Synopsis</H1>
+<PRE><CODE>#include "<i>machine.h</i>"
+#include "binpack.h"
+</CODE></PRE>
+
+<H1>Description</H1>
+
+<H1>Provides</H1>
+<DL>
+<DT>size_t VEbinpack(VE *v, size_t n, VEWEIGHT (*w)(VE), VEWEIGHT b, size_t *puover)
+<DD>
+This function does the work of packing VE's into bins.
+The items in the vector <em>v</em> are re-ordered such that,
+as the vector is walked, bins are formed from run of sequential elements.
+<P>
+Over-sizes items are moved to the end of the vector.
+<DT>int
+VEassemble(VE *pVE, size_t n, VEWEIGHT (*w)(VE), VEWEIGHT b, int (*pfiDisplay)(VE *, size_t))
+<DD>
+This function walks the vector to form the bins requested, each bin (and
+every over-sized element) is passed to the Display function as a unit.
+<P>
+A subtle point here is that the display function assemble calls
+may repack the bin it is processing by calling binpack (with a smaller size).
+This is quite useful in some application.
+</DL>
+
+<H1>EXAMPLE</H1>
+
+See the test main at the end of the module.
+
+<H1>Diagnostics</H1>
+
+None.
+
+<H1>See Also</H1>
+calloc(3), free(3), binpack(1), nushar(1)
+
+<H1>To Do List</H1>
+None.  This code has not changed function in 20 years.
+
+<P>
+A related problem, which would be useful:
+this code doesn't know anything about "mutually exclusive" items.
+More complex problems could be solved if the weight function knew
+more about the context of the item in question (what was already
+in the bin, for example).
+<P>
+This would allow items to change weight based on placement, which
+is beyond the current tactic entirely (e.g. objects with both volume and
+temperature).
+
+<hr>
+<pre>$Id: binpack.html,v 6.7 2010/08/13 17:26:00 ksb Exp $
+</pre>
+</BODY></HTML>

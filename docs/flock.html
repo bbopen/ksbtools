@@ -1,0 +1,217 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>flock -- shell level file/directory locking</TITLE>
+<link rel="stylesheet" type="text/css" href="http://carrera.databits.net/~ksb/msrc/css/code.css"/>
+</HEAD><BODY>
+<H1 id="known">To understand this document</H1>
+This document assumes you are quite familiar with the
+standard UNIX shell, <code class="sh">sh</code>(1), and
+have an understanding of the UNIX&trade; process model, exit codes,
+and have coded several scripts.  Some understanding of
+advisory file locking
+(see <A href="/~ksb/cgi-bin/manpage.cgi?flock&amp;2"><code class="libc">flock</code>(2)</A>)
+would be helpful, but not required.
+
+<P>
+Since <code class="sh">flock</code> may use file descriptors by
+number it would be helpful to have some understanding of their
+mapping (viz.  <code class="param">stdin</code> is 0,
+<code class="param">stdout</code> is 1, and
+<code class="param">stderr</code> is 2), and the
+<code class="sh">exec</code> shell internal, which we use to
+manipulate descriptors.
+
+
+<H1 id="what">What is <code class="sh">flock</code>?</H1>
+
+Updates to a common file by multiple process sometimes have
+unexpected results because the operations on the file may
+interleave badly.  For example when two shell processes write to
+the same output file the lines from them may be mixed together, or
+one may finish before the other starts.  That nondeterministic
+result is usually not what you want from a computer program.
+
+<P>
+When more than 1 process needs to update a common resource we
+<strong>lock</strong> either the resource itself, or a file
+built just to represent the resource with <code class="sh">flock</code>.
+Then, if everyone plays by the rules, we know it is safe to
+make our update.  Every other process that wants to update the
+resource is <em>blocked</em> by our lock, when we release our lock one of
+the others gets a turn.
+
+<h2 id="usage">Command line usage</h2>
+
+<blockquote class="file">
+flock [<code class="opt">-cfn</code>] [<code class="opt">-EX|SH|UN|NB</code>]
+<code class="param">file</code>|<code class="param">fd</code>
+[<code class="param">cmd</code>]
+<br>
+flock <code class="opt">-h</code>
+<br>
+flock <code class="opt">-V</code></blockquote>
+
+<P>
+The first usage is the most common: request a lock or unlock operation on
+an already open descriptor (via <code class="param">fd</code>) or on
+a file or directory via <code class="param">file</code>.
+See the manual page
+<A href="/~ksb/cgi-bin/manpage.cgi?flock&amp;1"><code class="sh">flock</code>(1)</A>
+for details.
+
+<h2 id="example">Sample usage</h2>
+
+Here is an example <code class="sh">ksh</code> function which needs a lock:
+<blockquote class="file"><pre><code >function autoseq {
+	[ -f $SEQ ] || echo 0 &gt;$SEQ
+	read Cur &lt;$SEQ
+	echo $((Cur+1)) &gt;$SEQ
+	print $Cur
+}
+
+SEQ=$(mktemp ${LOGNAME}XXXXXX)
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+rm -f $SEQ
+exit</code></pre></blockquote>
+
+<P>
+Sometimes that code outputs 8 numbers, sometimes they are all
+different, mostly they are 1 or 2.  It <strong>races</strong> for
+access to the sequence file, and near the end the last few
+processes race with the <code class="sh">rm</code> command,
+which means the sequence file might still exist after the
+script exits.
+
+<P>
+To fix that code we need 3 enhancements:
+<blockquote class="file"><pre><code >function autoseq {
+	<em class="new">exec 9&lt;&amp;0 &lt;$SEQ
+	flock -EX 0</em>
+	read Cur
+	echo $((Cur+1)) &gt;$SEQ
+	<em class="new">flock -UN 0
+	exec 0&lt;&amp;9 9&lt;-</em>
+	print $Cur
+}
+
+SEQ=$(mktemp ${LOGNAME}XXXXXX)
+<em class="new">touch $SEQ</em>
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+autoseq &amp;
+<em class="new">wait</em>
+rm -f $SEQ
+exit</code></pre></blockquote>
+
+<dl>
+<dt>We made sure the file exists before we start the first worker process.
+<dd>
+This allows us to use the file itself as the lock.
+<dt>We <code class="sh">wait</code> for the workers before we
+cleanup the sequence file.
+<dd>
+This prevents the race where we try to open the file for read,
+but the main script has already deleted it.
+<dt>We <code class="sh">flock</code> the sequence file while we update it.
+<dd>
+This is the key, we open the file as <code class="param">stdin</code>
+then ask for an exclusive lock on the file.  Each process blocks on
+that call until it is the only one that holds the lock (they take
+turns like you learned to do in kindergarten).  We read and update the
+sequence file, then release the lock for the next peer.
+</dl>
+
+<P>
+We really could just <code class="libc">close</code> the locked
+<code class="param">stdin</code> to release the lock, but I thought
+it was more clear this way.
+
+<P>
+Alternatively we could bundle the update into a shell <code class="param">command-string</code> and hold the lock only for the life of the
+sub-shell:
+<blockquote class="file"><pre><code >function autoseq {
+	flock -EX 0 &lt;$SEQ <em class="new">ksh -c \</em>
+		"read Cur; echo \$((Cur+1))>$SEQ; print \$Cur"
+}</code></pre></blockquote>
+
+<P>
+This takes advantage of <code class="sh">flock</code>'s
+<code class="param">cmd</code> parameter to run a process while
+holding a lock.
+
+<h2 id="indirect">You don't have to lock the resource</h2>
+
+Less obviously we might be able to lock the
+<code class="param">stdout</code> of the script, rather than
+the sequence file itself.  Any resource that the program uses
+as a local convention is fine.
+<blockquote class="file"><pre><code >function autoseq {
+	flock -EX <em class="new">1</em> ksh -c \
+		"read Cur <em class="new">&lt;$SEQ</em>; echo \$((Cur+1))>$SEQ; print \$Cur"
+}</code></pre></blockquote>
+
+The most common reason this might fail is when some other
+process connected to the same output uses the same locking protocol.
+That may be avoided trivially by wrapping the <code class="sh">autoseq</code>
+processes in a sub-shell with a pipe to <code class="sh">cat</code>.
+(This allows our process to lock the <strong>pipe</strong>, rather than
+the common output descriptor.)
+
+<P>
+So a process might create a unique file (or file descriptor) to
+represent the resource (resources) that it needs to manage.
+There is little reason for the code to lock the actual file,
+since it controls the locking protocol.  Personally I like to
+lock the whole data directory when my process uses multiple files, which
+only works with advisory locking.
+I find <code class="libc">fcntl</code> locking harder to use, less
+flexible, and much slower.
+
+<h2 id="context">Directory or context locking</h2>
+
+I use 2 shell aliases to lock directories while I'm working on them:
+<blockquote class="file"><pre><code >alias lockdir='exec 7&lt;. &amp;&amp; flock -NB -EX 0 0&lt;&amp;7 2&gt;/dev/null || echo "ksh: $PWD: already locked" &amp;&amp; false'
+alias unlockdir='exec 7&lt;&amp;-'</code></pre></blockquote>
+these allow me to assue that I don't have more than a single shell open in
+the directory, so I don't botch critial updates.
+
+<p>
+Very few operations require such care, but it is nice to know you can
+do it.  This also stops other engineers or admins from stepping on
+eachother's critial updates.  Use this spell sparingly, as it quickly
+get to be more of a joke when every operation you need to do it blocked
+by an active shell.
+
+<h2 id="also">See also</h2>
+
+The <code class="sh">xclate</code> output filter allows many
+processes to output in parallel as it <strong>buffers</strong> the
+output from each until it can get a lock on the common output --
+but it doesn't use advisory file locking, it actually uses
+access rights.  See the <A href="../xclate/xclate.html">HTML
+document</A> for details.
+
+<p>
+The local program <code class="sh">lock_n_load</code> grabs an
+exclusive lock for accouting updates.  This allows a single administrator
+access to the revision control system for accounting changes, with
+a shell <code class="markup">$</code><code class="env">TIMEOUT</code> set to
+prevent idle shells from denying access forever.  The implemention of
+this program might be best done with <code class="sh">op</code> and maybe
+a jacket.  (Today it is a short
+<A href="/msrc/opt/fedex/mkacct/bin/lock_n_load">C program</A>.)
+
+<HR><PRE>
+$Id: flock.html,v 1.7 2012/07/02 17:00:34 ksb Exp $</PRE></BODY></HTML>

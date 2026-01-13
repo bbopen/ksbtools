@@ -1,0 +1,908 @@
+.\" $Id: install.man,v 8.4 2008/11/14 04:49:23 ksb Exp $
+.\" Copyright 1990 Purdue Research Foundation, West Lafayette, Indiana
+.\" 47907.  All rights reserved.
+.\" $Compile: Display%h
+.\" $Display: ${groff:-groff} -Tascii -man %f | ${PAGER:-less}
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man1/install.1
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]1/install.1*
+.\"
+.\" Written by Kevin S Braunsdorf, ksb@cc.purdue.edu, purdue!ksb
+.\"	       Jeff Smith, jsmith@cc.purdue.edu, purdue!jsmith
+.\"
+.\" This software is not subject to any license of the American Telephone
+.\" and Telegraph Company or the Regents of the University of California.
+.\"
+.\" Permission is granted to anyone to use this software for any purpose on
+.\" any computer system, and to alter it and redistribute it freely, subject
+.\" to the following restrictions:
+.\"
+.\" 1. Neither the authors nor Purdue University are responsible for any
+.\"    consequences of the use of this software.
+.\"
+.\" 2. The origin of this software must not be misrepresented, either by
+.\"    explicit claim or by omission.  Credit to the authors and Purdue
+.\"    University must appear in documentation and sources.
+.\"
+.\" 3. Altered versions must be plainly marked as such, and must not be
+.\"    misrepresented as being the original software.
+.\"
+.\" 4. This notice may not be removed or altered.
+.\"
+.TH INSTALL 1L PUCC
+.SH NAME
+install \- update files or directories in a controlled environment
+.SH SYNOPSIS
+\fBinstall\fP [\-\fB1Dclnpqsv\fP] [\-\fBC\fP\fIchecklist\fP] [\-\fBH\fP\fIhardlinks\fP] [\-\fBS\fP\fIsymlinks\fP] [\-\fBg\fP\fIgroup\fP] [\-\fBm\fP\fImode\fP] [\-\fBo\fP\fIowner\fP] \fIfiles\fP \fIdestination\fP
+.sp 1
+\fBinstall\fP \-\fBd\fP [\-\fBhnqrv\fP] [\-\fBC\fP\fIchecklist\fP] [\-\fBg\fP\fIgroup\fP] [\-\fBm\fP\fImode\fP] [\-\fBo\fP\fIowner\fP] \fIdirectory\fP
+.sp 1
+\fBinstall\fP \-[\fBhV\fP] [\-\fBC\fP\fIchecklist\fP]
+.sp 1
+\fBinstall\fP \-\fBR\fP [\-\fB1dlnqsv\fP] [\-\fBC\fP\fIchecklist\fP] [\-\fBH\fP\fIhardlinks\fP] [\-\fBS\fP\fIsymlinks\fP] [\-\fBg\fP\fIgroup\fP] [\-\fBm\fP\fImode\fP] [\-\fBo\fP\fIowner\fP] \fIdestination\fP
+.SH DESCRIPTION
+.PP
+.I Install
+is a tool for updating system files in a controlled environment.
+The design philosophy of
+.I install
+is to automate the installation process and put
+it as much out of reach of human carelessness as possible, while
+providing a flexible, easy to use tool.
+.I Install
+provides the following features:
+.IP \(bu
+.I Install
+increases system security by providing a controlled installation
+environment.  It checks the actions of the superuser against a
+configuration file that you build (either by hand or using
+.IR instck (1L)),
+and can prevent grievous mistakes such as installing a shell setuid
+to a privileged user, or installing a world\(hywritable password file.
+An appropriate configuration file can guarantee that files are
+installed with correct owner, group and mode, that
+.IR strip (1)
+is run on binaries and 
+.IR ranlib (1)
+is run on libraries.
+Regardless of whether you create a configuration file,
+.I install
+warns you of many possible errors, unless you make it quiet
+with its
+.B \-q
+option.  For instance, if you install
+a new version of the
+.IR ex (1)
+editor and forget to update its links,
+.I install
+will notice the extra links to the existing version and warn
+you that you might be making a mistake.
+.IP \(bu
+Installed files do not overwrite current versions.  The current version
+is backed up to a subdirectory of its dot directory (named \*(lqOLD\*(rq by
+default), where it may be easily
+re\(hyinstalled in the case of an unforeseen bug.  The companion program
+.IR purge (1L)
+removes these backed\(hyup files after a user\(hyspecified interval.
+By default, if you repeatedly install new versions of a file,
+.I install
+creates a series of backups, providing a primitive form of version
+control.
+.IP \(bu
+.I Install
+increases accountability by logging the actions of the superuser.
+This makes it easier to track down errors after the fact.
+.IP \(bu
+.I Install
+simplifies Makefiles by allowing you to combine operations that
+would require several steps into a single one (e.g., you can specify
+in a single command line a file's ownership, group, mode, whether to run
+.IR strip (1)
+or
+.IR ranlib (1),
+and which hard or soft links should be made).
+.IP \(bu
+Despite its power and potential complexity,
+.I install
+is easy to use interactively because it intuits appropriate
+installation parameters for you, either by using those associated with
+an existing file, or its compilation\(hydependent defaults.  In most
+cases you do not have to specify a file's owner, group, or mode unless
+you want them to be different from an existing file or the
+compilation\(hydependent defaults.
+Typical interactive usage is simply \*(lqinstall file destination.\*(rq
+.IP \(bu
+.I Install
+is as careful as it can be to complete an installation once it is
+begun.  There is a point in the code where
+.IR unlink (2)
+and
+.IR rename (2)
+must be executed in close succession, and that is the only window in
+which a system crash or a signal might leave system files in
+an inconsistent state (unfortunately, this is not true under operating
+systems that do not provide an atomic
+.IR rename (2)
+system call).
+This is true even when
+.I install
+must copy files across file system boundaries.
+.IP \(bu
+.I Install
+may also be used to remove (de\(hyinstall) files in a controlled manner.
+.IP \(bu
+Finally,
+.I install
+currently runs on a variety of architectures and operating systems
+and is easy to port to new platforms.
+.SH USAGE
+.SS Terminology
+.PP
+The user specifies one or more
+.I files
+to install, and a
+.IR destination ,
+which may be either a full or relative pathname ending
+in a file name or an existing directory name (if the
+directory does not exist,
+.I install
+thinks you mean to create a new file).
+The special name \*(lq\-\*(rq may be used for the
+.I file
+argument to indicate stdin (see EXAMPLES).  In this case,
+.I destination
+.B must not
+be a directory, since
+.I install
+cannot guess the name the file should have when installed.
+.PP
+Because the user may specify more than one
+.IR files ,
+and
+.I destination
+may be an existing directory or a file which may or may not
+exist,
+.I install
+must also internally keep track of a
+.I destdir
+(\*(lqdestination directory\*(rq, i.e., the directory in which to
+place the file to install), and a
+.IR target
+(the full pathname that each file to install
+will have when it is installed in
+.IR destdir ).
+The
+.I target
+and
+.I destdir
+are constructed from the
+.I files
+and
+.I destination
+arguments as described below.
+.PP
+For each name in
+.IR files ,
+.I install
+determines a
+.I target
+name as follows:
+If
+.I destination
+is an existing directory,
+.I install
+catenates the last component of
+.I file
+to
+.I destination
+to arrive at the
+.I target
+name.  If
+.I destination
+does not exist or is an existing file,
+.I install
+takes
+.I destination
+to be the
+.IR target .
+In the latter case
+.I destdir
+is simply
+.I destination
+minus its last component.
+If this reduction leaves
+.I destdir
+empty then it is set to \*(lq.\*(rq.
+(E.g., if
+.I destination
+were
+.I /etc/motd
+then
+.I destdir
+would be
+.IR /etc ,
+but if
+.I destination
+were just
+.I motd
+then
+.I destdir
+would be \*(lq.\*(rq.)
+N.B.:  If more than one
+.I files
+are specified,
+.I destination
+.B must
+be an existing directory.
+.SE
+.PP
+Examples are the easiest way to clarify this terminology.
+.RS
+.sp 1
+In the command \*(lqinstall motd /etc/motd\*(rq:
+.sp 1
+.RS
+.TS
+l l .
+file:	motd
+destination:	/etc/motd
+destdir:	/etc
+target:	/etc/motd
+.TE
+.RE
+.sp 1
+In the command \*(lqinstall motd /etc\*(rq:
+.sp 1
+.RS
+.TS
+l l .
+file:	motd
+destination:	/etc
+destdir:	/etc
+target:	/etc/motd
+.TE
+.RE
+.sp 1
+In the command sequence \*(lqcd /etc; install motd.new motd\*(rq:
+.sp 1
+.RS
+.TS
+l l .
+file:	motd.new
+destination:	motd
+destdir:	. (dot)
+target:	./motd
+.TE
+.RE
+.RE
+.sp 1
+.SS Installation Parameters
+.PP
+If the file permissions, ownership or group ownership are not specified on
+the command line and
+.I target
+exists,
+.I install
+duplicates its group, ownership, and mode.
+Otherwise, if the
+.I target
+doesn't exist and the invoker is the superuser,
+.I install
+uses its compilation\(hydependent defaults.
+Otherwise,
+.I install
+uses the effective uid, the effective gid,
+and a compilation\(hydependent mode.
+.I Install
+may also be configured to inherit the mode and ownerships
+from the
+.IR destdir .
+(Use the
+.B \-V
+option to view the compilation\(hydependent defaults.)
+.PP
+Note:
+.I install
+can only change ownership if invoked by the superuser;
+however, any user may specify a different group
+as long as the group is allowed by
+.IR chgrp (1).
+.SS Method of Operation
+.PP
+.I Install
+first checks the proposed owner, group, and mode against the
+configuration file.  It also checks whether the
+.I target
+should have
+.IR strip (1)
+or
+.IR ranlib (1)
+run on it after installation. 
+.I Install
+aborts if it finds discrepancies between the configuration
+file and the proposed installation parameters.  (If necessary,
+you can override the configuration file
+with \*(lq\fB\-C\fP \fI/dev/null\fP.\*(rq)
+.PP
+.I Install
+then looks for an existing
+.I target
+and backs it up to a subdirectory of
+.I destdir
+named \*(lqOLD\*(rq, which
+.I install
+will create if it doesn't exist.
+The backup is actually just a hard link to the existing
+.IR target .
+(If a backup file of the same name already exists in \*(lqOLD\*(rq,
+.I install
+first renames it by appending its process id).
+For security reasons,
+.I install
+drops setuid and setgid bits when files are moved to the \*(lqOLD\*(rq
+directory.
+After backing up an existing
+.IR target ,
+.I install
+temporarily moves
+.I file
+to
+.IR destdir/OLD/random-name .
+This step is taken to ensure that both
+.I file
+and
+.I target
+are in the same file system so that
+.IR rename (2)
+may be used for the final installation.  This reduces the window
+in which files might be left in an inconsistent state due to a
+system crash or signal.  Consequently the \*(lqOLD\*(rq
+subdirectory must not be a file system mount point, since the
+.IR rename (2)
+would fail.
+.PP
+.I Install
+then unlinks the existing
+.I target
+(leaving the backup) and renames
+.IR destdir/OLD/random-name
+to
+.IR target .
+.PP
+Next
+.I install
+updates any hard links and soft (symbolic) links
+given under the
+.B \-H
+or
+.B \-S
+options.  All links point at the
+installed
+.IR target .
+Existing symbolic links which point to the
+correct file are left unchanged, otherwise removed and
+replaced with the correct spelling.  Existing correct hard links
+are unlinked and replaced, without a
+backup.  Links which point to a file other than the
+.I target
+are backed up to \*(lqOLD\*(rq and linked.
+.I Install
+prints a warning in this case.
+.SE
+.SH OPTIONS
+.TP
+.B \-1
+After a successful installation
+.I install
+removes any previous
+backup in \*(lqOLD\*(rq.
+Thus
+.I install
+will keep exactly one previous revision of
+the installed file.
+.TP
+.B \-c
+Do not unlink the
+.IR files .
+.TP
+.BI \-C checkfile
+Search 
+.I checkfile
+for an expression that matches the
+.IR target .
+If
+.I install
+finds such an expression it will check the proposed modes (etc.)
+against those listed in the checkfile; any differences cause
+.I install
+to abort the installation.
+This mechanism is provided to protect the superuser from installing,
+for instance, the shell setuid root, as in:
+.br
+.sp 1
+.in 1.5i
+install \-m7555 \-o root \-g wheel sh /bin
+.sp 1
+.in -.5i
+.br
+(note the extra \*(lq5\*(rq).
+See
+.IR install.cf (5L)
+and
+.IR instck (1L).
+.TP
+.BI \-d
+Build a directory rather than a plain file.
+If the directory is an OLD directory it is built with appropriate modes
+(see
+.B \-V
+below).
+.TP
+.B \-D
+Don't back up an existing
+.I target
+(the \*(lqDestroy\*(rq option).
+This is useful when a trivially correctable problem such as a
+spelling error in a print statement is found in a recently installed
+product, or when the
+.I target
+can be regenerated easily and is installed frequently.  Sites that
+do not wish to keep backups but still want to take advantage of the
+checkfile could set this option in the environment.
+.TP
+.BI \-g group
+Install the file with group ownership
+.IR group .
+If no
+.B \-g
+option is given
+.I install
+will decide the group to use:
+.br
+.in 1.5i
+\(bu if there is an existing
+.I target
+use its group
+.br
+\(bu if we are the superuser use a compilation\(hydependent group
+.br
+\(bu else use the effective group id
+.TP
+.in -.5i
+.B \-h
+Print a summary of
+.IR install 's
+usage (the \*(lqhelp\*(rq option).
+.TP
+.BI \-H hardlinks
+Specify a colon separated list of hard links
+that should be made to the
+.I target
+after it is installed.
+(See EXAMPLES below.)
+.TP
+.BI \-l
+Run
+.IR ranlib ( 1 )
+on the installed
+.IR targets .
+Under System V this option has no significance, but
+.B must
+be given to pass the default checkfile
+(see
+.IR install.cf (5L)).
+This allows Makefiles to work under all versions of UNIX.
+.TP
+.BI \-m mode
+Install the file with permissions
+.IR mode .
+.I Mode
+may be given in either octal mode or
+in the symbolic form used by
+.IR ls (1)
+(e.g., \*(lq755\*(rq) is equivalent to \*(lqrwxr-xr-x\*(rq).
+If the
+.B \-m
+option is not given,
+.I install
+will decide the mode to use:
+.br
+.in 1.5i
+\(bu if there is an existing
+.I target
+use its mode
+.br
+\(bu if we are the superuser use a compilation\(hydependent mode
+.br
+\(bu else use a compilation\(hydependent user mode
+.in -.5i
+.TP
+.B \-n
+Give an approximate execution trace by printing the (almost) equivalent
+shell commands, but don't do anything.
+This is useful for debugging
+.I install
+or seeing what a
+difficult command line would do if you ran it.
+.TP
+.BI \-o owner
+Change ownership of
+.I file
+to
+.I owner
+(superuser only).
+If no
+.B \-o
+option is given
+.I install
+will decide the owner to use:
+.br
+.in 1.5i
+\(bu if there is an existing
+.I target
+use its owner
+.br
+\(bu if we are the superuser use a compilation\(hydependent owner
+.br
+\(bu else use our effective uid
+.TP
+.in -.5i
+.B \-p
+Preserve the time stamp of
+.I files
+in
+.IR targets .
+.TP
+.B \-q
+Normally
+.I install
+informs you about a variety of possible errors.  This option
+turns off that behavior and is not recommended except for
+special circumstances.  Caveat emptor.
+.TP
+.B \-r
+Under
+.B \-d
+build all intervening directories between \*(lq/\*(rq
+and
+.IR destination.
+.TP
+.B \-R
+Remove (de\(hyinstall) a file by moving it into the OLD
+subdirectory.  A temporary shell script is created to replace
+the
+.IR target ,
+installed (which removes the existing
+.I target
+to \*(lqOLD\*(rq), and removed.
+.TP
+.B \-s
+Run
+.IR strip (1)
+on the installed
+.IR targets .
+.TP
+.BI \-S symlinks
+Specify a colon separated list of symbolic links that
+.I install
+should
+point at the installed file.  (See EXAMPLES below.)
+.TP
+.B \-v
+Be verbose.  Run
+.IR ls (1)
+on the backed up file and the
+.IR target .
+Notify the user of all side effects of this installation.
+.TP
+.B \-V
+View
+.IR install 's
+version and compilation\(hydependent owner, group and mode tables.
+.SH EXAMPLES
+.TP
+install motd /etc
+Install
+.I motd
+as
+.IR /etc/motd .
+If
+.I /etc/motd
+exists move it to
+.I /etc/OLD/motd
+and duplicate its
+ownership, group and mode; otherwise,
+use defaults.  Create the directory
+.I /etc/OLD
+if it does not exist.
+.TP
+install \-c1 \-m 755 foo.sh /etc/foo
+Install
+.IR foo.sh .
+as
+.IR /etc/foo .
+Do not unlink
+.I foo.sh
+after the installation.  Set permissions appropriate for a shell script on
+.IR /etc/foo .
+If
+.I /etc/OLD/foo
+exists, overwrite it instead of moving it to a new name (i.e., retain a
+single backup of
+.I /etc/foo
+in
+.IR /etc/OLD ).
+.TP
+install foo bar baz /usr/lib
+Install the files
+.IR foo ,
+.I bar
+and
+.I baz
+as
+.IR /usr/lib/foo ,
+.IR /usr/lib/bar ,
+and
+.IR /usr/lib/baz .
+Use the modes of the existing files or defaults.
+.TP
+install \-vsm6751 \-oroot \-gkmem sendmail /usr/lib
+Install
+.I sendmail
+as
+.IR /usr/lib/sendmail ,
+owned by root, grouped to kmem, and with
+the setuid and setgid permission bits set.
+Strip
+.I /usr/lib/sendmail
+after its installation and be verbose.
+.TP
+install \-d \-m \-rwxrwxrwt /tmp
+Build the directory
+.I /tmp
+with the default owner and group,
+mode 777, and with the \*(lqsticky\*(rq bit set.
+.TP
+install \-c \-m1755 \-Hview:vi:edit:e:/usr/bin/ex a.out /usr/ucb/ex
+Install the
+.I ex
+editor with all of its hard links
+.RI ( /usr/ucb/view ,
+.IR /usr/ucb/vi ,
+.IR /usr/ucb/edit ,
+.IR /usr/ucb/e ,
+.RI and /usr/bin/ex ).
+Replacing
+.B \-H
+with
+.B \-S
+would cause
+.I install
+to build symbolic links on machines which support them.
+.TP
+install \-d \-r /usr/local/lib/mk
+Recursively build any and all of the directories
+.IR /usr ,
+.IR /usr/local ,
+.IR /usr/local/lib ,
+and
+.I /usr/local/lib/mk
+that do not already exist.  Silently do nothing if they
+already exist (useful in Makefiles).
+.TP
+install \-V
+Output the version of install and a table of compiled in defaults.
+Output when run as the superuser might look similar to this,
+depending on the compilation defaults:
+.RS
+.TS
+l s s
+l s s
+l l l.
+install: version: $\&Id: main.c,v 6.7 64/02/15 16:21:41 ksb Exp $
+install: configuration file: /usr/local/etc/install.cf
+install: syslog facility: 144
+install: superuser defaults:
+install: owner is file=root	dir=root	OLD=root
+install: group is file=binary	dir=binary	OLD=binary
+install: mode is  file=0755	dir=0755	OLD=inherited
+.TE
+.RE
+.TP
+rsh some.other.host install \- /etc/motd < motd.some.other.host
+This example shows a way to use \*(lq\-\*(rq to advantage.  It is
+often useful when
+.IR rdist (1)
+is overkill or otherwise inappropriate.  For instance, if you had
+a Makefile that generated files named
+.IR host1.motd ,
+.IR host2.motd ,
+.IR host3.motd ,
+etc., and wanted to install them on those hosts, you could do
+something like this:
+.sp 1
+.nf
+.na
+.KS
+.RS
+for host in host1 host2 host3; do
+.RS
+rsh $host install \- /etc/motd < $host.motd
+.RE
+done
+.KE
+.RE
+.fi
+.ad
+.sp 1
+.SH DIAGNOSTICS
+.KS
+.PP
+Unless made quiet by
+.BR \-q ,
+.I install
+will warn the installer if:
+.RS
+.br
+\(bu the owner, group, or mode changes
+.br
+\(bu the setuid, setgid, or sticky bits change
+.br
+\(bu a setuid program is loaded with the \*(lq#!\*(rq magic number
+.br
+\(bu \fItarget\fP does not exist (this is a prophylactic against
+typographical errors\(emsee CAVEATS below)
+.KE
+.RE
+.PP
+.KS
+.I Install
+will abort the installation if:
+.RS
+.br
+\(bu
+.I install
+cannot make a backup of an existing
+.I target
+.br
+\(bu a setuid program\'s owner was not specified with the mode
+.br
+\(bu a setgid program\'s group was not specified with the mode
+.br
+\(bu the specified owner, group, or mode failed to match the checkfile
+.br
+\(bu the superuser installs a setuid program that is not in the checkfile
+(this is a compile time option)
+.RE
+.KE
+.SH ENVIRONMENT
+.PP
+The environment variable
+.B INSTALL
+may be used to
+set command line options.
+Such options are read before any explicit command line options, e.g.
+.br
+.RS
+.sp 1
+INSTALL=-v ; export INSTALL
+.sp 1
+.RE
+.br
+will turn on \*(lqverbose\*(rq mode for all subsequent
+invocations of
+.IR install .
+.SH BUGS
+.PP
+.I Install
+does not use file locking, so it's possible for two competing
+.I install
+processes to lose data.
+.PP
+The trace option
+.RB ( \-n )
+doesn't always show exactly what
+.I install
+would do.  It will show OLD directories being made several times, and
+inherited modes don't propagate correctly under
+.BR \-drn .
+.PP
+The link counts shown for \fB\-H\fP hard links made in the trace output
+are wrong (too small) as the links are being built.
+.SH CAVEATS
+.PP \(bu
+.I Install
+will not build character special files.
+Use
+.IR mknod (8)
+instead.
+.PP
+If /bin doesn't exist, the command:
+.sp 1
+.RS
+install ls /bin
+.RE
+.sp 1
+will make
+.I /bin
+be a copy of the binary
+.IR ls .
+This is an unavoidable consequence of allowing the
+.I destination
+to be a directory.
+You can avoid this by
+using \*(lqinstall \-d \fIdirectory\fP\*(rq in Makefiles to ensure
+that destination directories exist, e.g.,
+.sp 1
+.nf
+.na
+.RS
+install: product
+.RS
+install -d /bin
+install product /bin
+.RE
+.RE
+.fi
+.ad
+.sp 1
+.I Install
+does nothing  and exits normally if the directory already exists,
+so it's safe to include lines like this in your Makefiles.
+You can also use
+.IR instck (1L)
+to ensure that all system
+directories are built correctly.
+.PP \(bu
+.I Install
+can cover up mistakes of omission in Makefiles by copying the modes
+on a previously installed target.
+For example, the invocation of
+.I install
+in a Makefile might not specify that the
+.I destination
+should be setuid root, but
+as long as the
+.I target
+existed
+.I install
+would hide the error by
+copying the modes of the existing
+.IR target .
+The problem in the Makefile would not be found unless the
+.I target
+were removed prior to installation.
+Use
+.IR instck (1L)
+to generate a configuration file to avoid this problem.
+.PP \(bu
+.I Install
+and
+.IR purge (1L)
+assume that they own the file namespace in the \*(lqOLD\*(rq
+subdirectories.  If other programs create, modify or delete
+files in the \*(lqOLD\*(rq subdirectories, they will probably
+collide with one of
+.I install
+or
+.IR purge (1L)
+eventually.
+.SH FILES
+.TS
+l l.
+/usr/local/lib/install.cf	the default check list file
+.../OLD/#inst*	temporary files made for installations
+.../OLD/#bogus*	links made to running binaries to avoid ETXTBSY
+.../OLD/*	copies of previously installed files
+.TE
+.SH AUTHORS
+Kevin Braunsdorf, Purdue University Computing Center (ksb@cc.purdue.edu)
+.br
+Jeff Smith, Purdue University Computing Center (jsmith@cc.purdue.edu)
+.br
+Copyright \*(co 1990 Purdue Research Foundation.  All rights reserved.
+.SH "SEE ALSO"
+chgrp(1), instck(1L), ls(1), make(1), ranlib(1), strip(1),
+intro(2),
+syslog(3),
+install.cf(5L),
+chown(8), mknod(8), purge(8L)

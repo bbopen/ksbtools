@@ -1,0 +1,97 @@
+`# $Id: Makefile.host,v 1.10 2008/11/24 21:14:06 ksb Exp $
+# the makefile that makes mmsrc.c into mmsrc, but not
+# mmsrc.m into mmsrc.c, which would never let us boot-strap		(ksb)
+# Built for 'HOST`
+PROG=	mmsrc
+BIN=	${DESTDIR}/usr/local/sbin
+DOC=	${DESTDIR}/usr/local/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE=
+DEBUG=
+CDEFS=  -D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+'ifelse(substr(HOSTTYPE,0,4),`HPUX',`CC=gcc',
+`')`
+LIBS='ifelse(
+HOSTTYPE,SUN5,` -lsocket -lnsl')`
+
+HDR=	machine.h
+SRC=	mmsrc.c machine.c mkdtemp.c
+DEP=	${SRC}
+OBJ=	mmsrc.o machine.o
+MAN=	mmsrc.man
+OTHER=	README TODO mmsrc.m mmsrc.html
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+
+all: mmsrc
+
+mmsrc: ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ} ${LIBS}
+
+Makefile.in: Makefile
+	sed -e "s/^\(LI[B]S\)=.*/\1=@\1@/" <Makefile >Makefile.in
+
+boot: all FRC
+	mkdir -p ${BIN}
+	install -c ${PROG} ${BIN}/${PROG}
+
+config.h: config.plain
+	cp config.plain config.h
+
+clean: FRC
+	rm -f mmsrc mmsrc.o machine.o *core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} ${LINK} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${BIN}
+
+install: all dirs FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	txt2ps -m 0.65 -n -PHxmd  -l68 -w88 hxmd.m | lpr
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${BIN}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+mmsrc.o: mmsrc.c mmsrc.h machine.h config.h
+
+machine.o: machine.c mkdtemp.c machine.h config.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

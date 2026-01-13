@@ -1,0 +1,8 @@
+# the Info target outputs a descriptive message				(ksb)
+# $Id: info,v 5.0 1996/09/09 21:08:18 kb207252 Exp $
+
+$Info(*): ${echo-echo} type %y, extender %X, remote in %P
+$Info(*): ${echo-echo} type %y, remote in %P
+$Info(*): ${echo-echo} type %y, extender %X
+$Info(*): ${echo-echo} type %y
+$Info(*): ${file-file} %f

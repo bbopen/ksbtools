@@ -1,0 +1,52 @@
+.\" $Id: turnin.cf.man,v 4.10 1996/07/14 18:49:25 kb207252 Exp $
+.\" 
+.TH TURNIN.CF 5L "PUCC"
+.SH NAME
+turnin.cf \- turnin configuration file format
+
+.SH DESCRIPTION
+.IR Turnin,
+the electronic submissions program, reads which courses are using turnin,
+which accounts should be sent submissions, what directory to put submitted
+files in for each course, as well as what group the submissions should be
+saved under from a database called `turnin.cf'.
+.sp 1
+.RS
+\fIcourse\fP\fB:\fP\fIlogin\fP\fB:\fP\fIdirectory\fP\fB:\fP\fIadmgroup\fP\fB:\fP\fIsections\fP
+.RE
+.sp 1
+.PP
+The file turnin.cf consists of a line for each course with the following
+information separated by colons.  The course name, the id for the account the
+data should be put into, the subdirectory name in which the data should
+be kept, the group which should own the files after they have been
+submitted, and a comma separated list of the sections for this course
+or the keyword \fBALL\fP.
+.SH EXAMPLE
+.PP
+A sample turnin configuration file follows:
+.RS
+.nf
+agen231:j1c:submit:agen231:ALL
+cs180:tt2:turnin:cs180adm:830Bob,930Allan,1030Beth,1230Raghu,330Matt
+cs181:lmt:submit:cs181:1030,1130,130
+cs190k:hpv:submit:cs190k:div1,div2,div3,div4
+cs250:nru:submit:cs250:d1s1,d1s2
+cs251:nnm:submit:cs251:Beaven,Mathur
+cs404:olk:submit:cs404:ALL
+cs414:gk3:submit:csusers:mav,lian,jxy
+cs536:cs536ta:submit:cs536t:d1s1,d1s2
+eng115:m2n:submit:eng115:130,230
+test:ksb:submit:system:one,two
+.fi
+.RE
+
+.SH BUGS
+The superuser must update this file by hand, when \fIproject\fP \fB\-i\fP
+sends updates to filter for attacks on system directories.
+
+.SH AUTHOR
+Locally build by \fIproject\fP and the superuser.
+
+.SH "SEE ALSO"
+turnin(1L), project(1L), turnin(5L), tar(1)

@@ -1,0 +1,60 @@
+`# $Id: Make.host,v 1.3 1997/07/14 19:07:24 ksb Exp $
+#
+#	platform Makefile for gzip
+
+BASE=	gzip-1.2.4
+TARSRC=	${BASE}.tar
+OTHER=	README
+SOURCE=	Makefile ${OTHER} ${TARSRC}
+
+all: ${BASE} FRC
+	cd ${BASE} && make $@
+
+${BASE}: ${TARSRC}
+	tar xf ${TARSRC}
+	cd ${BASE} && ./configure --prefix='ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support',`/usr/local')`
+
+clean: FRC
+	rm -rf ${BASE}
+
+deinstall: FRC
+	cd ${BASE} && make $@
+
+depend: FRC
+	cd ${BASE} && make $@
+
+dirs: FRC
+	cd ${BASE} && make $@
+
+distrib: FRC
+	cd ${BASE} && make $@
+
+install: all FRC
+	cd ${BASE} && make $@
+
+lint: FRC
+	cd ${BASE} && make $@
+
+mkcat: FRC
+	cd ${BASE} && make $@
+
+print: source FRC
+	cd ${BASE} && make $@
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

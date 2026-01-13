@@ -1,0 +1,10 @@
+# $Id: README,v 4.1 1996/07/14 19:03:14 kb207252 Exp $
+
+This is the meta source to turnin (electronic submissions).  If you do
+not use the meta source stuff you are hopelessly out of your environment.
+
+You shall need mkcmd to compile almost anything I've written in the
+last 10 years.  Anything over version 7.20 should work for all products.
+
+	
+Kevin Braunsdorf, ksb@fedex.com

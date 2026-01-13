@@ -1,0 +1,44 @@
+The original pod layout ("Everest")
+	+---++---++---++---++---++---++---+
+	| 1 || 2 || 3 || 4 || 5 || 6 || 7 |
+	+---++---++---++---++---++---++---+
+Standards:
+	Console MUX in X4 for all consoles
+	ZMD network switch in X4 for all backside traffic.
+	Network in X3, X5 for all front-side connections.
+
+The Sun ("S") pod layout:
+	+---++---+ +--+ +---++---+
+	| 1 || 2 | | 3| | 4 || 5 |
+	+---++---+ +--+ +---++---+
+	+---++---+ +--+ +---++---+
+	| 6 || 7 | | 8| | 9 || 10|
+	+---++---+ +--+ +---++---+
+	+---++---+ +--+ +---++---+
+	| 11|| 12| |13| | 14|| 15|
+	+---++---+ +--+ +---++---+
+Standards:
+	Racks 3,8,13 are everests racks, others are Sun 68in racks.
+	Puts a console server in X8 to serve all of the pod.
+	ZMD network switchs in X3, X8, X13 (zmd: 69, 87, 69)
+	Lots of front-side network, in X2, X7, X12, (at least) and
+		X4, X9, X14 (more than likely)
+	front-side network extensions to X1,X6,X11 and X5,X10,X15 from
+		a mirror pod.
+	Firewall in X3, X8, X13
+
+
+Present room layout in I2C (Pod's A-H are Everest layouts):
+
+	+-------------+ +-------------+ +-------+ +-------+
+	|             | |             | | Pod C | | Pod D |
+	|             | |             | +-------+ +-------+
+	| Sun "T" Pod | | Sun "S" Pod | +-------+ +-------+
+	|             | |             | | Pod A | | Pod B |
+	|             | |             | +-------+ +-------+
+	|             | |             | +-------+ +-------+
+	|             | |             | | Pod G | | Pod H |
+	+-------------+ +-------------+ +-------+ +-------+
+	                                +-------+ +-------+
+	                                | Pod E | | Pod F |
+	                                +-------+ +-------+

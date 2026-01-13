@@ -1,0 +1,7 @@
+# a emacs lisp source file						(ksb)
+# $Id: el,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	${gnuemacs-gnuemacs} -batch -f %s %f
+$Compile(*):	${gnuemacs-gnuemacs} -batch -f batch-byte-compile %f
+
+$Info(*):	${echo-echo} "emacs lisp source"

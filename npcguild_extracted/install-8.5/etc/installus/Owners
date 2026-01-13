@@ -1,0 +1,24 @@
+# $Id: Owners,v 2.1 1997/10/15 20:38:29 ksb Exp $
+# Example .owners file for new installations (no installus -I yet). -- ksb
+#
+# Install this file in /usr/local/bin or /opt/gnu/bin or some such to let
+# normal users install their favorite programs.  This takes a lot of work
+# off the local SysAdmin (and lets the users Trojan Horse each other, so
+# don't put jerks in the file).
+#
+# You'll want to include lines like this for each product owned by a user:
+gcc	ksb.*		-m 755 -o root -g unsup
+#
+# Which lets me (ksb) install gcc in the target directory mode 755 root.unsup.
+# This would be cool [because I'm a Nice Guy].
+#
+# For more "bang" you can give _every_ remaining file to a group.  Then put
+# the Users you trust in the group:
+*	*.unsup		-m 755 -o root -g unsup
+#
+# For even more power use the "**" glob which falls into subdirs
+**	*.unsup		-m 755 -o root -g unsup
+**/	*.unsup		-d -m 755 -o root -g unsup
+#
+# That is way powerful. See the manual pages on how to remove the password
+# prompt for special installs (clue: setuid on .owners) -- ksb

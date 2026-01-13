@@ -1,0 +1,11 @@
+# $Id: TODO,v 1.1 2000/07/30 22:18:49 ksb Exp $
+
+Build "products" for groups of shell starters:
+	mkpkg mkms mksrc unpkg
+
+	msync verof
+
+	smsrc msrc makeme
+
+--
+ksb, ksb@sa.fedex.com

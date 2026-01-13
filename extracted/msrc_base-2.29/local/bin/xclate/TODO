@@ -1,0 +1,33 @@
+# $Id: TODO,v 2.9 2008/09/29 19:13:51 ksb Exp $
+
+Not much, just a detail to two.  Maybe support the "M?" command to
+pass the process-id of the utility back on the wrapper port.  We
+do that in ptbw and wrapw.
+
+Under -m we could take (at about function Notify)
+	-a  exit success only when the master and all clients exit 0
+	-o  exit failure unless any client exits 0 (ignore master)
+xapply could't pass these, but one could use an explicit wrapper,
+or $XCLATE_1.
+
+
+When stdout (the managed stream) is /dev/null we could allow multiple
+output-only (non-IED) clients, after all mixing streams to the null
+device is not going to confuse anyone :-).  That actually happens more
+than you'd think.
+
+
+I'm not sure about the -i option with a process.  The process gets
+the original stdin for it's stdin, but -I still retains the same
+fd (which means we can steal data).  I guess the Implementor knows
+what she's asking for with -I and -i.  I don't think we need a way
+to get util's stdin, because it could be an xclate -m if you wanted
+that (for some strange reason).  If you don't want the original stdin
+you can use "</dev/null" in the input command.
+
+Maybe under -i we should not give the original stdin to the widows as
+stdin either?  I don't know about that.  If you just want a fd that
+we won't read pass it with "5<foo" or so.
+
+--
+ksb, Aug 2008

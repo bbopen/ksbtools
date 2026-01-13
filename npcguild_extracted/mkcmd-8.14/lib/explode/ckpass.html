@@ -1,0 +1,52 @@
+<HTML>
+<HEAD><TITLE>Check a password</TITLE></HEAD>
+<BODY>
+Family: ckpass
+<BR>
+Authors: Kevin S Braunsdorf, Andy J Korty (ajk)
+<BR>
+Mail: ksb@sa.fedex.com, ajk@physics.purdue.edu,
+<BR>
+Version: 5.4
+<BR>
+Bugs: klunky interface
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+This code checks an input password against a logins password from
+<CODE>/etc/passwd</CODE> or <CODE>/etc/shadow</CODE> (or the like).
+
+<H1>Configuration</H1>
+
+Some C Preprocessor defines must be set for the code to compile.
+<DL>
+<DT>USE_STRINGS
+<DD>
+Set to non-zero when we should use &LT;strings.h&GT;, else
+we include &LT;string.h&GT;.
+<DT>USE_MD5
+<DD>
+Set to non-zero when we should use MD5 hashes and the dollar sign ($)
+salt format.
+
+<DT>HAVE_SHADOW
+<DD>
+If the password field in the public password entry is "x" call
+<CODE>getspnam</CODE> to find the real password entry.
+</DL>
+
+<H1>Provides</H1>
+<DL>
+<DT> int CheckPass(struct passwd *pwd, char *pcEPass, char *pcWord)
+<DD>
+Given a password entry and a proposed encrypted password verify
+that the word given would hash to that same encryption.
+</DL>
+
+<H1>To Do List</H1>
+
+Port to new systems.
+</BODY>
+</HTML>

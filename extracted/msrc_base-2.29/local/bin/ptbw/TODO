@@ -1,0 +1,21 @@
+# $Id: TODO,v 1.11 2008/03/25 14:42:36 ksb Exp $
+
+Major fix needed: to make the pid send more reliable, use a
+msgsnd/msgrcv to get the pid?  Of course multiple senders race.
+Sigh.  SCM_CRED doesn't always pass the pid (on every UNIX system).
+So we don't publish a pid that is always right.
+
+We keep the comments from the token source, but can't output them
+to the shell level (yet).
+
+Maybe options:
+
+Allow "variable resources allocation" (-jmax), to allow 1 to 10 max_jobs:
+	ptbw -AR1 -j10 sh -c 'exec make -j $# all'
+or allow -R to take a range (save an option letter)
+	ptbw -AR1-10 sh -c 'exec make -j $# all'
+the Pascal ".." might be better,  so it doens't look like subtraction?
+	ptbw -R 2..30 sh -c ...
+
+--
+ksb, Mar 2008

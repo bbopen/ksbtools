@@ -1,0 +1,35 @@
+# $Id: README,v 2.3 2005/01/06 22:23:18 petef Exp $
+
+Several tools give limited "superuser" or "transuser" privileges based
+on group membership or a password:  su, newgrp, sudo, op, and this
+program all take slightly different views.
+
+Su and newgrp give you a shell at the cost of a password (and maybe
+you have to be in a special group in some cases).
+
+Sudo and op let you run a single command for the cost of a password
+and/or a group membership.  This is safter than "su" because the list
+of commands usually doesn't include anything that will give you a
+shell.
+
+Installus is even more limited -- you can update files and directories.
+They have to have modes we set in advance and we make a backout copy
+just in case you are confused.  The at the cost of a password or group
+membership (maybe both).
+
+
+Why is this "better"? 
+      + It can be setup to work from a Makefile w/o a password.  
+
+      + The configuration is "per" directory (unlike the others) so
+	different unrelated user populations don't mess with eachother.
+
+      + The configuration to do the same things is _huge_ using other tools
+	and hard to use (or you have to build a front end process that sends
+	in stuff with environment variables).
+
+The prototype script "mkowner.ksh" builds .owners file to get you started.
+Thanks to Dan Lebovitz who coded it with me.
+
+--
+ksb, Kevin Braunsdorf, Oct 1997

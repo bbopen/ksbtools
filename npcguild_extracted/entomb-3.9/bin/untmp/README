@@ -1,0 +1,8 @@
+$Id: README,v 1.1 1997/02/18 16:22:45 ksb Exp $
+
+This is untmp.
+
+If you have a tomb on / you need to use this to cleanup user's files
+in /tmp (if it is on the same file system).
+
+ksb

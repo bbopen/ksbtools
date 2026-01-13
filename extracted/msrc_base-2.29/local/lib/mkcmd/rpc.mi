@@ -1,0 +1,9 @@
+/* $Id: rpc.mi,v 8.31 2008/09/05 16:24:54 ksb Exp $
+ * rpc program name/number type -- ksb
+ */
+
+%#if %K-1v
+%extern struct rpcent *%K<rpc_cvt>1v(char *, char *)%;
+#else
+%extern struct rpcent *%K<rpc_cvt>1v()%;
+#endif

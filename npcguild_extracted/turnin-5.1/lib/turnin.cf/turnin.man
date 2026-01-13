@@ -1,0 +1,89 @@
+.\" $Id: turnin.man,v 4.10 1996/07/14 18:49:25 kb207252 Exp $
+.\"
+.TH TURNIN 5L
+.UC 4
+
+.SH NAME
+turnin \- instructions for instructors who use
+.IR turnin ( 1L )
+and
+.IR project ( 1L )
+.br
+
+.SH DESCRIPTION
+.PP
+.IR Turnin ( 1L )
+is a program provided by Purdue University Computing Center to
+aid instructors in the collecting of assignments from students.
+To use
+.IR turnin ,
+the instructor must run the command
+.sp 1
+	project -i
+.sp 1
+which will interactively prompt the instructor for more information about
+the course in question.
+The superuser will be notified that the instructor wishes to use
+turnin and will add the user's login name to a configuration file.
+.PP
+The Computing Center may also build a .login (.profile) in each of
+your students accounts to create a initial csh (sh) environment.
+In this .login (.profile), there will be an environment variable
+called \*(lqSUB_\fIcourse\fP\*(rq, where \fIcourse\fP is the course that
+the student is enrolled in.
+This environment variable is set to the student's division or section
+to allow for large courses to be managed effectively.
+For example the command:
+.sp 1
+	setenv SUB_cs300 morning
+.sp 1
+might be used to put a given user's files into the `morning' section
+for cs300 (this command would be in the user's generated .login).
+.PP
+The project command maintains a directory hierarchy in the course
+administrator's account which \fIturnin\fP(1L) will modify to 
+submit files for a login.
+This directory tree is rooted at the name given to the project command
+when it was run with the -i option and must be world readable.
+The default name for the root of this tree is `submit'.
+.PP
+Here is a sample directory layout:
+.sp 1
+.ta 0.7i 1.4i 2.1i 2.8i 3.5i 4.2i 4.9i 5.6i
+	$ cd
+.br
+	$ ls -aF submit
+.br
+	\&./	\&../	\&.lock	Projlist	1/	2/
+.br
+	$ ls -aF submit/1
+.br
+	\&./	\&../	morning/	afternoon/
+.br
+	$ ls -aF submit/1/morning
+.br
+	\&./	\&../	dsg	ksb	mjb	mjs
+.br
+	$ exit
+.sp 1
+.PP
+At the top level there are 3 types of entries:  a lock file (`.lock')
+which is \fIflock\fP(2)'d when project is running, a database file
+(`Projlist') which contains the status information on the current
+projects, and a directory for each active project.
+.PP
+Each active project directory contains a subdirectory for each division or
+section of the course.
+Each of these, in turn, contains one \fItar\fP(1) file for each login
+name that has submitted files for this project.
+
+.SH BUGS
+A student may change sections (or divisions) by changing an environment
+variable.
+This generally leads to a grader not getting a submission from the student.
+
+.SH AUTHOR
+Kevin S Braunsdorf, FedEx (ksb@fedex.com)
+
+.SH "SEE ALSO"
+project(1L), turnin(1L), tar(1), turnin.cf(5L)

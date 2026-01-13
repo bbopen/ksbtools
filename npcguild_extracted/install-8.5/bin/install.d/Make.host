@@ -1,0 +1,133 @@
+`# Copyright 1990 Purdue Research Foundation, West Lafayette, Indiana
+# 47907.  All rights reserved.
+#
+# Written by Jeff Smith, jsmith@cc.purdue.edu, purdue!jsmith
+#
+# This software is not subject to any license of the American Telephone
+# and Telegraph Company or the Regents of the University of California.
+#
+# Permission is granted to anyone to use this software for any purpose on
+# any computer system, and to alter it and redistribute it freely, subject
+# to the following restrictions:
+#
+# 1. Neither the authors nor Purdue University are responsible for any
+#    consequences of the use of this software.
+#
+# 2. The origin of this software must not be misrepresented, either by
+#    explicit claim or by omission.  Credit to the authors and Purdue
+#    University must appear in documentation and sources.
+#
+# 3. Altered versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 4. This notice may not be removed or altered.
+#
+#  Makefile for install
+#
+# $Id: Make.host,v 8.7 2000/06/20 14:09:43 ksb Exp $
+#
+# Set appropriate defaults for your site in (configure.h) unless you want
+# the default owner, group, and mode for installations where none were
+# specified and install can not figure out something reasonable.
+#
+# I suggest you lpr install.h and look at it while you edit configure.h
+#
+
+SHELL=/bin/sh
+BIN=	${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/bin',`/usr/local/bin')`
+LIB=	${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/lib',`/usr/local/lib')`
+PROG=	install
+TPROG=	installp
+
+I=/usr/include
+S=/usr/include/sys
+P=
+
+CDEFS= -D'HOSTTYPE`'ifelse(
+HOSTTYPE,`NEXT2',` -DDEFGROUP=\"wheel\"',
+HOSTTYPE,`NETBSD',` -DDEFOWNER=\"root\" -DDEFGROUP=\"bin\"',
+HOSTTYPE,`FREEBSD',` -DDEFOWNER=\"root\" -DDEFGROUP=\"bin\"',
+HOSTTYPE,`BSDI',` -DDEFOWNER=\"root\" -DDEFGROUP=\"bin\"',
+HOSTTYPE,`SUN5',` -DDEFGROUP=\"bin\" -DBSD=43 -DHAVE_QUOTA=0',
+HOSTTYPE,`SUN4',` -DDEFGROUP=\"bin\"',
+HOSTTYPE,`SUN3',` -DDEFGROUP=\"bin\"')`'ifelse(
+HOSTTYPE,`EPIX',` -systype bsd43 -DLSARGS=\"-ls\"',
+HOSTTYPE,`IBMR2',` -DLSARGS=\"-ls\"')` -DCONFIG=\"${LIB}/install.cf\"
+INCLUDE=
+DEBUG='ifelse(HOSTTYPE,`V386',`',`-O')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	configure.h dir.h file.h install.h machine.h main.h \
+	special.h special.i syscalls.h
+OBJ=	dir.o file.o main.o special.o syscalls.o
+SRC=	dir.c file.c main.c special.c syscalls.c
+MAN=	install.man
+SOURCE=	Makefile ${SRC} ${HDR} ${MAN}
+
+all: ${TPROG}
+
+${TPROG}:$P ${OBJ}
+	${CC} ${CFLAGS} ${OBJ} -o $@'dnl
+ifelse(HOSTTYPE,`V386',` -L/usr/local/lib -lsocket -lbsd',
+HOSTTYPE,`ETA10',` -lbsd',
+HOSTTYPE,`IRIX6',` -lelf',
+HOSTTYPE,`EPIX',` ')`
+
+clean: FRC
+	rm -f Makefile.bak ${TPROG} *.o a.out core errs lint.errs shar tags
+
+depend:	${SRC} ${HDR} FRC
+	maketd ${CDEFS} ${INCLUDE} ${SRC}
+
+distrib: source FRC
+	distrib -c ${BIN}/${PROG}
+
+install: all myself.cf ${BIN} ${LIB} FRC
+	./installp -C./myself.cf -cvs ${TPROG} ${BIN}/${PROG}
+	-[ -f ${LIB}/install.cf ] || touch ${LIB}/install.cf
+
+lint: ${SRC} ${HDR} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${SRC}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: ${SROUCE} FRC
+	lpr -J"${PROG} source" ${SROUCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR}
+	ctags -t ${SRC} ${HDR}
+
+${BIN} ${LIB}:
+	mkdir -p $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+dir.o: configure.h dir.c dir.h file.h install.h main.h special.h syscalls.h \
+	machine.h
+
+file.o: configure.h dir.h file.c install.h main.h special.h syscalls.h \
+	machine.h
+
+main.o: configure.h dir.h file.h install.h main.c main.h special.h syscalls.h \
+	machine.h
+
+special.o: configure.h install.h main.h special.c special.h special.i \
+	syscalls.h machine.h
+
+syscalls.o: configure.h install.h main.h syscalls.c machine.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

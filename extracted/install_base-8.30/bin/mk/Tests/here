@@ -1,0 +1,32 @@
+# $Id: here,v 5.12 2009/05/25 21:45:01 ksb Exp $
+$Compile: MK=-t/dev/null %b -a%C%I%N%V -mHere -l0 %f && MK=-t/dev/null %b -a%C%I%N%V -mFail -l0 %f && echo "Here documents OK"
+
+$ check %$
+$Here(*): [ _foo = _%$ ] $$ foo
+# check %$ before and after %J, and 1 single line here document
+$Here(*): [ _bar = _%$ -a %J1 -eq `wc -l <%j` -a _%$ = _EOD -a _%? = _false ] $$ bar
+exactly 1 line
+$Here(*): %^%jfalse$$ EOD
+
+# see if we can skip marked lines w/o %j in them, and check chain'd docs
+$Here(*): %J[ 3 -eq `wc -l <%j` ] && grep '%k%m' %j>/dev/null && %b -m%m %j | grep "^not.*jay\\$" >/dev/null
+pad 1
+$Here(*): echo "not the end of the docuement -- no percent jay"
+pad 2
+$Here(*): %Jset `tail -r %j` && [ $1 -eq 1 -a $2 -eq 2 -a $3 -eq 3 ]
+3
+2
+1
+$Here(*): %^%j
+
+# test multiple here documents
+$Here(*): %J%J%Jset -x ; cmp %3 %4 && ( cmp %4 %5 >/dev/null; [ $? -eq 1 ])
+test line
+$Here(*): %j%^ also called %0
+test line
+$Here(*): %j%^ also called %1
+check line
+$Here(*): %j%^ also called %2
+
+# test rejection of lines with no %J before the first %j
+$Fail(*): %;exit 2; : no %j match

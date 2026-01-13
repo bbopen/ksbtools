@@ -1,0 +1,18 @@
+# $Id: TODO,v 3.2 1998/05/28 12:37:59 ksb Exp $
+
+Lint.  Maybe make -V do some more sanity checks.
+
+Add a "stats" command to provide large users a feel for what
+purge would do, like:
+	unrm> stats
+	login "ksb" has 78 files in crypts for a total of 980k
+?=>	this accounts for 4% of /home/sac1
+	the largest entombed file is "rabbit.gif" (400k)
+	the oldest entombed file is "cursed.txt" (26 days old)
+	unrm>
+
+Not sure about the (?) line because we'd have to get preend's
+code to evaluate the % full.  Let's say not on that.
+
+--
+ksb

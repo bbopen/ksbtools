@@ -1,0 +1,419 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Exchange commands and data via a stream</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: Wise
+<BR>
+Authors: KSB Braunsdorf
+<BR>
+Mail: ksb@npcguild.org
+<BR>
+Version: 2.4
+<BR>
+Bugs: None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+Several IETF standards use a common "number and text" convention
+for sending commands and replies between peers.
+Most of them use a three digit number, where the first and second
+digits have some common meaning.
+A good example is the RFC821 standard, see "Theory of Reply Codes"
+in that document (at <A HREF="http://www.ietf.org/rfc/rcf821.html">http://www.ietf.org/rfc/rcf821.html</A>).
+
+<P>
+This module provides functions that send and receive commands and replies
+in this manner, being careful to never read-ahead in the
+stream (as stdio would), or to overflow any fixed-size buffers.
+
+<P>
+This module also provides a frame-work to multiplex many
+applications' state (data, code, and open resources) into a
+single process.  Each such process holds a "session" for a
+single client that wishes to engage any more stateless service
+(viz. a web server) for a credentialed services.
+Applications that need session resources attach them
+to the session and recover then from the session as needed.
+
+<P>
+In addition to the communications layer these functions assumes that
+some of the required application interface "modules"
+must be dynamically loaded
+and/or configured at run-time.  The application state modules are
+assumed to be compiled code (C, C++, or the like), as they are
+loaded with the dlopen(3) library interface.
+
+<P>
+After they are loaded some a common convention is applied to choose
+which entry points (from the module) to execute to build the required
+state.  Any "wise compatible" program can load each module, although
+some combinations might be nonsensical.
+
+<P>
+The "stater" is a wise compatible program
+that process a stream of commands to manipulate, add, or refine
+session resources for a remote client (viz. CGI), the client then
+disconnects from the session to allow other clients access.
+Thus a CGI on a stater enabled web site can keep most of the session
+state data on the local network (rather than posting it in form data,
+or cookies).
+
+
+<H1>Configuration</H1>
+
+Provide a standard "<CODE>machine.h</CODE>" which defines:
+<DL>
+<DT>#define WISE_MOD_PATH
+<DD>
+A string prefix for a module name to locate it in the file system.
+Used by every wise compatible program to find its own modules.
+This could be mapped to a variable, for some applications.
+
+<DT>#define WISE_RTLD_OPTS
+<DD>
+The list of options required by dlopen(3) to force immediate
+binding and allow global access (from other dynamic modules, and
+the parent process).
+
+<DT>#define WISE_AUTH_COOKIE
+<DD>
+Used by the CGI interfaces, the name of the cookie that holds
+the present session information.
+
+<DT>#define WISE_AUTH_DOMAIN
+<DD>
+The name of the domain in which that cookie (above) is cached.
+
+<DT>#define WISE_TIMEOUT
+<DD>
+Used by the <CODE>stater</CODE> as a default timeout for each session.
+
+<DT>#define WISE_STATDB
+<DD>
+The name of a file (on a session host) that holds the list of all
+the active sessions.  Used by the <CODE>stater</CODE>, and some
+other applications.
+
+<DT>#define NEED_FREE_ALL
+<DD>
+Defined to be the integer <CODE>0</CODE> if the client
+application is not a daemon.  This switch turns on 2
+calls to <CODE>free</CODE> which are only needed if the
+client application might call <CODE>wise_load</CODE>
+in a tight loop (and never exit).
+
+<DT>#define WISE_MULTI
+<DD>
+Defined to a non-zero integer if and only if the client
+application is multithreaded (via pthread).  This dramatically
+increases the number of mutex locks a session requires.
+
+<DT>#define DEBUG
+<DD>
+This extends the tag line in a service module to include more
+identification of the attached client.  This is not recommended for
+production use, as it might leak information via ps(1), or rico(1L).
+</DL>
+
+<H1>Synopsis</H1>
+<BLOCKQUOTE><PRE><CODE>#include "machine.h"
+#include "wise.h"
+</CODE></PRE></BLOCKQUOTE>
+
+<H1>Description</H1>
+
+There are three ways to use this module:
+<DL>
+<DT>Remote client or CGI
+<DD>
+A remote client must establish a session, save the name of the session
+someplace (viz. a cookie, or an environment variable), open the
+session to save or recover state, close the session when not in use,
+and destruct the session when finished.
+<DT>A state module author
+<DD>
+A state module author must code entry-points for each intended
+session service that the module provides.
+<DT>A wise-compatible session service
+<DD>
+A session service (like the stater, unity, rcls, rcds, or acld)
+use several functions that load modules, keep track of which
+are loaded, and find entry-points in the loaded modules.
+</DL>
+
+
+<H1>Provides</H1>
+Support call-backs in a stater process only:
+<DL>
+<DT><CODE>typedef struct MTnode { ... } MOD_ENTRY</CODE>;
+<DD>
+The <CODE>typedef</CODE> <CODE>MOD_ENTRY</CODE> is used
+by the <CODE>wise_load</CODE> function to keep track of the
+list of in-core and active modules (used by state).
+
+<DT><CODE>extern int wise_load(char *pcModule, char *pcPath);</CODE>
+<DD>
+This function installs a new module into the list of
+active modules, if it needs to be loaded it searches the
+given Path for the name with a ".so" suffix on it.
+If the Path provided is (char *)0 we search <CODE>WISE_MOD_PATH</CODE>
+(used by state).
+
+<DT><CODE>extern void *wise_module(char *pcName, void *pDLModule);</CODE>
+This (mostly internal) function returns the dlopen descriptor for the
+named module.  If the module is not in the active table, and the
+Module parameter is not (void *)0, then that value is installed in the
+table and returned (used by state).
+<P>
+This function is also useful to install a symbolic (or virtual) name
+for a module.  For example the module used to authenticate credentials
+for a session (in the stater) is always called "auth".
+
+<DT><CODE>extern void wise_setpad(long int);</CODE>
+<DD>
+This gives the session generator a random number for session
+identification.
+Used by state, and call before a new session is fork(2)'d with a
+random number.
+
+<DT><CODE>extern unsigned int wise_settimeout(unsigned int);</CODE>
+<DD>
+Called by session after a new session is fork'd to set the session
+timeout clock (in seconds).
+
+It is used for a session to run commands from a bound and listening
+socket.  Connections are accepted, commands processed from each connection
+until either:
+<OL>
+<LI>the session timer expires before the next connection
+<LI>a client asks the session to self-destruct
+<LI>the session receives a signal
+<LI>(under multithreaded) another threads forces one of these events
+or calls exit.
+</OL>
+This function is only used by the stater, or by a camping listener in
+multithreaded mode (so it is session only).
+
+<DT><CODE>extern char *wise_name(char *pcKey);</CODE>
+<DD>
+Returns a compressed name for our host.  The function could be
+edited locally (site wide) to use rules <STRONG>other</STRONG> than
+these:
+<UL>
+<LI>If the name starts with /^sso[0-9]/ remove the "sso" prefix.
+<LI>Chop off all characters after the left-most dot (.)
+</UL>
+
+<DT><CODE>extern char *wise_host(char *pcKey, char *pcHost);</CODE>
+<DD>
+Undo what <CODE>wise_name</CODE> did to the hostname.  Put the "sso"
+prefix back on (if the name starts with a /^[0-9]/).  It is assumed
+that the <TT>/etc/resolv.conf</TT> search order will find the suffix
+we deleted.
+
+<DT><CODE>extern wise_entry_t wise_entry(char *pcModule, char *pcEntry);</CODE>
+<DD>
+This function allows a module to lookup an entry in another module.
+For example when a cache needs to find backing-store it might
+look through all module it knows (by a symbolic or real names) to
+have that feature (taking the first one it finds).
+
+<DT><CODE>extern int wise_status(int iSlot, char *pcTxt);</CODE>
+<DD>
+Update the status for the given slot in the WISE_STATDB file.
+The status is normally formatted with <CODE>wfmt</CODE>.
+
+<DT><CODE>extern int wise_port(int *piPort);</CODE>
+<DD>
+Find an unallocated TCP port and bind to it.
+Used for each new session, to get a unique port for the session.
+
+</DL>
+Support call-backs, and fully explode enabled for all WISE projects
+<DL>
+<DT><CODE>extern int wise_put(int fd, int iNum, const char *pcText);</CODE>
+<DD>
+Put a command or reply out to the peer, who is connected to <CODE>fd</CODE>.
+The Num parameter is either -1 (for "no number" or a 3 digit base 10 number
+for the command (or reply) code.  For example the common ftp login
+chat returns 3 line:
+<BLOCKQUOTE><PRE><CODE>220 mirror.npcguild.org FTP server (Version 6.00LS) ready.
+...
+331 Password required for ksb.
+...
+230 User ksb logged in.
+</CODE></PRE></BLOCKQUOTE>
+Which would look like:
+<BLOCKQUOTE><PRE><CODE>wise_put(fdClient, 220, "mirror.npcguild.org FTP server (Version 6.00LS) ready.");
+...
+wise_put(fdClient, 331, "Password required for ksb.");
+...
+wise_put(fdClient, 230, "User ksb logged in.");
+</CODE></PRE></BLOCKQUOTE>
+
+<P>
+This code is used in all three (session, remote, and module) contexts.
+Multiple lines (separated with \n, or \r\n) can (and should) be sent
+in a single call.
+
+<DT><CODE>extern int wise_get(int fd, int *piNum, char **ppcText);</CODE>
+<DD>
+The function receives the data <CODE>wise_put</CODE> sends.  It breaks
+the stream back into a number and the text.  Multiple lines are
+consolidated back into a single buffer.
+<P>
+The internal buffer <CODE>wise_get</CODE> may be modified,
+provided that no modifications are made beyond the sentinel '\000'.
+Subsequent calls may reallocate, free or clobber any previous
+data.
+<P>
+Returns 0 for success, -1 for failure.
+
+<DT><CODE>extern int wise_cget(int fd, int *piNum, char **ppcText);</CODE>
+<DD>
+Exactly like <CODE>wise_get</CODE>, but while the number returned is
+between 100 and 199 (inclusive) another call to <CODE>wise_get</CODE>
+is made.  This hides any "Positive Preliminary reply" codes from the caller.
+Otherwise returns the same values as <CODE>wise_get</CODE> would.
+<P>
+On order to read the FTP stream above:
+<BLOCKQUOTE><PRE><CODE>auto int iCode;
+auto char *pcText;
+register int i;
+for (i = 0; i < 3 &amp;&amp; 0 == wise_get(fdPeer, &amp;iCode, &amp;pcText); ++i) {
+	printf("code=%d, text=\"%s\"\n", iCode, pcText)
+}
+</CODE></PRE></BLOCKQUOTE>
+Which should output:
+	code=220, text="mirror.npcguild.org FTP server (Version 6.00LS) ready."
+	code=331, text="Password required for ksb."
+	code=230, text="User ksb logged in."
+<P>
+See the test drive for many more examples.  Remember that -1 for
+a number means no integer code was read, and a text of (char *)0
+means EOF (end of file) before any text was found.  So given input
+like:
+<BLOCKQUOTE><PRE><CODE> missing code
+</CODE></PRE></BLOCKQUOTE>
+<CODE>wise_cget</CODE> would set iCode to -1, and pcText to "missing code".
+</DL>
+
+
+User module calls we support, most are optional:
+<DL>
+
+<DT><CODE>typedef int (*wise_entry_t)(int, int, char **);</CODE>
+<DD>
+This <CODE>typedef</CODE> defines a pointer to a function which
+is appropriate to store any of the standard entry points defined
+below.
+
+<DT><CODE>extern int init(int argc, char **argv, void *pCS);</CODE>
+<DD>
+Called by <CODE>wise_load</CODE> when the defining module is loaded
+(via dlopen(3)).
+A module may be loaded in 3 ways:
+<UL>
+<LI>At the start of a session the requested authentication module is loaded
+to establish the session as valid.
+<LI>A module can call-back to <CODE>wise_load</CODE> when it depends on
+another module.
+<LI>The "load" command is presented on a stater command channel.
+</UL>
+
+<DT><CODE>extern int info(int fd, int argc, char **argv);</CODE>
+<DD>
+Called when the module is polled for a status report, via either
+<TT>rico</TT>'s info request, or a credentialed "status" request
+via a stater command channel.
+
+<DT><CODE>extern int chat(int fd, int argc, char **argv);</CODE>
+<DD>
+Called when a remote client asks to "chat" with our module by
+name, via a stater command channel.
+The chat protocol for each module could be different, by
+<STRONG>convention</STRONG> the wise put and cget calls are used
+to implement most chat transactions.
+
+<DT><CODE>extern int auth(int fd, int argc, char **argv);</CODE>
+<DD>
+Triggered by the "auth" command via a stater command channel.
+The call the authorization entry-point in the
+requested module, or the authorization entry in the
+authentication used to start the session.
+The first parameter is the name of the module
+that the remote client needs to access.
+That located entry-point replies to the remote client with an
+appropriate reply code (200-299 for yes, or 300-599 for no).
+<P>
+Called when a remote client needs access to a new module, or resource
+and is not sure the customer should be allowed access.
+
+<DT><CODE>extern int camp(int fd, int argc, char **argv);</CODE>
+<DD>
+Triggered by the "listen" on a stater command channel, to
+start a new camping thread in the session.  The new thread is passed
+the bound socket to listen on, and the rest of the arguments
+given to listen.
+
+<DT><CODE>extern int cleanup(int fd, int argc, char **argv);</CODE>
+<DD>
+Triggered by the "destruct" command via on a stater command channel.
+Also triggered by a session timeout.
+
+<DT><CODE>extern int spinup(int fd, int argc, char **argv);</CODE>
+<DD>
+Called when a new client connects on the listening socket, if defined.
+
+<DT><CODE>extern int spindown(int fd, int argc, char **argv);</CODE>
+<DD>
+Called when a client disconnects from the session, if defined.
+</DL>
+
+<P>
+There have been a few <STRONG>non</STRONG>-standard entry-points
+defined (mostly by other organizations:
+<DL>
+<DT><CODE>extern char **attribute(char *pcWhich);</CODE>
+<DD>
+Given the name of an attribute (of the module itself) returns an
+argv-style vector of values for that attribute, or (char **)0
+if the attribute is undefined for the module.
+<P>
+Attributes have no predefined meaning in the context of the wise
+framework, but are usually use as a UNIX group would be.  For
+example the attribute "color" might have a value of either "blue",
+or "true" depending on the application.  The author has had no
+use, himself, for this API (while others find it useful).
+</DL>
+
+<H1>EXAMPLE</H1>
+See the test driver embedded in the module, via:
+<BlOCKQUOTE>
+explode -s wise.h
+<BR>
+explode wise.c
+<BR>
+more wisetest.c
+</BlOCKQUOTE>
+<P>
+
+See the code for the "stater", "unity", "acld", or "rcld" for more
+examples.
+
+
+<H1>Diagnostics</H1>
+None.
+
+<H1>See Also</H1>
+read(2), write(2), dlopen(3).
+
+<H1>To Do List</H1>
+None.
+<HR><PRE>
+$Id: wise.html,v 1.8 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

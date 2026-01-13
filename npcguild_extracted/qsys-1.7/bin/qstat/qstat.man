@@ -1,0 +1,77 @@
+.\" $Id: qstat.man,v 1.2 1997/01/06 02:33:48 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH QSTAT 1L LOCAL
+.SH NAME
+qstat \- display a queue system queue
+.SH SYNOPSIS
+.ds PN "qstat
+\fI\*(PN\fP [\-\fBn\fP\fBv\fP] [\-\fBd\fP \fIdir\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.SH DESCRIPTION
+Each job in the queue outputs a status line.  Running jobs have a less
+infomative line.
+.PP
+When there are no tasks in the queue \fIqstat\fP outputs:
+.RS
+zero files in queue
+.RE
+.PP
+When a task is waiting to be launched:
+.RE
+.nf
+Rank  Job   Who        Date     Nice    Command
+  1  k01  ksb      Feb 11 13:42  10 sleep 600;
+.fi
+.RS
+.PP
+When a task is running:
+.RS
+.nf
+Rank  Job   Who        Date     Nice    Command
+run 14871 ksb      Feb 11 13:42   0 sleep 600;
+.fi
+.RE
+.SH OPTIONS
+.TP
+.BI \-d dir
+Queue to manipulate.
+.TP
+.BI \-h 
+Print a brief help message.
+.TP
+.BI \-n 
+Just output a trace of commands run.
+.TP
+.BI \-v 
+Be verbose.
+When a task is running display an extra line with the worker host's name.
+.TP
+.BI \-V 
+Show version information.
+.SH EXAMPLES
+.TP
+qstat
+Outputs:
+.RS
+.nf
+Rank  Job   Who        Date     Nice    Command
+run 21573 tcb      May 14 11:21   0	make me
+  1  s01  sjw      May 14 10:02   2     make time
+  2  k01  ksb      Feb 15 16:19  17     waste not; want not;
+.fi
+.RE
+.SH BUGS
+Running jobs nice value is `0' since they are already niced.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Group
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+qadd(1L), qrm(1L), qmgr(8L)

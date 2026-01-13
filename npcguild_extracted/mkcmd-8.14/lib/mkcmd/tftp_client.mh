@@ -1,0 +1,15 @@
+/* $Id: tftp_client.mh,v 8.20 1998/11/28 16:45:03 ksb Exp $
+ * an abstraction to access tftp services from C			(ksb)
+ * Some of the implementation from the BSD tftp client source.
+ * See copyright in util_tftp.m
+ */
+extern void tftp_init(void);
+extern int tftp_rexmt(int);
+extern int tftp_timeout(int);
+extern int tftp_open(struct hostent *pHEServer, struct servent *pSEPort);
+extern int tftp_put(FILE *fpData, char *pcName, char *pcMode);
+extern int tftp_get(FILE *fpWrite, char *pcName, char *pcMode);
+extern int tftp_close(void);
+#if TFTP_STATS
+extern void tftp_stats(FILE *fpOut, int, int int);
+#endif

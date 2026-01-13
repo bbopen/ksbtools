@@ -1,0 +1,26 @@
+# $Id: TODO,v 8.6 2009/12/08 22:58:14 ksb Exp $
+
+Some make's build a depend "special.c: special.i" and I don't know
+why.  Then make complains about not having a rule to build special.i
+(which exists in the current directory).  ``make -t specail.i'' is
+a hack to fix that.  I don't know how to shut make up.
+
+
+Question: does install check the link count on the source file before it
+unlinks it?  If the link count is >1 maybe we should NOT remove it?
+
+
+
+Other things to think about:
+
+Then support flags in instck's last column
+	/kernel	-rwxr--r--	root:*	schg,nostrip
+
+Add to the letter "n", "l", "s" aliases "nostrip", "ranlib", "strip" as
+pseudo-flags.
+
+Also make instck -G generate them: that would be another option, I
+suspect (the list of flags to record).
+
+--
+kayessbee,  6 Dec 2009

@@ -1,0 +1,101 @@
+`#	$Id: Make.host,v 1.8 2000/06/20 14:06:37 ksb Exp $
+#
+#	Makefile for qlock
+#
+
+SHELL=/bin/sh
+PROG=	qlock
+DOC=	${DESTDIR}/usr/man
+
+C=../../lib/qcommon
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE= -I$C
+DEBUG=	-O
+CDEFS=  -D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+GENC=	main.c
+GENH=	main.h
+GEN=	${GENC} ${GENH}
+HDR=	
+SRC=	
+DEP=	${GENC} ${LINKC} ${SRC}
+OBJ=	main.o
+MAN=	qlock.man
+OTHER=	README qlock.m
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}
+
+main.h: main.c
+
+main.c: $C/qsys.m ${PROG}.m
+	mkcmd std_help.m std_version.m $C/qsys.m ${PROG}.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+main.o:
+	. $C/qpaths.sh && \
+	${CC} ${CFLAGS} -DQ_SPOOL=\"$$Q_SPOOL\" -DQ_DIR=\"$$Q_DIR\" -c main.c
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} ${LINK} *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} FRC
+	. $C/qpaths.sh && \
+	install -R $$Q_BIN/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+distrib: FRC
+	. $C/qpaths.sh && \
+	distrib -c $$Q_BIN/${PROG} HOST
+
+install: all FRC
+	. $C/qpaths.sh && \
+	install -cs -g $$Q_GROUP ${PROG} $$Q_BIN/${PROG}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+/ ${LINK}:
+	${LN} ${L_SRC}/$@ .
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+main.o: $C/common.h $C/qfuncs.i main.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

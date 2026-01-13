@@ -1,0 +1,14 @@
+# $Id: README,v 2.0 2000/06/06 00:39:21 ksb Exp $
+
+This is the startup for the WISE (Web Infrastructure Service Engine)
+Btree login/data system.  We run the two different services based on the
+existance of their data directories.  Make those with "rcls make-rcls"
+(for the login service) and "rcls make-rcds" to just make the data
+service.
+
+The hash sequence _used_ to be accessed via hashd, but we folded the code
+into the sso.m module for speed.  It must be owned as stater:data, mode 664
+to be compatible with both access/update methods.
+
+--
+ksb

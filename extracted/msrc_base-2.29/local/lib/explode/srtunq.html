@@ -1,0 +1,218 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Sorted, uniqued strings</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: srt
+<BR>
+Authors: Stephen Uitti, Purdue University Computing Center
+<BR>
+Mail: explode at ksb dot npcguild.org
+<BR>
+Version: 2.1
+<BR>
+Bugs: Well documented.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+Sometimes you just want to remember a list of strings, but you don't
+want to repeat any of them.  This code makes that really easy.
+
+<H1>Configuration</H1>
+
+None.
+
+<H1>Synopsis</H1>
+<blockquote class="file"><pre><code>#include &lt;stdio.h&gt;
+#include "srtunq.h"
+</CODE></pre></blockquote>
+
+<H1>Description</H1>
+Srtunq is used to extract unique items from a possibly long list,
+where items are likely to be replicated numerously.
+The list of unique items must be small enough to
+fit in memory, but the number of repetitions is possibly high.
+<P>
+The caller has control over the database through the use of a
+<code>SRTTABLE</code> variable.  The subroutines provide for data entry and
+retrieval, memory allocation and deallocation.
+
+<H1>Provides</H1>
+<DL>
+<DT>typedef  struct ... SRTTABLE;
+<DD>
+Users will define one variable of this type to hold the root of
+each sorted list they wish to keep.
+Most routines in this library require the address of such
+a variable as their first argument.
+
+<DT>typedef  struct ... SRTENTRY;
+<DD>
+Strings are kept in a structure of this type internally.
+The user should not depend on the internal details of this type.
+
+<DT>void
+<DT>srtinit(tbl)
+<DT>SRTTABLE *tbl;
+<DD>
+This subroutine must be called to initialize the database tag <code class="param">tbl</code>
+before any data are entered or retrieved from that tree.
+It assumes that the tag has not been used
+to store a tree, and therefore does not attempt to free any such data.
+
+<DT>char *
+<DT>srtin(tbl, string, compare)
+<DT>SRTTABLE *tbl;
+<DT>char *string;
+<DT>int (*compare)();
+<DD>
+The existing data tree is searched for the string,
+if it is found then a pointer to that string is returned.
+Otherwise, space is allocated for the string and pointer structure via
+malloc(3).
+The string is copied to this new space which is linked into the tree
+and a pointer to the new string is returned.
+If space cannot be obtained, the operation is aborted and NULL is returned
+(the data structure remains consistent, but the string is not added).
+The strings are compared and sorted with the subroutine pointed to by
+<code class="param">compare</code>.  This subroutine takes two string pointers as arguments.
+It returns zero if the strings are the same,
+less than zero if the first string should precede the second, and
+greater than zero if the second string should precede the first.
+Use strcmp(3) if simple lexicographical ordering is desired.
+It is confusing at best if different <code class="param">compare</code> functions are used
+when inserting strings into a given tree.
+
+<DT>char *
+<DT>srtmem(tbl, string, compare)
+<DT>SRTTABLE *tbl;
+<DT>char *string;
+<DT>int (*compare)();
+<DD>
+Return the database entry for <code class="param">string</code> if it is already a member of
+the table, else NULL.
+
+<DT>int
+<DT>srtdel(tbl, string, compare)
+<DT>SRTTABLE *tbl;
+<DT>char *string;
+<DT>int (*compare)();
+<DD>
+The existing data tree is searched for the string,
+if it is found then it is deleted and a nonzero value is returned.
+Otherwise, 0 is returned.
+
+<DT>void
+<DT>srtgti(tbl);
+<DT>SRTTABLE *tbl;
+<DD>
+This subroutine initializes the database tag pointed to by <code class="param">tbl</code>
+so that a tree traversal can be made via <code class="param">srtgets</code>.
+
+<DT>char *
+<DT>srtgets(tbl);
+<DT>SRTTABLE *tbl;
+<DD>
+This subroutine extracts the next string from the data structure.
+The strings are returned in the order specified by the <code class="param">compare</code>
+function when they were inserted with srtin.
+When the list is exhausted, NULL is returned.
+
+<DT>int
+<DT>srtapply(tbl, func)
+<DT>SRTTABLE *tbl;
+<DT>int (*func)(char *, void *);
+<DD>
+This subroutine applies the <code class="param">func</code> to each string in the tree (order
+determined by <code class="param">compare</code> when they were inserted) until the func returns
+non-zero, or there are no more strings.  If the <code class="param">func</code> returned
+non-zero then that value is returned, otherwise 0 is returned.  The (void *)
+will always we a NULL pointer.
+
+<DT>int
+<DT>srtapply2(tbl, func, pv)
+<DT>SRTTABLE *tbl;
+<DT>int (*func)(char *, void *);
+<DT>void *pv;
+<DD>
+This subroutine applies the <code class="param">func</code> to each string in the tree (order
+determined by <code class="param">compare</code> when they were inserted) until the func returns
+non-zero, or there are no more strings.  If the <code class="param">func</code> returned
+non-zero then that value is returned, otherwise 0 is returned.  The <code class="markup">(void *)</code>
+is common to all calls the <code class="param">func</code>, this is usually used to
+return a value by reference, keep some state, or may be used to
+get to a recursive instance of <code>srtapply2</code>.
+
+<DT>void
+<DT>srtfree(tbl)
+<DT>SRTTABLE *tbl;
+<DD>
+This subroutine deletes a database, and re-initializes the
+database tag.
+It assumes that the database tag was initialized at one time via srtinit
+(other routines will probably also have been called).
+The space formerly occupied by string data and pointer structures is
+deallocated via free(3).
+
+<DT>void
+<DT>srtdtree(tbl, ent)
+<DT>SRTTABLE *tbl;
+<DT>SRTENTRY *ent;
+<DD>
+This subroutine recursively deletes a database subtree.
+The space formerly occupied by the string data and pointer structures is
+deallocated via free(3).
+This routine is most likely only of use internally.
+</DL>
+
+<H1>EXAMPLE</H1>
+<blockquote class="file"><pre><code>#include &lt;stdio.h&gt;
+main()
+{
+	extern int strcmp();
+	SRTTABLE tree;
+	char buf[80], *p;
+	int i;
+
+	/* init the tree */
+	srtinit(&amp;tree);
+
+	/* add some strings */
+	while (NULL != fgets(buf, 80, stdin))  /* want the \n terminator */
+		if (NULL == (p = srtin(&amp;tree, buf, strcmp)))
+			printf("out of memory!\n");
+
+	/* init tree for srtgets */
+	srtgti(&amp;tree);
+
+	/* print out the strings with srtapply and printf -- can't have
+	 * a legal printf % escape in the strings! */
+	(void) srtapply(&amp;tree, printf);
+
+	/* use srtgets to print the strings out this time -- keep count */
+	for (i = 0; NULL != (p = srtgets(&amp;tree)); ++i)
+		printf("string %2d is: %s\n", i, p);
+	printf("there were %d strings\n", i);
+
+	/* free the database */
+	srtfree(&amp;tree);
+}
+</code></pre></blockquote>
+
+<H1>Diagnostics</H1>
+There are no messages printed by these routines.
+Catchable errors are returned as NULL.
+Compiled in errors such as the use of strings that
+are not null terminated tend to result in core files.
+
+<H1>See Also</H1>
+malloc(3), free(3), qsort(3), strcmp(3)
+
+<H1>To Do List</H1>
+The structure names and typedefs seem confused.  The typedefs make more sense.
+<HR><PRE>
+$Id: srtunq.html,v 6.7 2010/08/14 17:08:19 ksb Exp $
+</PRE>
+</BODY></HTML>

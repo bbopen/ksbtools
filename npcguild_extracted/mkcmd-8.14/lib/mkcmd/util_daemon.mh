@@ -1,0 +1,7 @@
+/* $Id: util_daemon.mh,v 8.8 1997/11/13 19:17:14 ksb Exp $
+ */
+%#if %K-1v
+extern void Daemon(SIGRET_T (*func)(), struct fd_set *fd_ignore, int fDetatch);
+#else
+extern void Daemon();
+#endif

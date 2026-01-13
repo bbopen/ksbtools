@@ -1,0 +1,11 @@
+# the file is a fifo, what to do?					(ksb)
+# $Id: p,v 5.0 1996/09/09 19:57:53 kb207252 Exp $
+
+$Display(*):	${ls-ls} %s %f
+$Display(*):	${ls-ls} -l %f
+$Display(*):	%g%~/m/display
+
+$Info(*):	${echo-echo} "fifo"%;
+
+$*(*):		: '%f is a fifo (named pipe), cannot %m(%s) it.' && ${false-false}%;
+$*(*):		: '%f is a a fifo (named pipe), cannot %m it.' && ${false-false}$;

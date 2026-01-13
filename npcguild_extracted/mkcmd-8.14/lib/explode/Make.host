@@ -1,0 +1,81 @@
+`#	$Id: Make.host,v 6.0 2000/07/30 15:57:11 ksb Exp $
+#
+#	Makefile for explode library
+#
+
+SHELL=/bin/sh
+LIB=	${DESTDIR}/usr/local/lib/explode
+DOC=	${DESTDIR}/usr/local/man
+
+SRC=	README index.html \
+	avl.html avl.c avl.h \
+	ckpass.html ckpass.c ckpass.h \
+	identd.html identd.c identd.h \
+	scandir.html scandir.c scandir.h \
+	setenv.html setenv.c setenv.h \
+	strcasecmp.html strcasecmp.c strcasecmp.h \
+	srtunq.html srtunq.c srtunq.h
+MAN=	explode.man 
+SOURCE=	Makefile ${MAN} ${SRC}
+
+
+all: ${SRC}
+
+boot: all ${SRC}
+	-[ -d ${LIB} ] || mkdir ${LIB}
+	-for file in ${SRC} ; do \
+		cmp -s $$file ${LIB}/$$file && continue ;\
+		cp $$file ${LIB}/$$file ;\
+		chmod o-w ${LIB}/$$file ;\
+	done
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	for dink in ${SRC} ;\
+	do \
+		install -Rm 644 ${LIB}/$$dink ;\
+	done
+	mkcat -r${DOC} -D ${MAN}
+
+depend: FRC
+
+dirs: ${LIB}
+
+distrib: FRC
+	distrib -c ${LIB} HOST:
+
+install: all dirs ${SRC} FRC
+	-for file in ${SRC} ; do \
+		cmp -s $$file ${LIB}/$$file && continue ;\
+		install -c -m 644 $$file ${LIB} ;\
+	done
+
+lint: FRC
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"explode source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+${LIB}:
+	mkdir -p $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

@@ -1,0 +1,16 @@
+/* $Id: shared.mi,v 8.3 2004/12/15 22:20:18 ksb Exp $
+ * link with the main program's basecode
+ */
+%extern char *%b%;
+%extern int %K<getopt_switches>1v, %K<getopt_switches>3v%;
+%extern char *%K<getopt_switches>2v%;
+
+%#if %K-1v
+%extern int %K<envopt>1v(int *, char ***, char *)%;
+%extern int %K<getarg>1v(int, char **)%;
+%extern int %K<getopt>1v(int, char **, char *, char *)%;
+#else
+%extern int %K<envopt>1v(/* int *, char ***, char * */)%;
+%extern int %K<getarg>1v(/* int, char ** */)%;
+%extern int %K<getopt>1v(/* int, char **, char *, char * */)%;
+#endif

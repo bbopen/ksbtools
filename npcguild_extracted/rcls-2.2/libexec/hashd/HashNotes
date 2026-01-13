@@ -1,0 +1,73 @@
+# $Id: HashNotes,v 1.1 1999/07/31 17:15:12 ksb Exp $
+
+Keys for sso (or what ever) are 60 bit numbers encoded in a base64 string.
+We pick the bits of the number to represent in a manner that makes the
+first two characters jump around in a sequence that makes a pretty good
+hash.  They stay in a lower range of digits for a long time.  The rest
+of the 10 character value is not stable, or documented in any way.
+
+
+The core of this system is a monotonically increasing integer which is
+kept in a file on the filesystem (in plain text).  This 60 bit integer
+is read, incremented and returned to the file.  The empty file is considered
+to be the number 0.  The file is ascii encoded binary ("01000\n" means 8).
+
+The daemon outputs the integer as a Base64 hash value.  The bits in the
+hash are a permutaion of the bits in the integer seed.  The hash looks
+like 10 bytes of the (nearly) standard (RFC 2045 sec 6.8) Base64 encoding.
+This uses the alphabet [A-Za-z0-9+/].  The 10 byte hash encodes 6 bits of
+the 60 bit number in each position (hash "ABCDEFGHIJ"):
+
+seed:6        S5         4         3         2         1        0
+ bit:098765432109876543210987654321098765432109876543210987654321
+     AABBCDEFGHCJJJJJEFHHGHGFGFEFEDEDCDCBCBAAABCDEFGHHDABIIIIGIIJ 
+
+hash:     A      B      C      D      E      F      G      H      I      J
+ bit:654321 654321 654321 654321 654321 654321 654321 654321 654321 654321 
+
+We expect 1,000,000 sso logins in the first year -- so the low 20
+bits of the seed will all be totally permuted.
+
+The Encoding looks like
+	A{6=S60, 5=S59, 4=S22, 3=S21, 2=S20, 1=S10}
+	B{6=S58, 5=S57, 4=S25, 3=S23, 2=S19, 1=S09}
+	C{6=S56, 5=S28, 4=S26, 3=S24, 2=S18, 1=S50}
+	D{6=S55, 5=S31, 4=S29, 3=S27, 2=S17, 1=S11}
+	E{6=S54, 5=S34, 4=S32, 3=S30, 2=S16, 1=S44}
+	F{6=S53, 5=S37, 4=S35, 3=S33, 2=S15, 1=S43}
+	G{6=S52, 5=S40, 4=S38, 3=S36, 2=S14, 1=S04}
+	H{6=S51, 5=S42, 4=S41, 3=S39, 2=S13, 1=S12}
+	I{6=S08, 5=S07, 4=S06, 3=S05, 2=S03, 1=S02}
+	J{6=S49, 5=S48, 4=S47, 3=S46, 2=S45, 1=S01}
+
+
+Implementation notes:
+     +	The first two characters are going to be "A-P" for a long
+	time before the roll to "Q-Za-z0-9+@".  This means that
+	using the first two characters as a way to distriute 
+	work might be a good idea.
+
+     +	Byte "I" in the hash rolls the most quicky. The last two
+	characters in the hash might be useful as second level
+	keys in a lookup.
+
+     +	the Customer should never be presented with the hash, even in
+	a cookie, if we can help it.
+
+     +	bits S(49..45) are used to round robin request from
+	hashd servers (see the -b option to hashd).
+
+The implementation is a short C program that runs from inetd, or the
+command line.  It locks a file with the large integer in it and updated it.
+It then outputs the hash of the integer on the TPC/IP port it got.
+
+A telnet client can be used to get a hash, or nc, or call "hashd -i".
+
+As an implementation detail the "high order" bits of the integer seed
+can be forced on the command line.  These are spread out over the
+hash (so it is not obvious which bits were forced).  This can be
+used to implement a system where some hosts have a static parition
+of the hash space.  (And is in out environment)
+
+--
+ksb

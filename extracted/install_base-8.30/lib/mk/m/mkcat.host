@@ -1,0 +1,11 @@
+include(`../Machine.m4')dnl
+`# install a man page							(ksb)
+# $Id: mkcat.host,v 5.3 2004/12/07 14:33:40 ksb Exp $
+# the Mkcat target is used by the new manual system to format a page
+# the way it should be installed on-line (nroff -h, for instance)
+
+$Mkcat(*): %=/gz/%[f.$]/gunzip -c %f|${tbl-'TBL`} /usr/local/lib/man/pagelen.n -|${nroff-'NROFF`}'NROFF_TAB_OPT` -man|'COLCRT` 'USE_NEWCOLCRT`%;
+$Mkcat(*): %=/Z/%[f.$]/uncompress -c %f|${tbl-'TBL`} /usr/local/lib/man/pagelen.n -|${nroff-'NROFF`}'NROFF_TAB_OPT` -man|'COLCRT` 'USE_NEWCOLCRT`%;
+$Mkcat(*): %=/z/%[f.$]/pcat %f|${tbl-'TBL`} /usr/local/lib/man/pagelen.n -|${nroff-'NROFF`}'NROFF_TAB_OPT` -man|'COLCRT` 'USE_NEWCOLCRT`%;
+$Mkcat(*): ${tbl-'TBL`} /usr/local/lib/man/pagelen.n %f|${nroff-'NROFF`}'NROFF_TAB_OPT` -man|'COLCRT` 'USE_NEWCOLCRT`
+'dnl

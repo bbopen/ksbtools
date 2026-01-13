@@ -1,0 +1,218 @@
+.\" $Id: project.man,v 4.6 1993/02/09 11:37:35 ldv Exp $
+.TH PROJECT 1L PUCC
+.SH NAME
+project \- control electronic submission
+.SH SYNOPSIS
+\fBproject\fP [\fB\-dehilnpqrvV\fP] [\fB\-c\fP\fIcourse\fP] [\fB\-G\fP\fIcmd\fP] [\fB\-g\fP\fIcmd\fP] [\fIname\fP]
+.br
+.SH DESCRIPTION
+.I Project
+allows an administrator of a logical group of users to submit
+files for examination.  \fIProject\fP is typically used by course
+administrators to allow their students to electronically submit
+coursework for grading.
+.PP
+.I Project
+first determines for which class the invoking user is receiving projects.
+If \fIproject\fP does not find the invoker's login name in its database,
+it aborts.  Otherwise,
+.I project
+looks to see what projects this course has and which one is current.
+.PP
+If
+.I project
+is run without options and no 
+.IR name ,
+it displays a help message.  If
+.I project
+is initiated without options but with a 
+.IR name ,
+it will look for
+the submission directory \fIsubmit\fP
+(note: the submit directory may have any name)
+in the home directory of the user.
+If \fIsubmit\fP does not exist,
+.I project
+will create it.
+.I Project
+then modifies the file \fIProjlist\fP to enable submissions for the named
+project and creates a
+subdirectory in \fIsubmit\fP with the same name as the project being
+enabled to receive the submitted projects.
+.PP
+Project names may not have a period in them, but they may contain letters,
+numbers, or other marks of punctuation.
+.PP
+.I Project
+invoked with options but without a
+.IR name ,
+uses the file \fIProjlist\fP in the submission directory to determine
+the current project name.
+.PP
+The invoker may use the options below to disable, enable, grade, and remove
+the submitted files.  The submitted files are stored in a tar format file
+named for the login name that submitted them (see turnin(5L)).
+.SH OPTIONS
+.TP
+.BI \-c course
+\fIProject\fP, when run by the superuser, will use this \fIcourse\fP to
+select the effective user id.
+Normal users may use this option to administer more than one course.
+(If the selected user doesn't exist on this machine, \fIproject\fP will exit
+nonzero.)
+.TP
+.B \-d
+Disable submissions for the current project.
+.TP
+.B \-e
+Enable submissions for the current project and make the current project the
+default project.
+.TP
+.B \-l
+Enable submissions for the current project but do not change the default
+project.
+.TP
+.BI \-g cmd
+Execute the given command once for every submitted assignment.
+Note that the \fIcmd\fP must be in the search path of the invoker.
+Several escape sequences are used to pass arguments to
+\fIcmd\fP, all begin with a percent sign (%), they are:
+.br
+.TS
+rw(8) l.
+h	home directory of the instructor
+t	turnin directory name
+p	current project
+d	division/section identifier for the current student
+u	current student's login name
+s	the full path name of the associated tar file
+%	yields a percent sign
+.TE
+.TP
+.BI \-G cmd
+Execute the given command once for every division of the class.
+Note that the \fIcmd\fP must be in the search path of the invoker.
+See \fB\-g\fP above for escape sequences, except %u expands to ``*''.
+If both \fB\-g\fP and \fB\-G\fP are given all the \fB\-g\fP commands
+for a division are done before the \fB\-G\fP command for that division.
+.TP
+.B \-h
+Display a summary of 
+.I project's
+options.
+.TP
+.B \-i
+\fIProject\fP will ask the user about how they wish to use the
+electronic submission system and initialize their account.
+Note that mail is sent to a superuser to do the final configuration,
+so this command is not immediate.
+An example of this option may be found in /usr/doc/local/project/install.
+.TP
+.B \-n
+Print what would be done but don't do it.
+This option implies the \-\fBv\fP option.
+.TP
+.B \-o
+Display a status line on the terminal.
+.TP
+.B \-p
+\fITar\fP(1) and \fIcompress\fP(1) a submission directory in effort to
+utilize the invoker's disk space efficiently.
+The project \fIname\fP must be disabled.  The project \fIname\fP will
+be unpacked by the \fB\-e\fP, \fB\-g\fP, \fB\-l\fP,
+and \fB\-G\fP options automatically.
+.TP
+.B \-q
+\fIProject\fP confirms the command then removes all \fIproject\fP
+related files from the user's account.
+.TP
+.B \-r
+Remove
+.I all
+files associated with the current project.
+.I Project
+will ask you to verify that you really want to do this before proceeding.
+.TP
+.B \-v
+Verbose.  Print shell commands as they are executed.
+.TP
+.B \-V
+Show which version of \fIproject\fP is running.
+.SH EXAMPLES
+.TP
+project \-e project4
+Enable submissions for \fIproject4\fP.
+.TP
+project \-d parser
+Turn off all new submissions for \fIparser\fP.
+.TP
+project \-g "echo %u"
+List all the login names of the students that have submitted something for
+the current project.
+.TP
+project \-g "gradeit %s"
+Grade all submitted files with a shell script named \fIgradeit\fP.
+.sp
+Note that the script is usually passed the full path name to the
+submitted files which are kept in a single tar format file.  The script
+that is doing the grading will make a temporary directory to unpack
+and compile the submitted code (see FILES).
+.TP
+project \-g "if [ d1s1 = %d ] ; then gradeit %s ; fi"
+Grade only division 1 section 2 with a grading script (\fIgradeit\fP).
+.sp 1
+The use of the shell \fIif\fP statement in the \fIcmd\fP is to prevent
+the unnecessary invocation of the grading script. The script, however,
+could do the comparison itself and exiting if the division/section
+identifier did not match an ideal one.
+.sp 1
+For an instructor to disable submission for project3 at around
+midnight on October 15 for all hosts mentor.cc, expert.cc,
+sage.cc, (from sage.cc):
+.br
+	at \-m 0005 Oct 15
+.br
+	at> project \-d project3
+.br
+	at> rsh mentor project \-d project3
+.br
+	at> rsh expert project \-d project3
+.br
+	at> ^D
+.br
+(these commands could be put into a file).
+.br
+.TP
+project \-i
+Set up this account to receive submissions.
+.TP
+project \-p oldproj
+If submissions are disabled for \fIoldproj\fP, the directory
+\fIoldproj\fP is run through \fItar\fP(1) and \fIcompress\fP(1),
+resulting in a file named \fIoldproj.tar.Z\fP.  The directory
+\fIoldproj\fP is removed.
+.TP
+project \-V
+project: $\&Id: project.c,v 4.6 90/07/02 14:18:32 ksb Exp $
+.br
+project: default directory name: submit
+.SH FILES
+/usr/doc/local/project/template is a sample shell script to grade Pascal programs.
+.br
+/usr/doc/local/project/install is a sample installation session.
+.br
+$HOME/submit is the default submit directory.
+.br
+$HOME/submit/Projlist contains the submission status of all projects in
+$HOME/submit.
+.SH BUGS
+.PP
+.I Project
+.B must
+be run on each machine where you wish students to submit files.
+.sp
+Attempts to copy the project submission directory or the
+\fIProjlist\fP file to other hosts will cause problems when
+students use \fIturnin\fP(1L) to turn in their projects.
+.SH SEE ALSO
+at(1), compress(1), environ(7), sh(1), tar(1), turnin(1L)

@@ -1,0 +1,8 @@
+# $Id: TODO,v 1.1 2000/05/11 19:51:29 ksb Exp $
+
+Put the pipe-ring code in with a control of
+	Rring	size of the double buffer process ring
+which should default to "none" (not 1).
+
+--
+ksb

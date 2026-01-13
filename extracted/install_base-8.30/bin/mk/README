@@ -1,0 +1,27 @@
+# $Id: README,v 5.1 2007/02/28 20:22:03 ksb Exp $
+
+Sometimes you want to hide a bit of shell code in a file, then later extract
+and run that code on that file to produce an output.  A good example of this
+is the manual system: it would be terrible to have to name a Makefile for
+each manual page in /usr/man/man*, or keep said file(s) in sync with the
+pages.
+
+What we do instead is hide the formatting command in the comments of the
+manual page, then extract it when we need to format the page.  Thus the
+command moves with the page and cannot get lost.  If a page has no command
+hidden in it we will fall back to a set formula, much as make(1) does.
+
+The template formulas are written to give max flexibility by using the shell
+to expand some hooks.  More about that in mk.5l.
+
+We can also set resource limits and exit codes, as well as passing the
+environment around more fully.
+
+Anyway, that is the plan.  We also use this same program in a regression
+test driver (valid(1L)) which you can email me about if you care.
+
+
+kayessbee
+--
+"This may be a new sense of the word `robust' for you."
+KS Braunsdorf, mk@ksb.npcguild.org

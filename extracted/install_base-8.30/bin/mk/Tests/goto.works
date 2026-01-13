@@ -1,0 +1,6 @@
+# this file just makes sure goto works
+# $Id: goto.works,v 5.0 1999/02/26 17:43:03 ksb Exp $
+
+exit 0
+
+$*(*):	echo Goto OK

@@ -1,0 +1,11 @@
+# $Id: compat,v 5.0 1999/02/26 17:43:03 ksb Exp $
+# The OLD mk used to expand shell variable and some other strange
+# command line variables.  These have been passed off to the shell
+# to do.  This test makes sure OLD style calls get converted into
+# shell variable substitutions correctly.  (ksb)
+
+
+$Compile:  MK=-t/dev/null %b -a%C%I%N%V -mVars -Dfalse="exit 0" %f && echo Vars test OK
+
+$Vars(1): %`false`
+$Vars(2): %{false}

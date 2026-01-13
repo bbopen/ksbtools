@@ -1,0 +1,7 @@
+/* $Id: std_macro.mh,v 8.7 1997/10/27 11:55:22 ksb Exp $
+ */
+%%XroZK2v
+%%XroZK4v
+
+extern char *Macro(/* char * */);
+extern void ListMacro(/* FILE * */);

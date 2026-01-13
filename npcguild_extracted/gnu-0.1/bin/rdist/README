@@ -1,0 +1,9 @@
+# $Id: README,v 1.1 1997/07/08 22:17:42 ksb Exp $
+
+A link to build the rdist program from the meta source system.
+Of course you _have_to_have_ and rdistd on the machine to _use_
+the meta source system, but this would let you build an upgrade
+I guess.
+
+--
+ksb

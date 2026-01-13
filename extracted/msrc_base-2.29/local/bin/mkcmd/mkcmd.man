@@ -1,0 +1,319 @@
+.\" $Id: mkcmd.man,v 8.4 2009/12/26 16:09:35 ksb Exp $
+.\" by Kevin Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: ${groff:-groff} -tbl -Tascii -man %f|${PAGER:-less}
+.\" $Display(*): ${groff:-groff} -tbl -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man1/mkcmd.1
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]1/mkcmd.1*
+.TH MKCMD 1L LOCAL
+.SH NAME
+mkcmd - make a command line option parser
+
+.SH SYNOPSIS
+.ds PN "mkcmd
+\fI\*(PN\fP [\-\fBAG\fP] [\-\fBI\fP\~\fIdirectory\fP] [\-\fBm\fP\~\fImanpage\fP] [\-\fBn\fP\~\fIname\fP] [\fIfiles\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBT\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+
+.SH DESCRIPTION
+\fIMkcmd\fP builds a command line option parser from descriptions in the named
+\fIfiles\fP, the generated C code parses the options described.
+.PP
+The \fIfiles\fP argument should be either a filename which ends in \*(lq.m\*(rq,
+or a single dash \*(lq-\*(rq.
+The single dash is taken to represent stdin (so that macro expansion
+may be done before the file is read by \fI\*(PN\fP).
+
+.SH OPTIONS
+.TP
+.B \-A
+Under this option \fI\*(PN\fP generates ANSI-style function headers.
+This option has not been fully tested.
+.TP
+.BI \-G
+Under this option \fI\*(PN\fP doesn't guess which of <\fIstring.h\fP>
+or <\fIstrings.h\fP> to include, or is the system has <\fIstdlib.h\fP>
+or not, or if the system supports \fIstrerror\fP(3).  Rather \fI\*(PN\fP
+assumes one of the source files includes the appropriate string header,
+externs for the memory allocation
+functions \fImalloc\fP(3), \fIrealloc\fP(3) and \fIcalloc\fP(3), and
+a definition of \fIstrerror\fP(3), if needed.
+.TP
+.BI \-h 
+Print a short help message.
+.TP
+.BI \-I directory
+\fBMkcmd\fP searches for the files on the command line first in the
+current directory, then in a standard place (\*(lq/usr/local/lib/mkcmd\*(rq),
+then in any \fIdirectory\fP listed as parameters to this option.
+.TP
+.BI \-m manpage
+\fBMkcmd\fP outputs a manpage template in the file \fImanpage\fP.
+This file is not overwritten if it exists.  A single dash may
+be used to send the man page template to stdout.
+.TP
+.BI \-n name
+\fBMkcmd\fP's output is two C source files, normally \*(lqprog.c\*(rq
+and \*(lqprog.h\*(rq.  This option changes \*(lqprog\*(rq to \fIname\fP.
+.TP
+.BI \-T
+\fIMkcmd\fP outputs a table of the types it knows how to convert.
+.TP
+.BI \-V
+\fIMkcmd\fP outputs a handy version string.
+
+.SH LANGUAGE
+.PP
+This quick reference is meant as reminder.
+For a complete description of the file format of a \fI\*(PN\fP
+file see \fIWriting UNIX Command Line Option Parsers\fP.
+.PP
+Options in \fI\*(PN\fP are represented as a conversion
+from the input syntax (\-\fIx\fP \fIparameter\fP) to a C
+variable.
+The destination variable is bound to an option letter, or a parametric
+position on the command line.
+The conversion takes place as soon as the option (or position)
+is processed.
+The unconverted string my be preserved if an identifier, \fIunconv\fP,
+is also provided.
+
+Options are declared as:\f(CR
+.nf
+	\fItype\fP '\fIletter\fP' \fB{\fP
+		\fIattributes\fP
+	\fB}\fP
+.fi
+\fR
+
+Variables (buffers for \fBleft\fP or \fBright\fP) are declared as:\f(CR
+.nf
+	\fItype\fP \fBvariable\fP "\fIname\fP" [ "\fIunconv\fP" ] \fB{\fP
+		\fIattributes\fP
+	\fB}\fP
+
+.fi
+\fR
+.PP
+Each conversion \fI\*(PN\fP can construct has a unique keyword.
+Always overide the generic parameter mnemonic with a more
+specific \fBparameter\fP attribute.
+
+.TS
+c s s
+l l l.
+Conversion types for options and variables
+=
+C type	Mkcmd type	Parameter mnemonic
+_
+int	\fBboolean\fP
+int	\fBtoggle\fP
+char [\fIdim\fP]	\fBstring\fP \fB[\fP\fIdim\fP\fB]\fP	string
+char *	\fBpointer\fP	string
+int	\fBletter\fP	letter
+int	\fBinteger\fP	int
+unsigned	\fBunsigned\fP	unsigned
+long	\fBlong\fP	int
+double	\fBdouble\fP	float
+f(int, char*)	\fBfunction\fP	arg     
+f(int)	\fBaction\fP	        
+int	\fBnumber\fP	int
+char *	\fBaccumulate\fP	arg
+FILE *	\fBfile\fP	file
+int	\fBfd\fP	fd
+.TE
+
+.PP
+An \fIattribute\fP modifies the option, action, or variable which contains it.
+The parameter to an attrribute is always a string in quotes,
+either double (") or single (').
+Input quoting rules are similar to C's.
+.PP
+Since the defaults values are ugly, each attribute list should contain
+at least the \fBnamed\fP and \fBhelp\fP attribute.
+
+.TS
+c s s
+l l l.
+Option attributes for \fI\*(PN\fP
+=
+Attribute	description	escape
+_
+\fBnamed\fP \fIident\fP [\fIunconv\fP]	bind C variable \fIident\fP to option value	%n
+\fBlocal\fP	C variable is local to routine
+\fBglobal\fP	C variable is global
+\fBstatic\fP	C variable is storage class static
+\fBhidden\fP	hide option from users
+\fBaborts\fP \fIC-statement\fP	stop program after this option
+\fBexcludes\fP \fIlist\fP	these option are mutually exclusive
+\fBfrom\fP \fIfile\fP	include \fIfile\fP for declaration of \fBnamed\fP
+\fBhelp\fP string	provide for run-time help	%h
+\fBinitializer\fP \fIvalue\fP	default value	%i
+\fBinitializer\fP \fBgetenv\fP \fIident\fP	read default value from $\fIident\fP
+\fBinitializer\fP \fBdynamic\fP \fIexpr\fP	set default value to \fIexpr\fP
+\fBparameter\fP \fIparam\fP	provide mnemonic parameter name	%p
+\fBonce\fP	option may only be given once
+\fBstops\fP	option quits dash processor
+\fBends\fP	option ends the command line
+\fBtrack\fP [ \fIvariable\fP ]	set \fIvariable\fP if option presented	%U
+\fBupdate\fP \fIC-statement\fP	convert value specially
+\fBuser\fP \fIC-statement\fP	run after \fBupdate\fP
+\fBverify\fP [ \fIC-statement\fP ]	validate data
+\fBbefore\fP \fIC-statement\fP	initialize before option processing
+\fBafter\fP \fIC-statement\fP	cleanup after option processing
+.TE
+
+.PP
+The global switches act like attributes for the whole parser.
+
+.TS
+c s s
+l l s
+l l l.
+Global switches for \fI\*(PN\fP
+=
+Switch	Repeat Description (Percent Escape)
+_
+\fBbasename\fP	n	chop progname
+\fBbasename\fP \fIname\fP \fIopts\fP	y	when progname is \fIname\fP force \fIopts\fP
+\fBbasename\fP \fBotherwise\fP \fIopts\fP	n	when no match for progname force \fIopts\fP
+\fBcomment\fP \fItext\fP	y	insert header comments
+\fBexcludes\fP \fIoptions\fP	y	mutually exclusion options
+\fBfrom\fP \fIfile\fP	y	a #include file we must have
+\fBgetenv\fP \fIenv\fP	n	read \fIenv\fP for options
+\fBinitializer\fP \fIC-statements\fP	y	set up some external facility
+\fBmix\fP	y	mix options and arguments (deprecated)
+\fBnamed\fP \fIident\fP	n	set \fIident\fP to hold progname (%b)
+\fBprototype\fP \fIstring\fP	n	format default function names
+\fBroutine\fP \fImain\fP	n	name for main
+\fBtemplate\fP \fIstring\fP	n	format default variable names
+\fBterse\fP \fIident\fP	n	name the usage string (%t)
+\fBusage\fP \fIident\fP	n	name the usage function (%u)
+\fBvector\fP \fIident\fP	n	name the help vector (%v)
+.TE
+
+.ta 5 8
+.PP
+Special control points are declared as:\f(CR
+.nf
+	\fIaction\fP \fB{\fP
+		\fIattributes\fP
+	\fB}\fP
+.fi
+\fR
+
+.PP
+Each control point is activated either to convert some data from a
+fixed position on the command line, or to note that a phase of command
+line processing is ended.
+Control points which represent errors (\fBbadoption\fP, \fBnoparameter\fP)
+usually trigger an \fBabort\fP attribute thus they can only happen once.
+
+.TS
+c s
+l l.
+Special control points for \fI\*(PN\fP
+=
+Control	When activated
+_
+\fBbefore\fP	before dash processing
+\fBescape\fP	when \fIprefix\fP is given
+\fBnumber\fP	when \-\fIdigits\fP is given
+\fBnoparameter\fP	when a parameter-requiring option is last on the line
+\fBbadoption\fP	when an unknown option is given
+\fBotherwise\fP	the default case in the switch (unused normally)
+\fBafter\fP	after dash processing
+\fBleft\fP	process left justified parameters
+\fBright\fP	process right justified parameters
+\fBzero\fP	when zero arguments are left
+\fBlist\fP	process the list of arguments
+\fBevery\fP	process every argument in turn
+\fBexit\fP	end processing
+.TE
+
+.PP
+The activation of the \fBaborts\fP attribute's code is conditional for
+\fBleft\fP and \fBright\fP.
+These are executed only if manditory positional parameters are missing.
+The default action in each case is a words message to stderr.
+
+.ta 5 8
+.PP
+The spelling of the \fBescape\fP prefix may be specified as
+\f(CR
+.nf
+
+	\fBescape\fP \fB[\fP \fIprefix\fP \fB]\fP \fB{\fP
+		...
+	\fB}\fP
+.fi
+\fR
+and the type of the escaped data may be specified as:
+.sp 1
+	\fBescape\fP \fB[\fP \fIprefix\fP \fB]\fP \fItype\fP ...
+.sp 1
+
+.PP
+By default the \fBevery\fP control point processes arguments via
+a \fBfunction\fP.
+An alternate \fItype\fP for the arguments may be specified as:
+.sp 1
+	\fBevery\fP \fItype\fP ...
+.sp 1
+This is true for \fBlist\fP as well.
+
+.PP
+The justified parameter lists for \fBleft\fP or \fBright\fP may
+contain a single level of brackets indicating optional parameters.
+For example in the declaration:
+.sp 1
+	\fBleft\fP "\fIname1\fP" \fB[\fP "\fIname2\fP" \fB]\fP ...
+.sp 1
+\fIname1\fP is manditory and \fIname2\fP is optional.
+The brackets may be repeated, but not nested.
+
+.SH EXAMPLES
+The file \fIstd_help.m\fP provides a very standard UNIX help system.
+This file should be used for all products unless there is an
+overwhelming reason not to use it.
+The normal invocation of \fI\*(PN\fP is therefore:
+.sp 1
+	mkcmd std_help.m tool.m
+.sp 1
+where \fItool.m\fP is the name of the file containing the description
+of options to be parsed.
+
+In a makefile one might wish to perform a minimal update of the parser.
+This can be done with:
+.sp 1
+main.h: main.c
+.br
+
+.br
+main.c: tool.m
+.br
+	mkcmd std_help.m tool.m
+.br
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+.br
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+.br
+	rm -f prog.[ch]
+.br
+
+.SH BUGS
+None known.
+
+.SH AUTHOR
+KS Braunsdorf
+.br
+NonPlayer Character Guild
+.br
+mkcmd@ksb.npcguild.org
+
+.SH "SEE ALSO"
+make(1), cc(1), getopt(3l), explode(1L), mkcmd(5L)

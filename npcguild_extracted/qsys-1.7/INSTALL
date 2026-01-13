@@ -1,0 +1,125 @@
+# $Id: INSTALL,v 2.3 1997/11/24 16:43:43 ksb Exp $
+
+This is master source in a meta source package.  You need to install
+msrc0, mkcmd, msrc, and install to get this to do anything for you.
+Hey, the conserver package is nifty as well.
+
+
+To install this beast you need a few things:
+
+	+ mkcmd (version 7.14 or better I'd guess, current in 8.10),
+
+	+ a new group `qmgr' (the number doesn't matter, we just use the name),
+
+	+ ksh for the qstart script, or remove the $RANDOM stuff and
+		use /bin/sh,
+
+	+ root access to build some directories (or installus and a nice
+		superuser to grant you these files [*]),
+
+	+ maybe someone to add a line to /etc/rc.local like
+		if [ -f /usr/local/etc/qstart ] ; then
+			echo -n ' qsys'; /usr/local/etc/qstart &
+		fi
+	  in the local daemons section near the bottom.
+	  Or add a line to a console server's config to start it.
+
+
+OK.  So set up the group, and look in common/qpaths.sh for any paths
+you *have* to change.  If you have a strange place for the remote shell
+command (see #if logic in common/common.h) set Q_RSH to the full path.
+Run 
+	$ common/config-info.sh
+see if you get what you need.
+
+Now type `make all' here.
+
+This should crank through all the subdirectories and build all the parts.
+You might want to look at qstart/qstart to be sure it does something that
+looks correct to you.
+
+Now try `make install'.  (Type rehash now if you use csh.)
+
+That should install all the commands under /usr/local/{bin,etc}.  To
+test them you'll have to build a queue.  The queue spool directory
+should be in /var/spool if you have one, else /usr/spool.  If you
+want to NFS share it an pull jobs to remote machines that way you can
+move it to some other place, but qstart must be diddled if you do that.
+
+Use `qinit /var/spool/qsys' (as root) to install the default queue.
+
+Now we can run qstart by hand to launch the daemon (avoids a reboot).
+
+Run `/usr/local/etc/qstart &', or even better `xterm -e /usr/local/etc/qstart'.
+Of course if you have a console server you can put this daemon on a pseudo
+console (qsys would be a good name) and poke it with console.
+
+Now the qmgr should be running (oh, there is a short sleep in here to
+avoid lockd problems over NFS.  So go get a beverage and chill for a
+minute or two.
+
+Run ps with you favorite options (ps -ax, ps -ef, ps -el) and grep for
+qmgr (I use `ps -ax | grep qm') see if he is running.
+
+If all is well we are cool.  If not, look in /var/log/qmgr (or
+/usr/adm/qmgr.log) to see what the botch was.
+
+
+OK.  Submit the first job:
+	qadd -m $USER "date; pwd; umask; ls -C; sleep 60; date"
+
+{change $USER to $LOGNAME or your login if you like}.
+
+If all goes well,
+	$ qstat -v
+should show you a line like:
+	Rank  Job   Who        Date     Nice    Command
+	  1  r01  root     Feb  9 10:06  10 date; pwd; umask; ls -C; sleep 60; date 
+
+In a minute or two you should see something like:
+	$ qstat -v
+	Rank  Job   Who        Date     Nice    Command
+	run  3514 root     Feb  9 10:06   0 date; pwd; umask; ls -C; sleep 60; date 
+	    kidd           Feb  9 10:08  10
+
+
+In less than 2 minutes you'll get mail telling you lots of stuff you already
+knew (the date, your position in the file system, your umask, and the
+contents of dot, ...).  Try moving to /tmp and changing your umask, re-spool
+the job.  Read the mail.  Say "Cool, dude!"
+
+I did.
+
+Now you can explore installing the manual pages.  Good luck.
+You might just "find etc -name \*.man -exex cp {} /usr/share/man/man8 \;"
+or something like that (to bin as well).
+
+
+Bugs:
+
+Oh, the groups thing is still a problem, the jobs
+	qadd -m $USER "groups"
+might enlighten you.  Maybe running from rc.local or inittab will
+fix it.
+
+--
+kayessbee, ksb@fedex.com
+
+[*] here are the control lines from our installus dot-owners files:
+
+	# ksb's queue system control info (bin)
+	qadd		ksb.*		-m 2751 -o root -g qmgr
+	qrm		ksb.*		-m 2751 -o root -g qmgr
+	qstat		ksb.*		-m 2751 -o root -g qmgr
+
+	# ksb's queue system control info (etc)
+	qinit		ksb.*		-m  755 -o root -g qmgr
+	qkill		ksb.*		-m 2755 -o root -g kmem
+	qlock		ksb.*		-m  755 -o root -g qmgr
+	qstart		ksb.*		-m  755 -o root -g qmgr
+	qmgr		ksb.*		-m 2750 -o daemon -g qmgr
+	qend		ksb.*		-m  754 -o root -g qmgr
+   change `ksb' to you or `ksb.*' to `*.group' for group projects.
+
+   If you don't have installus/install/purge/instck ask me for them.
+   To use installus for this you'll have to type a little more...

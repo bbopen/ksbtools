@@ -1,0 +1,12 @@
+# $Id: TODO,v 8.1 1998/06/07 16:31:59 ksb Exp $
+
+The status for -V should note if the initial master server is this host
+(or contains this host?):
+	console: _Id: console.m,v _.__ 1998/01/09 16:23:00 ksb Pure _
+	console: initial master server `svr6.dscm.fedex.com' (localhost)
+	console: default escape sequence `^Ec'
+	console: loopback address for svr6.dscm.fedex.com is 127.0.0.1
+	console: service name `console' (which we call `conserver') on port 782
+
+--
+ksb

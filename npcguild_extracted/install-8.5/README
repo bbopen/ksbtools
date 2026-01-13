@@ -1,0 +1,38 @@
+# $Id: README,v 8.5 1999/03/06 18:18:11 ksb Exp $
+
+This is the _meta_source_ distribution of the PUCC/ksb install system.
+You can change the -DHPUX9 to -Dother-things to compile on other OSs.
+This is _NOT_ the original PUCC distribution: ksb modified it to keep
+it useful after he left PUCC in 1994.
+	
+	NEXT2		 -DDEFGROUP=\"wheel\"
+	NETBSD		 -DDEFOWNER=\"root\" -DDEFGROUP=\"bin\"
+	FREEBSD		 -DDEFOWNER=\"bin\" -DDEFGROUP=\"bin\"
+	SUN5		 -DDEFGROUP=\"bin\" -DBSD=43 -DHAVE_QUOTA=0
+	SUN4		 -DDEFGROUP=\"bin\"
+	SUN3		 -DDEFGROUP=\"bin\"
+	EPIX		 -systype bsd43 -DLSARGS=\"-ls\"
+	IBMR2		 -DLSARGS=\"-ls\"
+	IRIX		 -DLSARGS=\"-ls\" -DDEFGROUP=\"sys\"
+	LINUX		 -DDEFGROUP=\"root\"
+
+Look in install.d/configure.h and install.d/install.h for more -Dprop
+stuff you can force if you want other values.
+
+If you take the default "binary" group you might have to edit /etc/group
+to make it.  This gives you a meaningless group of adornment.
+If you like this you'll like "vinst" and "modec" -- soon to come.
+
+
+N.B.:
+	Changes from Greg Becker make installus compile on LINUX.
+
+Bugs:
+	installus drops core on SGI (IRIX) I have *no* idea why.
+	[I've not have time to look.]  The GNU math library breaks
+	as well.  I am giving up on SGI for a while.
+
+
+--
+Kevin S Braunsdorf, Feb 1998
+ksb@fedex.com

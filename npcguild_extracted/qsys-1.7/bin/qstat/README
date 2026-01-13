@@ -1,0 +1,28 @@
+# $Id: README,v 1.2 1994/02/11 18:47:21 ksb Exp $
+
+Qstat produces one of three nice output lines for each task in a
+queue.  This program monitors the status of your jobs for you.
+
+
+When there are no tasks in the queue it says:
+	zero files in queue
+
+When a task is waiting to be launched:
+	Rank  Job   Who        Date     Nice    Command
+	  1  k01  ksb      Feb 11 13:42  10 sleep 600;
+
+When a task is running:
+	Rank  Job   Who        Date     Nice    Command
+	run 14871 ksb      Feb 11 13:42   0 sleep 600;
+
+And under -v when a task is running it shows an extra line with the host:
+	Rank  Job   Who        Date     Nice    Command
+	run 14871 ksb      Feb 11 13:42   0 sleep 600;
+	    lv426          Feb 11 13:43  10
+
+The values are pretty clear, except maybe for the 2 nice values.  The first
+line's Nice value represents any nice adjustment to be made in the future.
+The -v second line show the total nice adjustment made.
+
+--
+ksb

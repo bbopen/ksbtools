@@ -1,0 +1,56 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Check a password</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: ckpass
+<BR>
+Authors: Kevin S Braunsdorf, Andy J Korty (ajk)
+<BR>
+Mail: ksb@sa.fedex.com, ajk@physics.purdue.edu,
+<BR>
+Version: 5.4
+<BR>
+Bugs: klunky interface
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+This code checks an input password against a logins password from
+<CODE>/etc/passwd</CODE> or <CODE>/etc/shadow</CODE> (or the like).
+
+<H1>Configuration</H1>
+
+Some C Preprocessor defines must be set for the code to compile.
+<DL>
+<DT>USE_STRINGS
+<DD>
+Set to non-zero when we should use &lt;strings.h&gt;, else
+we include &lt;string.h&gt;.
+<DT>USE_MD5
+<DD>
+Set to non-zero when we should use MD5 hashes and the dollar sign ($)
+salt format.
+
+<DT>HAVE_SHADOW
+<DD>
+If the password field in the public password entry is "x" call
+<CODE>getspnam</CODE> to find the real password entry.
+</DL>
+
+<H1>Provides</H1>
+<DL>
+<DT> int CheckPass(struct passwd *pwd, char *pcEPass, char *pcWord)
+<DD>
+Given a password entry and a proposed encrypted password verify
+that the word given would hash to that same encryption.
+</DL>
+
+<H1>To Do List</H1>
+
+Port to new systems.
+<HR><PRE>
+$Id: ckpass.html,v 6.3 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

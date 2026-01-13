@@ -1,0 +1,10 @@
+# the file is a socket, what to do?					(ksb)
+# $Id: s,v 5.0 1996/09/09 19:58:22 kb207252 Exp $
+
+$Display(*):	${ls-ls} %s %f%;
+$Display(*):	${ls-ls} -l %f%;
+
+$Info(*):	${echo-echo} "socket"%;
+
+$*(*):		: '%f is a socket, cannot %m(%s) it.' && ${false-false}%;
+$*(*):		: '%f is a a socket, cannot %m it.' && ${false-false}%;

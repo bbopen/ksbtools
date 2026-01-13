@@ -1,0 +1,18 @@
+/*@Version $Id: README,v 6.0 2000/07/30 15:57:11 ksb Exp $@*/
+# This text is removed because explode starts with the output diverted to
+# /dev/null.
+/*@Message@*/
+This is the explode MICE modules repository.
+
+The other Pundits and I invite you to build reusable C components in either
+C or C++ to put in this archive.  Send them to "ksb+pundit@sa.fedex.com".
+Explodes parts don't require other parts to build (other than libraries),
+contrast that to mkcmd's parts that actively require other parts and configure
+them to make the program build.
+
+
+Other ksb tools put files in the explode repository, for example "stater".
+So don't delete the installed directory thinking this source will rebuild
+the whole of it.
+
+ -- kayessbee, 04 Nov 1999

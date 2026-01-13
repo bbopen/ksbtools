@@ -1,0 +1,237 @@
+.\" $Id: dmz.man,v 1.6 2010/07/14 17:29:13 ksb Exp $
+.\" by KS Braunsdorf, NPCGuild.org
+.\" $Compile: Display%h
+.\" $Display: groff -Tascii -man %f | ${PAGER:-less}
+.\" $Display(*): groff -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man8/dmz.8
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt][18]/dmz.8*
+.TH DMZ 8L LOCAL
+.SH NAME
+.ds PN "dmz
+\*(PN \- common "do what I mean" interface to msrc
+.SH SYNOPSIS
+\fI\*(PN\fP [\fB\-C\fP\~\fIconfig\fP] [\fB\-u\fP\~\fIlogin\fP] [\fB\-X\fP\~\fIex-cfg\fP] [\fB\-Z\fP\~\fIenv\fP] \fB\-S\fP\~\fIservices\fP | \fIhosts\fP [\fImsrc-opts\fP] [\fIutility\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+
+.SH DESCRIPTION
+
+While the master source tool, \fBmsrc\fP, provides a very
+expressive interface to select exactly the set of
+target hosts you want, it doesn't provide a short command-line to
+get to a single host, or a posse of hosts unless they are described in
+a separate configuration file.  This script provides the shorter
+command-line interface.  Common usage for this command is:
+.RS
+.nf
+\fI\*(PN\fP \-Cdomain.cf host1,host2 make install
+.fi
+.RE
+.P
+Which is much shorter than the \fBmsrc\fP usage to get the
+same result (and this is really not fully quoted):
+.RS
+.nf
+\fBmsrc\fP \-Cdomain.cf \-G "ifelse(SHORTHOST,host1,HOST,SHORTHOST,host2,HOST,HOST,host1,HOST,HOST,host2,HOST)" make install
+.fi
+.RE
+
+.P
+If some symbolic links are built to the command for each "domain"
+(really each commonly used configuration file) the command becomes
+even shorter:
+.RS
+.nf
+domain host1,host2 make install
+.fi
+.RE
+
+.P
+Under the \fB\-S\fP switch the \fIhosts\fP specification becomes a
+list of \fIservices\fP.  A list of the services that are installed on
+each host is maintained in the configuration file, along with a
+marked line (see \fBmk\fP(1L)) that contains a shell command to
+extract the list of hosts that support a given service.
+For example we might select the "httpd" posse:
+.RS
+.nf
+domain \-S httpd make install
+.fi
+.RE
+.SH OPTIONS
+Any other option which \fBmsrc\fP itself might accept is allowed
+after the \fIhosts\fP or \fIservices\fP specification, as the rest
+of the command is passed on to \fBmsrc\fP as given.
+
+.TP
+.nf
+\fB\-C\fP\~\fIconfig\fP
+.fi
+Any specific \fIconfig\fP overrides the default configuration
+based on the name of the program.  Multiple configuration options
+may be presented, see \fBhxmd\fP(8L).
+.TP
+.nf
+\fB\-h\fP
+.fi
+Print a brief help message.
+.TP
+.nf
+\fB\-S\fP\~\fIservices\fP
+.fi
+As described above, this triggers a more complex \fBmk\fP driven
+process to select a posse of hosts, rather than each host by name.
+.TP
+.nf
+\fB\-u\fP\~\fIlogin\fP
+.fi
+Depricated option: when \fIlogin\fP is not the empty string it specifies
+a default value for
+the \fBENTRY_LOGIN\fP \fBm4\fP macro attribute.
+\fBMsrc\fP didn't have that option until this program made it clear
+it should, now we don't need it here (but some local programs use it).
+.TP
+.nf
+\fB\-V\fP
+.fi
+Show our version information, then the version of \fBmsrc\fP.
+.TP
+.nf
+\fB\-X\fP\~\fIex-cfg\fP
+.fi
+Passed on to \fBmsrc\fP and used as a template in the construction of
+the posse selection \fBmk\fP command.
+The list of all such files is available to
+the marked command in \fB$EXCF\fP.
+.TP
+.nf
+\fB\-Z\fP\~\fIconfig\fP
+.fi
+Passed on to \fBmsrc\fP and used as a template in the construction of
+the posse selection \fBmk\fP command.
+The list of all such files is available to
+the marked command in \fB$ENVCF\fP.
+
+.SH ENVIRONMENT
+.P
+The concept of a "service" is very general in the code, but made
+more specific in each configuration file.  To refine it for each
+configuration file we use \fBmk\fP (see \fBmk\fP(1L)).
+.P
+The \fI\*(PN\fP script triggers the marked line for each specified
+\fIservice\fP as:
+.RS
+.fi
+\fBmk\fP \-s \-t\fI...\fP \-mPosse \-d\fIservice\fP \fIconfig\fP
+.nf
+.RE
+Each host output to \fIstdout\fP by that command is included in the
+posse.  The specification of the templates option (\fB\-t\fP) above
+includes any configuration files under \fB\-X\fP or \fB\-Z\fP, as
+well as the name of the script.
+.P
+The default marked line suggested is spelled:
+.RS
+.nf
+# $Posse(*): ${efmd:-efmd} \-C%f \-E 'yes=SERVICES(%s)' \-L
+.fi
+.RE
+Where the \fBSERVICES\fP macro is defined as:
+.RS
+.nf
+SERVICES=`ifelse(-1,index(` 'SERVICE` ',` '$1` '),0,yes)'
+.fi
+.RE
+Which is backwards compatible with any \fBdistrib\fP guards.
+.\" should you still have anything based on the 1988 version of
+.\" the master source, you poor soul.
+.P
+In their configuration, each posse of hosts shares
+a common \fBSERVICE\fP definition.
+In this excerpt from an example configuration file we declare three
+hosts in the same 3 common service posses, and 1 for the unlucky
+"host13".
+.RS
+.nf
+SERVICE=`httpd named catch22'
+host10.example.com ...
+host11.example.com ...
+host12.example.com ...
+SERVICE=`unlucky'
+host13.example.com...
+.nf
+.RE
+.P
+This configuration mechanism is fairly easy to maintain, and doesn't
+require a lot of cross-group coordination (at most a list of common
+services).  The \fBSERVICE\fP macro definitions serve to break the
+host list into posses, some banner comments to describe the purpose of
+the cluster and such are assumed as "good style".
+
+.SH EXAMPLES
+.TP
+.nf
+\fI\*(PN\fP \-C admin.cf \-S named  make install sane restart
+.fi
+Update the \fBnamed\fP configuration on all "admin" hosts in the "named"
+posse, check sanity on that, and restart the services.  Note that
+some of these operations may require more access than a mortal account
+has.
+.TP
+.nf
+\fI\*(PN\fP \-C admin.cf \-S named  op make install sane restart
+.fi
+Same as the above, but run the \fBmake\fP via \fBop\fP to gain
+superuser access for the remote command.  (Much the same thing
+could be done with \fBsudo\fP, if you are that kind of admin.)
+.\" I used only "op make" and "op mk" to do most of my superuser config tasks.
+.TP
+.nf
+\fI\*(PN\fP \-C admin.cf \-S named  \-u root make install sane restart
+.fi
+Same as the above, but become the superuser as part of the \fBssh\fP
+connection to each target host.  This vastly reduces the available audit trail,
+which is usually a Bad Thing.
+.TP
+.nf
+\fIsales\fP east1,east3 op shutdown \-r 2355
+.fi
+Just before midnight, reboot 2 of the hosts described in
+the "sales.cf" configuration file.
+.TP
+.nf
+\fI\*(PN\fP \-Z ~/lib/mk.rules \-S spicy ...
+.fi
+Use the \fBmk\fP template from my home directory to form the posse for
+"spicy".  Note that the file must be a valid \fBhxmd\fP configuration file,
+so each marked line should commented with an octothorp ("#").  There
+is no reason to place any actual configuration data in the file, but
+any macro support for the spell could be defined there.
+.TP
+.nf
+\fIito\fP \-S level1 hostname
+.fi
+Send the source to all the Independent Test Organization hosts in
+the level1 posse, but just output their hostname.  A good sanity check
+before you commit to something like the reboot spell above.
+.TP
+.nf
+\fI\*(PN\fP \-V
+.fi
+Output the common version information.
+
+.SH BUGS
+This program doesn't accept the \fB\-k\fP option to
+set a different \fIkey\fP macro.  If you use something other than "HOST"
+then you'd have to edit the script.  That's not so bad, as the script is
+largely site policy to begin with, but it makes updates harder.
+
+.SH AUTHOR
+KS Braunsdorf, NonPlayer Character Guild
+.br
+msrc swirl ksb dot npcguild.org
+
+.SH "SEE ALSO"
+sh(1), msrc(8L), hxmd(8L), efmd(8L), mk(1L), op(1L)

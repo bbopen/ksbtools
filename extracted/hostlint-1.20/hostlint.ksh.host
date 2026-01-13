@@ -1,0 +1,156 @@
+include(repo.m4)dnl
+changequote(,)dnl
+#!/bin/ksh
+# $Id: hostlint.ksh.host,v 1.20 2012/01/31 20:22:18 ksb Exp $
+#
+# To lint-check a host we find a reference repository,		(ksb,petef)
+# rsync down the policy, then run it.  We provide very little
+# structure around the site policy:
+#	the name of the repo ($REPO)
+#	the distrib HOSTTYPE we see when installed ($DISTRIB_HOSTTYPE)
+#	a safe place to work, which we clean-up ($PWD)
+#
+
+PROGNAME=`basename $0`
+usage="$PROGNAME: usage [-N] [-p port] [repo]"
+
+# When  rsync is in /usr/local/bin we need to make sure we
+# add that to our PATH.  --ksb
+if [ -x /usr/local/bin/rsync ] ; then
+	case ":${PATH}:" in
+	*:/usr/local/bin:*)
+		;;
+	*)
+		PATH=/usr/local/bin:$PATH
+		;;
+	esac
+fi
+slide='P=$1; shift; set _ -`expr _"$P" : _'\''-.\(.*\)'\''` ${1+"$@"}; shift'
+param='if [ $# -lt 2 ]; then echo "$PROGNAME: missing value for $1" 1>&2; exit 1; fi'
+
+NFLAG=false
+SFLAG=false
+rPORT=`tr -s '\t ' '  '</etc/services |sed -n -e 's!^[rR][sS][yY][nN][cC] \([0-9]*\)/[tT][cC][pP].*!\1!p' | head -1`
+: ${rPORT:=873}
+: ${REPO:=HOSTLINT_REPO}
+ifdef(HOSTTYPE,: ${DISTRIB_HOSTTYPE:=HOSTTYPE},# host type not set in push)
+: ${DISTRIB_HOSTTYPE:=`efmd -Cauto.cf HOSTTYPE |head -1`} 2>/dev/null
+: ${DISTRIB_HOSTTYPE:="."}
+: ${NETLINT_UINFO:=ifdef(NETLINT_UINFO,NETLINT_UINFO,.)}
+key='$Revision'
+: ${DB_HL_VERSION:=`expr '$Revision: 1.20 $' : "$key: \\([.0-9]*\\) ."`}
+export PATH REPO DISTRIB_HOSTTYPE DB_HL_VERSION NETLINT_UINFO rPORT
+
+# get the options from the command line
+while [ $# -gt 0 ]
+do
+	case "$1" in
+	-N)
+		NFLAG=true
+		shift
+		;;
+	-N*)
+		NFLAG=true
+		eval "$slide"
+		;;
+	-p)
+		rPORT=$2
+		shift;shift ;;
+	-p)
+		rPORT=`expr _"$1" : _'-.\(.*\)'`
+		shift ;;
+	-S)
+		SFLAG=true
+		shift
+		;;
+	-S*)
+		SFLAG=true
+		eval "$slide"
+		;;
+	--)
+		shift
+		break
+		;;
+	-V|-V*)
+		echo "$PROGNAME: "'$Id: hostlint.ksh.host,v 1.20 2012/01/31 20:22:18 ksb Exp $'
+		echo "$PROGNAME: default rsync repository: $REPO"
+		echo "$PROGNAME: HOSTTYPE: $DISTRIB_HOSTTYPE"
+		echo "$PROGNAME: NETLINT_UINFO: $NETLINT_UINFO"
+		exit 0
+		;;
+	-h|-h*)
+		cat <<HERE
+$usage
+$PROGNAME: usage -S [-p port] [repo] [modules]
+$PROGNAME: usage -V
+$PROGNAME: usage -h
+h	print this help message
+N	verify rsync of site policy; output just the name of the repository
+p port	specify the rsync port to query (used for port forwarding)
+S	just run a shell, or the named modules (not all of site policy)
+V	show version info
+repo	site policy comes from this rsync repo
+HERE
+		exit 0
+		;;
+	-*)
+		echo "$usage" 1>&2
+		exit 1
+		;;
+	*)
+		break
+		;;
+	esac
+done
+
+# The only parameter we know is a repository name
+if [ $# -gt 0 ]; then
+	if [ _-- != _$1 ]; then
+		REPO=$1
+	fi
+	shift
+fi
+
+TDIR=/tmp/hl.$$.$((RANDOM%1000))
+while [ -d "$TDIR" ]
+do
+	TDIR=$TDIR"."$((RANDOM%100))
+done
+mkdir $TDIR || exit 1
+cd $TDIR || exit 2
+
+RET=0
+if $NFLAG; then
+	rsync -q ${rPORT:+"--port=$rPORT"} $REPO::hostlint/site . && echo $REPO
+	RET=$?
+elif rsync -qraSHL --exclude OLD ${rPORT:+"--port=$rPORT"} $REPO::hostlint/ . 2>rsync_err ; then
+	if $SFLAG ; then
+		if [ $# -gt 0 ] ; then
+			xapply 'if [ -x "%1" ] ; then
+				"./%1"
+			elif [ -f "%1" ] ; then
+				. "%1"
+			else
+				"./%1.hlc"
+			fi' "$@"
+		else
+			${SHELL:-/bin/sh} -i
+		fi
+	elif [ -x site/$DISTRIB_HOSTTYPE ] ; then
+		./site/$DISTRIB_HOSTTYPE ${1+"$@"}
+	elif [ ! -d site  -a  -x site ] ; then
+		./site ${1+"$@"}
+	elif [ -f site ] ; then
+		. ./site
+	fi
+	RET=$?
+else
+	echo "SITE_MISSING: repository $REPO"
+	sed -e "s/^/STDERR_RSYNC: /" <rsync_err
+	RET=10
+fi
+
+cd /
+rm -r $TDIR
+exit $RET
+dnl

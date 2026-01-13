@@ -1,0 +1,3 @@
+/* $Id: mode.mi,v 8.3 2004/12/15 22:20:18 ksb Exp $
+ */
+%extern void %K<mode_cvt>1v(char *, u_MODE_CVT *, char *)%;

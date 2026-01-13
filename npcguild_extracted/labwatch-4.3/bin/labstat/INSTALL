@@ -1,0 +1,59 @@
+# $Id: INSTALL,v 4.0 1994/06/08 14:51:35 ksb Exp $
+
+This program won't do you much good without a labwatch server up and running
+that you can see.  If you don't have a labwatch server up you can view data
+from ours (feinfo.cc.purdue.edu) with this program.
+
+To install this program you *have* to have mkcmd 7.1 or better installed
+somepace on the local host.  Mkcmd builds the shell level user interface
+from the file that end in dot-m.  Without it you could spend hours coding.
+Mkcmd pre 7.1 doesn't understand `augment' (about line 80 in labstat.m) and
+will choke on it.  Just comment out that hunk with `#' if you have mkcmd
+6.30.  If you have mkcmd < 6.30 you have to upgrade.
+
+
+To build labstat:
+
+Edit the Makefile to change `CC' and `CDEFS'.  The macro `CC' should be
+either the local C compiler or gcc.  Some special cases:
+	IBMR2	bsdcc
+	EPIX	cc -systype bsd43
+	others	gcc -fwritable-strings
+	or	cc
+	
+The macro CDEFS should contain a definition for the labwatch servers you
+want to poll:
+	-DDEF_MASTER=\"host1,host2,host3\"
+And a -Dtype where `type' is one of
+	type		for OS like
+	VAX8800		Ultrix
+	S81		Dynix 3.0
+	EPIX		EP/IX
+	IBMR2		AIX
+	SUN3		Sunos 4.1.1
+	SUN4		Sunos 4.1.3
+	SUN5		Solaris 2.3
+	NEXT2		Older NeXTStep
+
+So we might have (in the Makefile)
+	CDEFS= -DSUN4 -DDEF_MASTER=\"bubbles.ftl.com\"
+	CC=gcc -fwritable-strings
+
+Then type
+	make
+if you get `strtol' as an unreferenced symbol add strtol.o to the OBJ macro
+(and re-make).
+
+
+You have to put the services line in from labwatch, repeated here
+for your amusement:
+	labinfo		785/tcp				# PUCC labwatch output
+	lablisten	784/udp		lablog		# PUCC labwatch listen
+then run `labstat -V'
+
+
+Install labstat in /usr/local/bin (make install) or anyplace else.
+
+--
+Petty conversation fades so quickly, as that wave of adreniline splash...
+kayessbee, Kevin Braunsdorf, ksb@cc.purdue.edu, pur-ee!ksb, purdue!ksb

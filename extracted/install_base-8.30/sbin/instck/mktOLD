@@ -1,0 +1,90 @@
+#!/bin/sh
+# $Id: mktOLD,v 1.3 1997/01/15 16:07:16 kb207252 Exp $
+#
+# Make test OLD dirs for the various 'instck -i OLD' cases		(ksb)
+#
+
+case $# in
+1)	break ;;
+*)
+	cat <<!
+$0: usage [finish|backout|oops|purge|gut|swap|punt|subdir]
+finish	instck will finish the install by relinking .. links to an OT
+backout	we can just move a link into .. to fix
+oops	[impossible to trigger] no bad links at all
+purge	all links are in OLD, save one for purge
+gut	all links are in OLD and instck will gut them
+wam	installed file is BL, the OLD links are returned
+punt	links on OLD and .., no clue as to how to fix them
+subdir	OLD has a subdirectory
+!
+	exit 0 ;;
+esac
+
+: ${DIR=/tmp/instk$$}
+mkdir $DIR
+cd $DIR
+install -dq $DIR/OLD
+date +"%c  instck test file for original target" >OT
+
+case $1 in
+[gG][uU][tT])
+	echo "Building gut case in $DIR..."
+	rm OT
+	date +"%c  instck test file for -1" >OLD/OT
+	ln OLD/OT OLD/L1
+	ln OLD/OT OLD/L2
+	;;
+[Pp][uU][rR][gG][eE])
+	echo "Building purge (or gut) case in $DIR..."
+	ln OT L1
+	ln OT L2
+	date +"%c  instck test file for -1" >OLD/OT
+	ln OLD/OT OLD/L1
+	ln OLD/OT OLD/L2
+	;;
+[Bb][aA][cC][kK][Oo][uU][tT])
+	echo "Building backout case in $DIR..."
+	ln OT OLD/LM
+	ln OT L1
+	;;
+[Ff][iI][nN][iI][sS][hH])
+	echo "Building finish case in $DIR..."
+	ln OT L1
+	ln OT L2
+	mv OT OLD
+	date +"%c  new installed file in instck finish test" >OT
+	;;
+[Ww][aA][mM])
+	echo "Building wam case in $DIR..."
+	ln OT OLD/F1
+	ln OT OLD/F2
+	date +"%c  same installed file in instck wam test" >OT
+	;;
+[Pp][uU][nN][tT])
+	echo "punt: not done yet" 1>&2
+	;;
+[Ss][uU][bB][dD][iI][rR])
+	echo "Building subdir case in $DIR/OLD/sub..."
+	cd OLD
+	mkdir -p sub/bin sub/lib
+	mv ../OT sub
+	date >sub/bin/same
+	date >sub/lib/same
+	cd ..
+	;;
+*)
+	echo "$0: Unknown case. type $0 with no parameters for help."
+	;;
+esac
+
+ln -s /usr/src/local/etc/instck/instck ./instck
+ls -FCi $DIR
+ls -FCi OLD
+echo "test with './instck -i OLD'"
+PS1="instck\$ " ksh -i -o vi -o viraw
+
+cd ..
+rm -rf $DIR
+
+exit 0

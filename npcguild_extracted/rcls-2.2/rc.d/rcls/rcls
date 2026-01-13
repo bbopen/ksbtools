@@ -1,0 +1,128 @@
+#!/bin/sh
+# $Id: rcls,v 1.8 2000/07/26 12:14:24 ksb Exp $
+# system V startup for rcls and rcds -- ksb
+
+: ${VAR_RCLS:=/var/rcls}
+: ${VAR_BCLS:=/var/bcls}
+: ${VAR_RCDS:=/var/rcds}
+: ${VAR_BCDS:=/var/bcds}
+: ${VAR_HASH:=/var/run/hash.seq}
+: ${RC_LOGIN:=rcls}
+: ${RC_DATA:=rcds}
+: ${RC_GROUP:=data}
+: ${WISE_LOGIN:=stater}
+
+case ${1-start} in
+start)
+	echo 'sso db startup:\c'
+	(
+	ulimit -n 2048
+	if [ -d $VAR_RCDS ] ; then
+		echo ' rcds\c'
+		cd $VAR_RCDS && (	
+			echo LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
+			echo export LD_LIBRARY_PATH
+			echo /usr/local/libexec/rcds -- btree \</dev/null \&
+		) | su ${RC_DATA} >/var/log/rcds 2>&1
+		for i in  5 4 3 2 1 ; do echo '.\c'; sleep 1; done
+		echo ' deadlock\c'
+		cd $VAR_RCDS && /usr/local/BerkeleyDB/bin/db_deadlock -w -am >>/var/log/rcds 2>&1 &
+	fi
+	if [ -d $VAR_RCLS ] ; then
+		echo ' rcls\c'
+		cd $VAR_RCLS && (
+			echo LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
+			echo export LD_LIBRARY_PATH
+			echo /usr/local/libexec/rcls -- sso -p 4096 -R localhost \</dev/null \&
+		) | su ${RC_LOGIN} >/var/log/rcls 2>&1
+		for i in  5 4 3 2 1 ; do echo '.\c'; sleep 1; done
+		echo ' deadlock\c'
+		cd $VAR_RCLS && /usr/local/BerkeleyDB/bin/db_deadlock -w -am >>/var/log/rcls 2>&1 &
+	fi
+	if [ -d $VAR_BCDS ] ; then
+		echo ' backup-rcds\c'
+		echo ' [skipped]\c'
+	fi
+	if [ -d $VAR_BCLS ] ; then
+		echo ' backup-rcls\c'
+		echo ' [skipped]\c'
+	fi
+	)
+	echo ' done.'
+	;;
+stop)
+	/usr/proc/bin/ptree ${RC_DATA} | grep 'libexec.*rc[d]s' |
+	while read PID JUNK ; do
+		kill -TERM $PID
+	done
+	/usr/proc/bin/ptree ${RC_LOGIN} | grep 'libexec.*rc[l]s' |
+	while read PID JUNK ; do
+		kill -TERM $PID
+	done
+	/usr/proc/bin/ptree root | grep 'DB/bin/db_deadlock' |
+	while read PID JUNK ; do
+		kill -TERM $PID
+	done
+	;;
+make)
+	$0 make-rcds
+	$0 make-rcls
+	$0 hash
+	echo "Please mount any filesystems in /etc/vfstab and reboot"
+	;;
+make-rcds)
+	/usr/local/bin/install -d -o ${RC_DATA} -g ${RC_GROUP} -m 2775 $VAR_RCDS
+	/usr/local/bin/install -d -o ${RC_DATA} -g ${RC_GROUP} -m 2775 $VAR_RCDS/log
+	/usr/local/bin/install -d -o ${RC_DATA} -g ${RC_GROUP} -m 2775 $VAR_RCDS/tmp
+	echo "Data services configured for ${VAR_RCDS} as ${RC_DATA}:${RC_GROUP}"
+	;;
+make-rcls)
+	/usr/local/bin/install -d -o ${RC_LOGIN} -g ${RC_GROUP} -m 2775 $VAR_RCLS
+	/usr/local/bin/install -d -o ${RC_LOGIN} -g ${RC_GROUP} -m 2775 $VAR_RCLS/tmp
+	/usr/local/bin/install -d -o ${RC_LOGIN} -g ${RC_GROUP} -m 2775 $VAR_RCLS/log
+	echo "Login services configured for ${VAR_RCLS} as ${RC_LOGIN}:${RC_GROUP}"
+	;;
+clean)
+	echo "If you are sure you want to REMOVE ALL records from `hostname`" 1>&2
+	echo "Press return (else ^C): \c" 1>&2
+	read ans
+	(	cd /var/rcls
+		rm -rf __* tmp/* log/log* [a-zA-Z0-9] ?? core
+	) &
+	(	cd /var/rcds
+		rm -rf __* tmp/* log/log* ?? core
+	) &
+	wait
+	;;
+hash)
+	set _ ${2:-`hostname | sed -e 's/^[^0-9]*\([0-9][0-9]*\)\..*/\1/'`}
+	shift
+	case `hostname` in
+	*test[0-9]*)
+		OUR_SEED=`expr 64 + $1 - 1`
+		;;
+	*)	
+		OUR_SEED=`expr $1 - 1`
+		;;
+	esac
+	OUR_BIN=`(echo obase=2; echo $OUR_SEED) | bc`
+	cat <<! >/tmp/$$.m4
+define(rev,\`ifelse(len(\$1),1,\`\$1',\`rev(substr(\$1,1))\`'substr(\$1,0,1)')')dnl
+substr(rev($OUR_BIN)000000000000000000000000000000000000000000000000000000000000,0,60)
+!
+	OUR_REV=`m4 < /tmp/$$.m4`
+	rm /tmp/$$.m4
+	[ -f ${VAR_HASH} ] || {
+		echo $OUR_REV |
+		install -c -o ${WISE_LOGIN} -g ${RC_GROUP} -m 0664 - ${VAR_HASH}
+	}
+	;;
+rcmp)	xapply '/usr/proc/bin/ptree' ${RC_LOGIN} ${RC_DATA} ${WISE_LOGIN}
+	/usr/proc/bin/ptree root | grep 'dead[l]ock'
+	;;
+*)
+	echo "`basename $0`: usage start" 1>&2
+	echo "`basename $0`: usage stop" 1>&2
+	echo "`basename $0`: usage make|clean|hash|rcmp" 1>&2
+	;;
+esac

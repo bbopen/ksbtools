@@ -1,0 +1,387 @@
+.\" $Id: mk.man,v 5.18 2010/08/13 19:09:05 ksb Exp $
+.\" $Compile: Display%h
+.\" $Display: ${groff:-groff} -tbl -Tascii -man %f |${PAGER:-less}
+.\" $Display(*): ${groff:-groff} -tbl -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f ${DESTDIR}/usr/local/man/man1/mk.1
+.\" $Deinstall: ${rm-rm} -f ${DESTDIR}/usr/local/man/[cm]a[nt]1/mk.1*
+.TH MK 1L LOCAL
+.SH NAME
+.ds PN "mk
+mk \- detect and execute shell commands in files
+.SH SYNOPSIS
+\fBmk\fP [\fB\-AVacinsv\fP] [\fB\-D\fP\~\fIdefn\fP]
+[\fB\-U\fP\~\fIundef\fP] [\fB\-d\fP\~\fIsubmarker\fP] [\fB\-e\fP\~\fItemplate\fP]
+[\fB\-l\fP\~\fIlines\fP] [\fB\-m\fP\~\fImarker\fP] [\fB\-T\fP\~\fItilde\fP]
+[\fB\-t\fP\~\fItemplates\fP] [\fIfiles\fP]
+.sp
+\fBmk\fP \fB\-h\fP
+.sp
+\fBmk\fP \fB\-H\fP
+.sp
+\fBmk\fP \fB\-V\fP
+
+.SH DESCRIPTION
+\fIMk\fP detects and executes shell commands within files.
+It searches through the first \fIlines\fP (default 99) of named \fIfiles\fP,
+looking for a \fImarker\fP (default \*(lqCompile\*(rq).
+Markers must be prefixed with a dollar sign to have significance to \fImk\fP.
+When the marker is located, the portion of the line on which it appears,
+after the next colon and up to a newline (or an occurrence of two sequential
+unescaped dollar signs (\*(lq$$\*(rq)), is executed by issuing it to
+then shell, \fBsh\fP(1).
+.PP
+Normally, when the named files contain source language statements,
+the commands are contained in lines that appear as comments to
+the language processor.
+This is merely a convention, however, and is not a \fImk\fP requirement.
+.PP
+\fIMk\fP depends on the shell to do general parameter and
+variable expansion.
+However, \fImk\fP does do some \fBprintf\fP(3)\-like string substitution.
+These substitutions produce the file name in alternate forms.
+The unlisted upper case letters below (DPQUX) each produce
+the same expansion as the lower case version, but abort the
+expansion if the string would be empty.
+Each expansion begins with a percent sign (`%'):
+.sp \n()Pu
+.RS
+.TS
+l l.
+%f	the full name of the \fIfile\fP specified on the \fImk\fP command line
+%r	the RCS cache file for the specified \fIfile\fP
+%d	the directory part of the specified \fIfile\fP (%[f/-$])
+%p	the prefix portion of the specified \fIfile\fP (%[f.-$])
+%q\fIc\fP	the prefix portion of \fIfile\fP up to \fIc\fP (%[f\fIc\fP1])
+%u\fIc\fP	the extension on \fIfile\fP after \fIc\fP (%[f\fIc\fP$])
+%x	the extension on the specified \fIfile\fP, if any
+%y	the file type (f,d,b,c,l,s,p) as in \fIfind\fP(1)
+%F	the base name of the \fIfile\fP, no prefix (%[f/$.-$])
+%R	the RCS cache \fIfile\fP for the base name for the specified file
+%Y\fIc\fP	the file type of \fIfile\fP must be \fIc\fP or abort
+%~	the root of the default templates directory
+%k	the \fImk\fP marker prefix, a dollar sign ($)
+%K	the \fImk\fP end-token, a double-dollar sign ($$)
+%%	a literal percent sign
+.TE
+.RE
+.PP
+The values of \fImk\fP's command line options may be substituted, using
+additional percent escapes.
+Each of the options, \fB\-a\fP/\fBA\fP, \fB\-c\fP, \fB\-i\fP, \fB\-n\fP and
+\fB\-v\fP/\fBs\fP, may be substituted via a percent escape that begins with the
+option letter \- e. g., \*(lq%c\*(rq expands to \*(lq\-c\*(rq only if the \fB\-c\fP option
+was specified in the call to \fImk\fP.
+The upper case forms of these options suppress the leading dash.
+Other command line parameters are available as listed below.
+.sp \n()Pu
+.RS
+.TS
+l l.
+%b	the full path with which \fImk\fP was invoked
+%e	expands to the \*(lq\-e \fItemplate\fP\*(rq option, if given
+%l	expands to \*(lq\-l \fIlines\fP\*(rq, if one was given
+%m	the \fImarker\fP we are searching for
+%o	the single letter switches supplied to \fImk\fP
+%s	the \fIsubmarker\fP we are searching for
+%t	expands to the \*(lq\-t \fItemplates\fP\*(rq option, if given
+%B	the last component of the path with which \fImk\fP was invoked (%[b/$])
+%E	expands to the \fItemplate\fP option, if given
+%L	expands to the \fIlines\fP option, if given
+%M	the \fImarker\fP we are searching for in lower case
+%O	the single letter switches supplied to \fImk\fP, no leading dash
+%S	the \fIsubmarker\fP we are searching for in lower case
+%T	expands to the \fItemplates\fP option, if given
+.TE
+.RE
+.PP
+If a percent escape fails to find the indicated data \- e. g., no
+\fIsubmarker\fP was specified \- it will silently cause
+the marked line being expanded to be rejected.
+Some more escapes are available for advanced applications, see \fImk\fP(5L).
+.PP
+All C\-like backslash (`\e') escape sequences are substituted.
+These substitutions accommodate commands that require characters some
+language processors might not allow in comments.  In addition there
+is an escape backslash-e (`\ee') for the empty string.
+.PP
+The \fBxapply\fP square bracket ("dicer") and parenthesis ("mixer")
+notations are also allowed.
+For example %[r/$] would be the tail component of the RCS name.
+See \fBxapply\fP(1) or \fBdicer\fP(5) for details.
+.PP
+\fIMk\fP also allows a resource limit to be set for each directive.
+Here are the resources that can be limited:
+.sp \n()Pu
+.RS
+.TS
+l l l.
+Resource	Description	Warning Signal
+_
+clock	wall clock seconds (done by \fImk\fP itself)	SIGALRM
+core	core dump size in bytes	no warning signal
+cpu	number of CPU seconds	SIGXCPU
+data	data size in bytes	no warning signal
+fsize	file size of any output file in bytes	SIGXFSZ
+rss	resident pages in bytes	no warning signal
+stack	stack size in bytes	SIGSEGV
+.TE
+.RE
+.PP
+These resources may be specified after the complete marker and submarker.
+They are separated by commas from each other and the marker/submarker.
+Two values may follow each resource name, separated from the
+name by an equal sign (`=') \- a warning \fIlimit\fP and
+an absolute \fImaximum\fP.
+The \fIlimit\fP and \fImaximum\fP
+must be separated by a slash (`/').
+If only one value is specified, it is considered to be both the
+\fIlimit\fP and the \fImaximum\fP.
+.PP
+When the directive's process reaches the \fIlimit\fP, it is
+sent the indicated warning signal.
+When the process reaches the \fImaximum\fP, it is sent a SIGKILL
+signal.
+When the \fIclock\fP values are the same,
+\fImk\fP waits two seconds before sending the SIGKILL.
+.PP
+For example,
+.sp \n()Pu
+.RS
+C $Run,cpu=300/360,core=0: %F 1 1000
+.RE
+.sp \n()Pu
+would send (under -m\fBRun\fP) to \fBsh\fP
+for execution the base name of
+the \fIfile\fP (effected with the \*(lq%F\*(rq substitution).
+The base name executable would be supplied with the arguments \*(lq1 1000\*(rq.
+The CPU time limit would be 300 and the CPU time maximum, 360.
+The maximum core dump size would be 0 bytes.
+.PP
+The exit status of the \fImk\fP command is the count of
+the number of directives that exited with an
+exit code that was unexpected.
+If a command is known (or intended) to fail then the expected exit code,
+preceded by an equal sign (`='), may be specified after its marker
+(\*(lqFail\*(rq in the following example).
+.sp \n()Pu
+.RS
+# $Fail=1: %F "bad args"
+.RE
+.sp \n()Pu
+When an exit code is specified, any other exit code will be treated
+as a failure.
+The special exit code `*' can be used to force
+a command to always exit successfully.
+Any exit code except the specified one will be considered a successful exit
+if the specified code is prefixed with a tilde (`~').
+In the following example, any nonzero exit code that \*(lq%F\*(rq issues will cause \fImk\fP to issue a zero code:
+.sp \n()Pu
+.RS
+# $NonZero=~0: %F "nonzero args"
+.RE
+.sp \n()Pu
+.PP
+The full form of an \fImk\fP directive is
+.sp \n()Pu
+.RS
+\fB$\fP \fImarker\fP[\fB(\fP\fIsubmarker\fP\fB)\fP] [\fB=\fP[\fB~\fP]\fIexit\-status\fP] [\fB,\fP\fIresource\fP\fB=\fP[\fIlimit\fP][\fB/\fP\fImaximum\fP]] \fB:\fP \fIcommand\fP [\fB$$\fP] [\fIdollar-text\fP]
+.RE
+.sp \n()Pu
+where the \fIresource\fP may be repeated to
+name and set multiple resource limits.
+.PP
+If no \fImarker\fP line can be found in the first \fIlines\fP (default 99)
+of the \fIfile\fP, a standard template path formed using the
+\fB\-t\fItemplates\fR arguments is searched for marked lines.
+The \fItemplates\fP string is subjected to \fImk\fP's percent
+expansions/substitutions (see above).
+\fIMk\fP then searches the files whose names emerge from that substitution for
+\fImarkers\fP.
+The special marker \*(lq*\*(rq matches, and is a match for, any marker
+or submarker.
+
+.SH OPTIONS
+Note that options and arguments may be intermixed on the command line
+to change the behavior of \fImk\fP
+on a per file basis \- e. g., \*(lqmk \-s foo.c \-v \-ddebug bar.c\*(rq.
+.PP
+Also note that the environment variable \fB$MK\fP is consulted for
+arguments before the command line arguments.  Export this to force
+trace and confirmation modes (\fB\-cvV\fP) as you build new marked lines or
+template files.
+.TP
+.B \-A
+Find all the marked lines that match the specified \fImarker\fP
+and \fIsubmarker\fP, stop processing at the first command that is
+successful.
+.TP
+.BI \-D defn
+Give a definition for an environment variable.
+The definition must have the form \fIident\fP\fB=\fP\fIvalue\fP.
+.TP
+.BI \-U undef
+Remove a definition for the environment variable \fIundef\fP.
+.TP
+.B \-a
+Find all the marked lines that match the specified \fImarker\fP
+and \fIsubmarker\fP.
+.TP
+.B \-c
+Confirm the action before running it.
+This will allow the user to see the command before it is executed.
+A response of `y' or `Y' will cause the command to be run.
+.TP
+.BI \-d submarker
+Look for the string \*(lq$\fImarker\fP(\fIsubmarker\fP):\*(rq in \fIfile\fP.
+White space is ignored.
+A command line including \*(lq\-d debug\*(rq would match
+\*(lq$\fImarker\fP(debug):\*(rq.
+Submarkers in the file are ignored (do not take part in matching)
+if no submarker is specified.
+The \fIsubmarker\fP \*(lq*\*(rq matches all submarkers in any file.
+.TP
+.BI \-e template
+This \fItemplate\fP will be searched before the \fIfile\fP at hand.
+This allows \fImk\fP to trap non-plain files with the %y expander.
+.TP
+.B \-h
+Print a brief help message.
+.TP
+.B \-H
+Print some on-line help for the markup \fB\*(PN\fP processes.
+.TP
+.B \-i
+Ignore case when looking for \fImarker\fP and \fIsubmarker\fP.
+.TP
+\fB\-l\fP \fPlines\fP
+Search \fIlines\fP lines as a maximum distance between marked lines
+(note this is \fBnot\fP the absolute number of lines to search).
+The default 99 for, specify 0 for unlimited searches, or use a comment
+like \fB$*(*): %^$$\fP to reset the counter every 90 lines (or so).
+.TP
+.B \-m marker
+Look for the string \*(rq\fB$\fP\fImarker\fP\fB:\fP\*(rq
+as the delimiter for the compilation directive.
+The default \fImarker\fP string is \*(lqCompile\*(rq.
+Note that \fImarker\fP does not include either the leading dollar\-sign (`$')
+or the trailing colon (`:').
+The \fImarker\fP \*(lq*\*(rq matches all markers in the file.
+.TP
+.B \-n
+Do not execute the located commands.
+This flag specifies that the resulting command(s) should not be executed,
+but only printed on the standard output.
+.TP
+.B \-s
+Be silent.
+Executed commands are not output.
+.TP
+.BI \-t templates
+The \fItemplates\fP string produces a file path that will be searched for a
+\fImarker\fP line if no \fImarker\fP line is found in the file named on the
+\fImk\fP command line.
+The percent escapes described above are all available for substitution
+in this string, so that the template can be based on the properties of
+the file being processed.
+The default \fItemplates\fP string is output under \fB\-V\fP.
+More than one template option my be specified.
+\fIMk\fP searches each of them in the order they are given.
+.TP
+\fB\-T\fP \fItilde\fP
+The \fB%~\fP escape expands to this directory.  This is useful for
+testing whole-sale changes to the templates before installation.
+.TP
+.B \-v
+Be verbose.
+This is the opposite of \fB\-s\fP (above), and is implied by
+the \fB\-n\fP option (above).
+.TP
+.B \-V
+Be extra verbose.
+Used only to debug \fImk\fP, or output the default templates configuration.
+
+.SH EXAMPLES
+\fIMk\fP is most commonly used to produce input for the shell.
+The following lines might occur in a C program source file:
+.sp \n()Pu
+.RS
+.nf
+/*
+ * $Compile: ${cc\-cc} ${CFLAGS\-\-O} \-o %F \-DFOO=1 %f
+ * $Compile(debug): ${cc\-cc} ${CFLAGS\-\-g} \-o %F \-DDEBUG %f
+ * $Run: %F /tmp/test
+ * $Fail=1: %F /etc/passwd
+ * $Limit,cpu=100,clock=600,fsize=10000: %F /tmp/test2
+ */
+.fi
+.RE
+.sp \n()Pu
+If the file were called \*(lqfoo.c\*(rq, \fImk\fP,
+invoked as
+.sp \n()Pu
+.RS
+mk foo.c
+.RE
+.sp \n()Pu
+would send
+\fIsh\fP
+the command:
+.sp \n()Pu
+.RS
+cc \-O \-o foo \-DFOO=1 foo.c
+.RE
+.sp \n()Pu
+With an invocation like
+.sp \n()Pu
+.RS
+mk \-ddebug foo.c
+.RE
+.sp \n()Pu
+the command
+.sp \n()Pu
+.RS
+cc \-g \-o foo \-DDEBUG foo.c
+.RE
+.sp \n()Pu
+would be sent to \fIsh\fP.
+.PP
+\fIMk\fP will output the default templates option if only \fB\-V\fP is
+set:
+.RS
+.nf
+mk: $\&Id: mk.c,v 5.23 2009/11/16 16:10:52 ksb Exp
+mk:  $\&Id: diver.c \fIversion information...\fP
+mk: %~ `/usr/local/lib/mk'
+mk: -e `%Yd%f/.mk-rules:%~/type/%y%;:%~/%<%~/map/pre>:%~/pre/%x'
+mk: -t `%~/%<%~/map/post>:%Yf%~/file/%G:%~/dot/%x:%~/m/%M'
+.fi
+.RE
+.PP
+An example here document (extracted with "mk -mSort"):
+.RS
+.nf
+# $Sort: %|/# /%J sort -n %j
+# 13
+# 2
+# 7
+# $Sort: %j%^
+.fi
+.RE
+We extract the text between the marked lines into a temp file with \fB%J\fP:
+the pipe markup trims the comment hash (\*(lq#\*(rq) and
+the first space from each line.
+That file is named by the expansion of \fB%j\fP in the sort command.
+The trailing marked line ends the here document (note that it \fBmust\fP be
+marked with a matching marker and submarker to do so).
+Since it is not a possible command match (in the example) we eliminate it
+with a \fB%^\fP rejection markup.  We could repace that markup with an
+additional possible command, even follow it with another here document if
+that was useful in the context of the file.
+
+
+.SH AUTHORS
+KS Braunsdorf, Non-Player Character Guild (mk reduce_spam_at ksb.npcguild.org)
+
+.SH SEE ALSO
+sh(1), setrlimit(2),
+expand.html in the source, dicer(5L), mk(5L)

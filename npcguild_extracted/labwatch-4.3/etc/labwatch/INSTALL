@@ -1,0 +1,26 @@
+# $Id: INSTALL,v 3.3 1997/06/29 18:03:46 ksb Exp $
+
+Add these lines to /etc/services (on your NIS master if you've got one):
+	lablisten	784/udp lablog		# host stat chat to labwatch
+	labinfo		785/tcp labstat		# client info chat to labwatch
+
+Compile this program and install it 755 (or 744) in /usr/local/etc.
+Build a configuration file (see ../../lib/labwatch.cf) and run the
+program with the configuration file as
+	labwatch -n -C /usr/local/lib/labwatch.cf
+
+Any labd's started with the server you ran labwatch on as the target will
+report problems the stdout of the running labwatch.  Stdin of the running
+labwatch is a micro-shell with some commands for Ops.  Type "help" for more
+commands you might want to learn.
+
+Install any automation using "labc" on the clients and test it.  For example
+a client should start labd on boot (in rc.local, rc, or init.d).  It might send
+an explict message to Ops (with labc "message stuff here") if some well known
+problem happens in production.  Such messages should tell the (human) Ops
+Dude _what_ to do, not just complain at them.
+
+See the INSTALL notes at the package level for more clues.
+
+--
+ksb@fedex.com

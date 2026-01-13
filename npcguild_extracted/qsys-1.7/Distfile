@@ -1,0 +1,11 @@
+# $Id: Distfile,v 1.2 1997/01/05 22:41:08 root Exp $
+# N.B. -o nodescend must be set in this Distfile
+`( . ) -> ( 'HOST` )
+	install ${INTO};
+
+( bin lib etc INSTALL README ) -> ( 'HOST` )
+	install -w ${INTO};
+
+( @Make.host@ ) -> ( 'HOST` )
+	install -b ${INTO}/Makefile;
+'dnl

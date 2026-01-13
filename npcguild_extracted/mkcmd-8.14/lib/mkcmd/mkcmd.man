@@ -1,0 +1,774 @@
+.TH MKCMD 5L LOCAL
+.\" $Id: mkcmd.man,v 8.8 1999/06/12 00:43:58 ksb Exp $
+.\" by Kevin Braunsdorf
+.SH NAME
+mkcmd - command line option packages for common facilities
+
+.SH SYNOPSIS
+std_control.m std_help.m std_macro.m std_noargs.m std_targets.m std_version.m
+cmd.m cmd_cd.m cmd_echo.m cmd_exec.m cmd_help.m cmd_macro.m cmd_merge.m
+cmd_parse.m cmd_shell.m cmd_source.m cmd_umask.m cmd_version.m
+
+.SH DESCRIPTION
+.\" what is mkcmd, why are we here?
+.PP
+\fIMkcmd\fP builds a C application's command line option parser from
+descriptions of the acceptable options.
+To provide some common user support features (like on-line help) in
+a consistent manner, \fImkcmd\fP supplies
+some prefabricated option packages.
+This manual page describes the option packages
+supplied with \fImkcmd\fP 7.\fIx\fP.
+It also provides some additional clues for constructing
+your own packages.
+.\" what is a package?
+.PP
+A package provides some options and control points which
+provide an independent service to the user.
+Packages may provide C functions (enclosed in %c...%%),
+header information (enclosed in %h...%%),
+includes and externs (enclosed in %i...%%),
+or just tune parameters in \fImkcmd\fP to produce
+custom parsers.
+.PP
+C functions made available to the implementor may be called
+as described below --
+any other use of these functions may break in subsequent releases.
+.\" What kind of services do you provide, dude?
+.PP
+Services provided may not be directly related to
+the function of the application.
+For example, \fBstd_help.m\fP (standard help dot\-m) provides
+the command line option `\-\fBh\fP' (the online help facility) and
+some error traps.
+These are not really part of the function of an application, but they
+are handy to provide.
+.PP
+Other services provided are meant to take the place of common
+.UX
+command line processing.
+I invite any implementor to submit new standard option descriptions
+to be included in the next release of \fImkcmd\fP.
+
+.SH "OPTION TEMPLATES"
+The distributed packages contain the following options:
+
+.TS
+l l l.
+\fBstd_help.m\fP	\-\fBh\fP	print this help message
+.TE
+.RS
+.PP
+Provides handling of missing parameters, and unknown options.
+No implementor support is required.
+Every user-level shell utility should include \fBstd_help.m\fP in
+the construction of its command line option parser, unless \-\fBh\fP
+is used for something else (and cannot be renamed).
+.RE
+.PP
+
+.TS
+l l l.
+\fBstd_macro.m\fP	\-\fBo\fP \fImacro\fP[=\fIvalue\fP]	turn macro on, or assign it a value
+	+\fBo\fP [\fImacro\fP]	reset macro, or list all macros
+.TE
+.RS
+.PP
+Support a simple list of macro names and text values.
+The \-\fBo\fP option sets \fImacro\fP to the \fIvalue\fP provided.
+If no value is given the third column in the \fBaMC\fP table (below)
+is consulted.
+The +\fBo\fP escape binds \fImacro\fP to the fourth column in
+the \fBaMC\fP table.
+
+\f(CRvoid DoMacro(char *)\fR
+
+.PP
+The guts of the \-\fBo\fP facility.  Not a good entry point to call yourself.
+
+
+\f(CRvoid UndoMacro(char *)\fR
+
+.PP
+The guts of the +\fBo\fP facility.
+
+\f(CRvoid ListMacros(FILE *)\fR
+
+.PP
+This C function outputs each macro with its current value -- +\fBo\fP
+with no \fImacro\fP after it activates the facility.
+
+\f(CR#define ENDMACRO\fR
+
+This C preprocessor macro must be the last line
+in the definition of \fBaMC\fP.
+
+\f(CRchar *Macro(char *)\fR
+
+This function returns the value bound to a
+macro or the unique character array \fBu_acFail\fP if the macro
+is not in the \fBaMC\fP table.
+
+The implementor must provide (visible from \fImain\fP):
+.ta 0.25i 0.5i 0.75i 1i
+.nf
+	\f(CR%c
+	MACRO aMC[] = {
+		/* name    no -o,+o      -o              +o */
+		{"macro", "init-value", "set-value", "reset-value"},
+		...
+		ENDMACRO	/* must always be last in table */
+	};
+	%%\fR
+.fi
+.PP
+In practice these options are used to implement less often used
+switches in the guts of a very complex application.
+For example \fIksh\fP's ``set -o vi'' feature.
+The macro's value is read by the application
+with `pcValue = Macro("\fIname\fP");'.
+.RE
+
+.TS
+l l l.
+\fBstd_noargs.m\fP	\fIlist\fP
+.TE
+.RS
+.PP
+When additional words are left on the command line this facility
+issues a usage message and aborts.
+Consumes the \fIlist\fP control point.
+.RE
+
+.TS
+l l l.
+\fBstd_version.m\fP	\-\fBV\fP	show version information
+.TE
+.RS
+.PP
+Provides `\-\fBV\fP' to output the version of the application.
+The implementor must provide a \fBrcsid\fP visible from \fImain\fP.
+For example:
+\f(CR
+.ta 0.25i 0.5i 0.75i 1i
+.nf
+	%c
+	static char rcsid[] =
+		"$\&Id: ...$";
+	%%
+.fi
+\fR
+
+The applications writer may \fBaugment\fP the \-\fBV\fP action's
+\fBuser\fP attribute to display more text on \fIstdout\fP.
+.RE
+
+.TS
+l l l.
+\fBstd_control.m\fP	\-\fBn\fP	do not execute commands, trace only
+	\-\fBv\fP	be verbose
+.TE
+.RS
+.PP
+The implementor uses these to control the application of system calls
+which alter the system.
+The names of the control variables are \fBfExec\fP and \fBfVerbose\fP.
+If \fBfExec\fP is non-zero then the application should take the
+action.
+If \fBfVerbose\fP is non-zero that the application should
+output (on stdout) shell commands which closely approximate the
+actions the application is taking.
+
+Note that \-\fBn\fP on the command line always forces \-\fBv\fP.
+
+For example:
+\f(CR
+.ta 0.25i 0.5i 0.75i 1i
+.nf
+	if (fVerbose) {
+		printf("%s: rm \-f %s\en", progname, pcFile);
+	}
+	if (fExec && -1 == unlink(pcFile)) {
+		fprintf(stderr, "%s: unlink: %s: %s\en", progname, pcFile, ...
+		exit(1);
+	}
+.fi
+\fR
+
+.RE
+.TS
+l l l.
+\fBstd_targets.m\fP	\fInone\fP
+.TE
+.RS
+.PP
+Provide no options.  No implementor support required.
+This template inserts header comment with marked lines
+for the \fImk\fP(1L) program.
+.RE
+
+.SH "INTERACTIVE TEMPLATES"
+
+.PP
+\fBMkcmd\fP has some support for interactive products like \fIlpc\fP which
+have micro-shell interpreters to control advanced features.
+The interpreter uses the same rules used to split options from
+an environment variables to break a command into an argument
+vector.
+The interpreter searches a table of commands for
+the first word of the subsequently formed command.
+A function pointer and a mask of special bits complete the
+execution of the command.
+
+.PP
+The application must provide 2 definitions and a call to \fIcmd_init\fP
+to use the interpreter.
+The first definition is a list of the commands to be included in the
+interpreter.  Each command is described as a C structure:
+\f(CR
+.RS
+.TS
+l l l.
+typedef	struct CPnode {
+	char *pccmd;	/* command name, "quit" */
+	char *pcdescr;	/* command help text, "terminate this" */
+	int (*pfi)();	/* function to call */
+	int facts;	/* action to take after function call */
+	char *pcparams;	/* an optional usage message for params */
+} CMD;
+.TE
+.fi
+.RE
+\fR
+The list of commands is an array of these structures.  For example:
+\f(CR
+.nf
+.RS
+.TS
+l l.
+CMD	CMList[] = {
+	{"page",  "display a file", page_stuff, 0, "[files]"},
+	{"move",  "move files", relocate, 0, "files to"},
+	CMD_DEF_QUIT,
+	....
+};
+.TE
+.RE
+\fR
+
+.PP
+Some of these lines are provided as C preprocessor macros in the
+templates below.  They are all named like CMD_DEF_\fIname\fP.
+
+.PP
+The other definition you must have is a variable of type `CMDSET'.
+Any name will do.  It must be in an appropriate scope, of course.
+Something like:
+\f(CR
+.RS
+.nf
+CMDSET CSUser;
+.fi
+.RE
+\fR
+.PP
+We are going to pass the address of this structure (as the first
+parameter) to all the routines that implement the interpreter.
+To complete the activation of the generic interpreter we have to
+call \fIcmd_init\fP before we try to process any commands (see below).
+
+.PP
+These parameters tune the behavior of the interpreter as a whole.
+Each command in the interpreter has a set of bits that control just
+that command.
+In the CMD definition these \fIfacts\fP bits may be set (and or'd together):
+.RS
+.TS
+l l.
+CMD_NULL	take no special action
+CMD_RET	return from the parser after this command
+CMD_OFF	this command is off (maybe privileged)
+CMD_HIDDEN	this command not in the `commands' or `help' list
+CMD_NO_FREE	do not free argument vector
+	(because command records a pointer into it)
+.TE
+.RE
+
+.PP
+Commands are interfaced to the interpreter as C functions that
+take a standard argc, argv pair and a pointer to a command
+interpreter data structure.
+.RS
+.nf
+\f(CRint
+\fImyfunction\fP(argc, argv, pCS)
+int argc;
+char **argv;
+CMDSET *pCS;
+{
+	...
+}\fR
+.fi
+.RE
+
+.PP
+The following text describes the facilities provided by each cmd_\fIthing\fP.m
+source file in the \fBmkcmd\fP standard library.
+Each templates below implements either part of the interpreter infrastructure
+or some standard functions.
+
+.TS
+l l l.
+\fBcmd.m\fP	\fBquit\fP	exit this command interpreter
+.TE
+.RS
+.PP
+The C preprocessor macro CMD_DEF_QUIT provides an initializer for
+a CMD that implements a ``quit'' command.
+
+.PP
+This is the main code for the interpreter.
+Include this file in the \fImkcmd\fP command line before
+the file which contains the list of commands and the
+command set declaration.
+
+\f(CRcmd_init(CMDSET *, CMD *, unsigned int, char *, int);\fR
+
+.PP
+The parameters to \fIcmd_init\fP are (in order):
+.br
+	the address of a CMDSET structure
+.br
+	the address of the first element of the list of commands
+.br
+	the number of commands in that list
+.br
+	a string prompt, or the NULL pointer (viz. (char *))
+.br
+	the minimum number of character to accept for a shortened command name, or zero
+.br
+
+For example we might setup the new interperter ``CSUser'' with the list of
+commands in the array aCMList and a generic prompt, and a minimum command
+length of 3 characters as:
+
+	\f(CRcmd_init(& CSUser, aCMList, sizeof(CMList)/sizeof(CMD), "prompt> ", 3);\fR
+
+.PP
+Once this init routine has been called two other facilities are available to
+process commands.
+They are usually bound the \-\fBc\fP and \-\fBf\fP (see below).
+
+\f(CRint cmd_from_file(CMDSET *, FILE *)\fR
+
+.PP
+This function reads and interprets commands from the given (FILE *).
+It might be used at the \fBzero\fP control to process commands from
+stdin, e.g.:
+
+	\f(CRzero {
+.br
+		update ``cmd_from_file(& CSUser, stdin)''
+.br
+	}\fR
+.br
+
+
+\f(CRint cmd_from_string(CMDSET *, char *, int *)\fR
+
+.PP
+This function interprets a single command from a string.
+If the third argument to \fIcmd_from_string\fP is the address of
+an \fBint\fP buffer a copy of the \fIfacts\fP member from the active
+CMD entry for the executed command is stored here.
+These bits are used internally, most implementors
+will have little use for them: just pass `(int *)0' as the third argument
+to \fIcmd_from_string\fP.
+
+\f(CRint (*cmd_unknown)();\fR
+.br
+\f(CRint (*cmd_ambiguous)();\fR
+.br
+\f(CRint (*cmd_not_available)();\fR
+.br
+
+.PP
+These function pointers are hooks to catch bad commands.
+For example \fBcmd_unknown\fP is used by the \fBcmd_macro\fP
+facility to trap unknown commands which might be macro names.
+If your facility cannot process or recover it should chain to
+the older function (so record the old value before you stomp on it).
+All of these functions take the standard 3 parameters (argc, argc, pCS).
+
+
+\f(CRint _cmd_unknown(int, char **, CMDSET *);\fR
+.br
+\f(CRint _cmd_ambiguous(int, char **, CMDSET *);\fR
+.br
+\f(CRint _cmd_not_available(int, char **, CMDSET *);\fR
+.br
+
+.PP
+These are the default functions for the hooks above.
+.RE
+
+.TS
+l l l.
+\fBcmd_cd.m\fP	\fBcd\fP	change directory
+	\fBchdir\fP	change directory
+.TE
+.RS
+.PP
+This command emulates sh's builtin cd command to change
+the process's current working directory.
+The C preprocessor macro CMD_DEF_CD provides an initializer for
+the ``cd'' command.
+The C preprocessor macro CMD_DEF_CHDIR provides an initializer for
+a ``chdir'' alias.
+
+\f(CRint cmd_cd(int, char **, CMDSET *)\fP
+
+This routine knows about the tilde (``~'') expansion, but not file
+globbing.
+With no arguments, change to $HOME.
+.RE
+
+.TS
+l l l.
+\fBcmd_echo.m\fP	\fBecho\fP	print text to stdout
+.TE
+.RS
+.PP
+This is included mostly as an example of a simple command.
+The C preprocessor macro CMD_DEF_ECHO provides an initializer for
+the ``echo'' command.
+
+\f(CRint cmd_echo(int, char **, CMDSET *)\fP
+
+Any arguments are output on a single line to \fBstdout\fP.
+.RE
+
+.TS
+l l l.
+\fBcmd_exec.m\fP	\fBpwd\fP	runs /bin/pwd
+.TE
+.RS
+.PP
+This package uses the name of the command in an extended mode to run
+a command from the file sysem.  After the name of the command put a
+literal NUL (\e000) character then the path to the binary file.
+The macro CMD_DEF_PWD provides an initializer for the ``pwd'' command.
+
+\f(CRint cmd_fs_exec(int, char **, CMDSET *)\fR
+
+.PP
+This C function looks beyond the end of the argv[0] string for a
+path to execute.
+Put the path in the CMD initializer as:
+
+	\f(CR{ ``pwd\e0/bin/pwd'', ``print working directory'', cmd_fs_exec, 0}\fP
+.RE
+
+.TS
+l l l.
+\fBcmd_help.m\fP	\fBcommands\fP	output a terse list of commands
+	\fPhelp\fP	output a help message
+.TE
+.RS
+.PP
+The C preprocessor macro CMD_DEF_COMMANDS provides an initializer for
+a CMD that implements a command that displays the names of all of
+the available commands.  Some support code is also included.
+
+.PP
+The C preprocessor macro CMD_DEF_HELP provides an initializer for
+a CMD that implements a command that displays the descriptions for
+all the available commands.
+.RE
+
+.TS
+l l l.
+\fBcmd_macro.m\fP	\fImacro\fP=\fIvalue\fP	set a macro
+	-\fImacro\fP	activate \fImacro\fP
+	+\fImacro\fP	deactivate \fImacro\fP
+	?\fImacro\fP	output \fImacro\fP value
+	?	output all macro values
+.TE
+.RS
+.PP
+This provides a command interface to the \fBstd_macro\fP macros.
+Each macro in the \fBaMC\fP array becomes 4 commands (set, activate,
+deactivate, and print).
+
+.PP
+The routine \fBcmd_macro_install\fP() was called to install this
+facility in older \fBmkcmd\fP libraries: that is no longer the case.
+Remove any references to this function.
+.RE
+
+.TS
+l l l.
+\fBcmd_merge.m\fP
+.TE
+.RS
+.PP
+This interface provides no commands unto itself.
+It provides a C routine (viz. \fBcmd_merge\fP) which adds new
+commands to an existing interpreter.
+This is used in conjunction with \fBcmd_parse.m\fP and \fBcmd_source.m\fP to
+add commands form a table at run-time.
+
+\f(CRint cmd_merge(CMDSET *, CMD *, unsigned int, int (*)())\fP
+
+.PP
+\fBCmd_merge\fP takes four parameters: the address of a CMDSET
+structure, a pointer to the list of CMD structures, a count of
+the number of CMDs provided and a function pointer to compare
+two CMD structures for order.
+A NULL function  pointer (viz.  (int (*)())0) may be supplied
+as the last parameter to activate an internal function which
+sorts as \fBstrcmp\fP does.
+.RE
+
+.TS
+l l l.
+\fBcmd_parse.m\fP
+.TE
+.RS
+.PP
+This interface provides no commands unto itself.
+It provides a C routine (viz. \fBcmd_parse\fP) which reads
+command descriptions from a (FILE *).
+Commands are stored in a text table with lines that look like:
+
+	\fIpath argv0 params\fP \fB\-\-\fP \fIhelptext\fP
+
+.PP
+The \fIparams\fP are optional as is \fIargv0\fP.  If no \fIargv0\fP
+is provided the tail of \fIpath\fP is assumed.
+
+.PP
+Two optional flags may prefix the \fIpath\fP: exclamation point (!)
+declares that the new command is CMD_OFF by default, and commercial
+at (@) declares that the command is hidden.
+
+\f(CRint cmd_parse(FILE *, CMD **, unsigned int *)\fR
+
+.PP
+The usage of this routine is more clear in an example (see below),
+basically we \fBfopen\fP(3) a file, pass this file handle and
+the address of two buffers (a CMD *, and an unsigned int), close the
+file.
+Now the (CMD *) should point to a \fBmalloc\fP(3) area which holds
+all the data about the requested commands.
+
+.PP
+Each command is setup for execution via \fIcmd_fs_exec\fP which must
+be included as \fBcmd_exec.m\fP on the \fImkcmd\fP command line.
+.RE
+
+.TS
+l l l.
+\fBcmd_shell.m\fP	\fBshell\fP	spawn a subshell
+.TE
+.RS
+.PP
+The C preprocessor macro CMD_DEF_SHELL provides an initializer for
+a CMD that spawns a copy of the user's shell, or /bin/sh if $SHELL
+is not set.
+
+\f(CRint cmd_shell(int, char **, CMDSET *)\fR
+
+.PP
+If no arguments are provided a ``\-i'' is forced into the shell's
+command line.
+.RE
+
+.TS
+l l l.
+\fBcmd_source.m\fP	\fBsource\fP	interpret files of commands
+.TE
+.RS
+.PP
+The C preprocessor macro CMD_DEF_SOURCE provides an initializer for
+a CMD that read commands from a list of files.
+
+\f(CRint cmd_source(int, char **, CMDSET *)\fR
+
+Each file provided on the command line is opened in turn and read
+as commands to the interpreter.
+.RE
+
+.TS
+l l l.
+\fBcmd_umask.m\fP	\fBumask\fP	print/set file creation mask
+.TE
+.RS
+.PP
+The C preprocessor macro CMD_DEF_UMASK provides an initializer for
+a CMD that prints (sets) the process's file creation mask.
+
+\f(CRint cmd_umask(int, char **, CMDSET *)\fR
+
+.PP
+This C routine implements the umask command.
+In addition the POSIX \fB\-S\fP option is emulated if NEED_SYMBOLIC_UMASK
+is defined to be non-zero (which is the default).
+.RE
+
+.TS
+l l l.
+\fBcmd_version.m\fP	\fBversion\fP	output a version string
+.TE
+.RS
+.PP
+The C preprocessor macro CMD_DEF_VERSION provides an initializer for
+a CMD that outputs the \fBrcsid\fP as a version string.
+
+\f(CRint cmd_version(int, char **, CMDSET *)\fR
+
+.PP
+This C routine outputs \fBrcsid\fP the version of the program.
+The implementor must provide this character array.
+.RE
+
+.SH EXAMPLES
+.PP
+\fBMkcmd\fP has a simple syntax and a declarative nature -- none
+of the examples below are mind bogglingly ``clever''.
+
+.PP
+To allow exactly two positional parameters (a file and an integer):
+.ta 0.25i 0.5i 0.75i 1i
+.RS
+.nf
+\f(RC
+integer variable "iSize" {
+	parameter "size"
+	help "maximum size to grow file"
+}
+fd ["O_CREAT|O_RDWR, 644"] variable "fdOutFile" "pcOutFile" {
+	parameter "file"
+	help "file to append message"
+}
+left "fdOutFile" "iSize" {
+}\fP
+.fi
+.RE
+
+To make \fB\-v\fP and \fB\-s\fP be opposites (verbose and silent):
+\f(CR
+.RS
+.ta 0.25i 0.5i 0.75i 1i
+.nf
+boolean 'v' {
+	named "fVerbose"
+	init "0"
+	help "be verbose"
+}
+action 's' {
+	update "%rvn = 0;"
+	help "be silent (turn off verbose)"
+}\fP
+.fi
+.RE
+
+To augment the standard version option to output additional stuff
+(note that the percent and the backslash must be quoted):
+\f(CR
+.RS
+.ta 0.25i 0.5i 0.75i 1i
+.nf
+augment action 'V' {
+	user 'printf("%%s: additional stuff\e\en", %b);'
+}\fP
+.fi
+.RE
+
+.PP
+To allow access to a \fBcmd\fP interpreter from the command line:
+\f(CR
+.RS
+.ta 0.25i 0.5i 0.75i 1i
+.nf
+function 'c' {
+	track named "cmd_from_string"
+	update '%n(& CSGlobal, %N, (int *)0);'
+	parameter "cmd"
+	help "provide an interactive command"
+}
+.fi
+.RE
+\fR
+
+If the user should be able to source a file with \fB\-f\fP:
+\f(CR
+.RS
+.ta 0.25i 0.5i 0.75i 1i
+.nf
+file 'f' {
+	track named "fpSource" "pcSource"
+	user 'cmd_from_file(& CSGlobal, %n);'
+	help "interpret commands from file"
+}
+.fi
+.RE
+\fR
+
+.PP
+If no \fB\-c\fP or \fB\-f\fP options are given we might
+use \fBzero\fP to drop into an interactive mode:
+\f(CR
+.ta 0.25i 0.5i 0.75i 1i
+.RS
+.nf
+zero {
+	named "cmd_from_file"
+	update 'if (!%rcU && !%rfU) {%n(& CSGlobal, stdin);}'
+}
+.fi
+.RE
+\fR
+
+.PP
+To read file system commands from a map file (see \fBcmd_parse.m\fP,
+\fBcmd_exec.m\fP and \fBcmd_merge.m\fP):
+.ta 0.25i 0.5i 0.75i 1i
+.RS
+.nf
+\f(RC
+auto unsigned int ui;
+auto CMD *pCMMerge;
+
+\&...
+if ((FILE *)0 != (fpCmds = fopen(acAddCmds, "r"))) {
+	if (0 == cmd_parse(fpCmds, & pCMMerge, & uiMerge) && 0 != uiMerge) {
+		cmd_merge(pCS, pCMMerge, uiMerge, (int (*)())0);
+	}
+	(void)fclose(fpCmds);
+}\fP
+.fi
+.RE
+.SH BUGS
+.PP
+Some more attention should be given to the C code supplied.
+
+.PP
+The internal percent-based code generator is too cryptic for
+most programmers to use effectively.
+
+.SH FILES
+.TS
+l l.
+\fI/usr/local/lib/mkcmd\fP	the default directory for template files
+.TE
+
+.SH AUTHOR
+Kevin S Braunsdorf
+.br
+Federal Express
+.br
+ksbrauns@fedex.com
+
+.SH "SEE ALSO"
+sh(1), execve(2), mk(1L), umask(2), ch(2)

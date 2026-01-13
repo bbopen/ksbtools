@@ -1,0 +1,6 @@
+# PUCC terminal permission file
+# $Id: permok,v 1.4 1997/10/26 19:53:14 ksb Exp $
+#
+# restrict with something like:
+#	^[^.]*\.[^.]*\.fedex\.com$
+^.*$

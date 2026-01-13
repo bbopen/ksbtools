@@ -1,0 +1,15 @@
+# $Id: README,v 3.2 1994/02/25 22:20:16 bj Exp $
+
+These are sample configuration files for labwatch.  Assist.cc is a file
+server with almost 200 IPC clients.  Extra.cc is a Sun3 file server
+with a handfull of old 3/50 workstation for staff to use.  Symphony.cc
+is the central file server for the public NeXT lab (its labwatch runs
+on console.cc).
+
+The `$Compile' targets at the top of each file are markers for the
+local mk program.  Hence `mk file.cf' runs labwatch with apropos
+options for that file.
+
+--
+kayessbee, ksb@cc.purdue.edu
+beejay, bj@cc.purdue.edu

@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>How we built this msrc cache</TITLE>
+<link rel="stylesheet" type="text/css" href="https://carrera.databits.net/~ksb/msrc/css/code.css" />
+</HEAD><BODY>
+<blockquote class=file><pre><code >
+#!/bin/sh
+# $Id: make-msrc.sh,v 8.2 2012/02/28 23:48:47 ksb Exp $
+# Build the "original" msrc (w/o RCS dirs) from the packages.
+# WARNING: this script is destructive to the local directory "msrc"!!
+# WARNING: NEVER run this script from anyplace but /tmp/, copy the
+# resulting "msrc" directory where you want it with cp -ri or rsync.
+#
+# This has 2 hacks in it: one for "entombing" which should have a package
+# name with _base in it, and one to avoid "untmp" being in 2 places (both
+# entomb_base and its own package).
+
+if ! [ -d dl ]  || ! [ -f index.html ] ; then
+	echo "Run this from the public_html directory with dl full of packages and products" 1&gt;&amp;2
+	exit 65
+fi
+
+mkdir -p -m 755 msrc
+
+rm -rf msrc/*
+
+# Unpack msrc_base, which builds msrc/local for us.
+bzip2 -dc `ls -1t dl/msrc_base-* | head -1` |
+(cd msrc &amp;&amp; tar --strip-components=1 -xf  -)
+
+# Unpack install_base into msrc/local
+bzip2 -dc `ls -1t dl/install_base-* | head -1` |
+(cd msrc/local &amp;&amp; tar --strip-components=1 -xf  -)
+mv msrc/local/Pkgs/* msrc/Pkgs
+rmdir msrc/local/Pkgs
+rm -f msrc/local/[A-Z]*
+
+# HACK for 'entombing', which is misnamed and poorly rooted for historical
+# reasons.  Note that it has a "local/" prefix which is wrong.
+gzip -dc `ls -1t dl/entombing-* | head -1` |
+(cd msrc/ &amp;&amp; tar --strip-components=1 -xf  -)
+
+# Unpack the rest, we read ITO.spec for the location infomation
+# Put the archive in the "bindir" or "libdir", which ever comes first,
+# under "msrc/local/".  We mkdir thinfs we may not put anything under.
+mkdir -p t msrc/local/libexec msrc/local/bin msrc/local/sbin msrc/local/lib
+ls -1t dl/*-* | grep -v '_base' | grep -v '^entombing-' |
+perl -p -e "next unless m!.*/\([^-]*\)-.[.tgz]/!; next if (exists(\$hash{\$1})); print \$_;" |
+while read p ; do
+	D=${p%%-*}
+	D=t/${D#dl/}
+	mkdir $D || continue
+	gzip -dc $p | (cd $D ; tar --strip-components=1 -xf  -)
+	set _ `grep '%define _local_bindir' &lt; $D/ITO.spec`
+	if [ $# -lt 4 ] ; then
+		set _ `grep '%define _local_libdir' &lt; $D/ITO.spec`
+	fi
+	if [ $# -lt 4 ] ; then
+		echo "$0: no location in ITO.spec for $p"1&gt;&amp;2
+		continue
+	fi
+	M=msrc/local/${4#**/}
+	mv $D $M
+done
+
+# Add entomb_base, but ignore the Paper in nroff and other junk.
+# HACK to avoid a duplicate "untmp" which should not be in entomb_base
+# but is for historical reasons.
+bzip2 -dc `ls -1t dl/entomb_base-* | head -1` |
+(cd t &amp;&amp; tar --strip-components=1 -xf  -)
+rm -rf t/local/bin/untmp 	# now days it is burst out of the package
+mv t/Pkgs/* msrc/Pkgs
+mv t/local/bin/* msrc/local/bin
+mv t/local/lib/* msrc/local/lib
+mv t/local/sbin/* msrc/local/sbin
+[ -d t/local/libexec ] &amp;&amp; mv t/local/libexec/* msrc/local/libexec
+
+# Remove the unpack directory we used.
+rm -rf t
+
+# Cleanup the stray recipe files in msrc/local from install_base.
+rm -f msrc/local/[A-Z]*
+
+# Quine a markup copy of ourself in the directory to show off we can.
+(
+echo '&lt;!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd"&gt;
+&lt;HTML&gt;&lt;HEAD&gt;
+&lt;TITLE&gt;How we built this msrc cache&lt;/TITLE&gt;
+&lt;link rel="stylesheet" type="text/css" href="/~ksb/msrc/css/code.css"/&gt;
+&lt;/HEAD&gt;&lt;BODY&gt;
+&lt;blockquote class=file&gt;&lt;pre&gt;&lt;code &gt;'
+sed -e 's/&amp;/A''MPamp;/g' -e 's/&lt;/\&amp;lt;/g' -e 's/&gt;/\&amp;gt;/g' &lt;make-msrc.sh | sed -e 's/[A][M][P]/\&amp;/g'
+echo '&lt;/code&gt;&lt;/pre&gt;&lt;/blockquote&gt;
+&lt;/BODY&gt;&lt;/HTML&gt;'
+)&gt; msrc/make-msrc.html
+
+exit 0
+</code></pre></blockquote>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"0b68f1a49c894aa1a76d2dc1135097bb","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</BODY></HTML>

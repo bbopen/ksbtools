@@ -1,0 +1,29 @@
+# $Id: README,v 1.2 1997/10/26 20:19:42 ksb Exp $
+
+These are the login shells I use to trap special users.  You might find
+them useful someday.
+
+msh -- The message shell (1.4)
+	Trap a user then they login in a shell that only outputs a banner
+	message then logs them out.  Great for those people who do not
+	merrit an account or a phone call.
+
+remote -- Allow remote access from a console (1.21)
+	Setup a login "terminal" and let people use the console of a box
+	to start a dumb terminal emulation or an X session, or even a
+	3270 session.  Useful when guests are at the site and want to
+	"telnet" home.  Well, if you have a firewall you have other problems.
+
+tpsh -- Tape spooller shell (2.8)
+	Setup a login that can install software from a tape, or backup
+	a host, or do just about anything.
+
+	This is a major security problem if the account password gets into
+	the wrong hands!  Don't leave "tpsh" up with a superuser uid and
+	a well known or bad password.  I'm not to blame, really.
+
+These are handy and I've used them all at least 3 times.  I think
+"remote" is really nifty, myself.
+
+--
+ksb, Oct 1997

@@ -1,0 +1,5 @@
+creat_r
+open_r
+rename_r
+truncate_r
+unlink_r

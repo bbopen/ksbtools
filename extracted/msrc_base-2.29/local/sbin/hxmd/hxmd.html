@@ -1,0 +1,1881 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML>
+<!-- $Id: hxmd.html,v 1.43 2010/08/08 20:44:19 ksb Exp $
+ -->
+<HEAD><TITLE>An introduction to hxmd</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD>
+<BODY>
+<h1>What you need to know to understand this document</h1>
+
+This document assumes you are quite familiar with the
+standard UNIX macro processor <code class="sh">m4</code>(1),
+and the shell <code class="sh">sh</code>(1).
+In addition you should have a working understanding of the
+<A href="../../bin/xapply/xapply.html"><code class="sh">xapply</code></A>(1)
+wrapper.
+While <code class="sh">hxmd</code> is not a wrapper,
+it depends strongly on that technology.
+
+<P>
+It also helps a lot if you have a specific configuration
+management application in mind, for example updating a
+specific set of files across many hosts.
+
+<P>
+I'll be the first one to admit that it takes a little up-front effort to
+make <code class="sh">hxmd</code> work for you.  So we are going to start
+simple and work up to a full site configuration.  By doing this we'll
+see a continuous return on investment that should keep you motivated
+to continue.  If you feel that you're wasting your time after the
+first check-point, then you have too few hosts to make this worth
+your time, so you might put it down until your administrative
+domain gets a little larger.  I think you'll come back it eventually,
+but in the mean time you might use <code class="sh">xapply</code> alone.
+
+<h1>What is <code class="sh">hxmd</code></h1>
+
+<code class="sh">Hxmd</code> is an advanced shell processor which
+runs a given <code class="param">control</code> once for each host selected from
+a potentially large population.  Some attributes are bound to each
+host to allow <code class="sh">hxmd</code> to select hosts,
+customize <code class="param">control</code>, and filter data files or
+access caches of data.
+Here is the usage from the manual page:
+<blockquote>
+hxmd
+[<code class="opt">-gnsz</code>] [<code class="opt">-</code><code class="param">preload</code>]
+[<code class="opt">-B</code>&nbsp;<code class="param">names</code>]
+[<code class="opt">-c</code>&nbsp;<code class="param">cmd</code>]
+[<code class="opt">-C</code>&nbsp;<code class="param">config</code>]
+[<code class="opt">-E</code>&nbsp;<code class="param">compares</code>]
+[<code class="opt">-F</code>&nbsp;<code class="param">literal</code>]
+[<code class="opt">-G</code>&nbsp;<code class="param">guard</code>]
+[<code class="opt">-j</code>&nbsp;<code class="param">m4prep</code>]
+[<code class="opt">-k</code>&nbsp;<code class="param">key</code>]
+[<code class="opt">-K</code>&nbsp;<code class="param">filter</code>]
+[<code class="opt">-o</code>&nbsp;<code class="param">attributes</code>]
+[<code class="opt">-Q</code>&nbsp;<code class="param">ward</code>]
+[<code class="opt">-r</code>&nbsp;<code class="param">redo</code>]
+[<code class="opt">-X</code>&nbsp;<code class="param">ex-config</code>]
+[<code class="opt">-Y</code>&nbsp;<code class="param">top</code>]
+[<code class="opt">-Z</code>&nbsp;<code class="param">zero-config</code>]
+[<code class="param">xapply-opts</code>]
+[<code class="param">xclate-opts</code>]
+[<code class="param">m4-opts</code>]
+<code class="param">control</code>
+[<code class="param">files</code>]
+</blockquote>
+
+
+Rows in tabular configuration files define each host, as well as
+the host's key attributes.
+The text of the <code class="param">control</code> is processed through <code class="sh">m4</code> with
+these attributes defined (as macros) to customize the code for each target host.
+Optionally other related files or commands may be similarly
+processed for each host.  The resultant custom shell script is executed
+once for each host selected via
+<A href="/cgi-bin/manpage.cgi?xapply"><code class="sh">xapply</code></A>.
+
+<P id="xapply">
+The command line accepts <code class="sh">xapply</code> options to tune the
+parallel execution of the expanded <code class="param">control</code> command.
+In addition to supporting either a wide or a sequential execution stream,
+<code class="sh">xapply</code> also provides some
+additional in-line text processing, and hooks into <code class="sh">ptbw</code>
+and <code class="sh">xclate</code>.
+See also the HTML document about
+<A href="../../bin/xapply/xapply.html">the xapply stack</A>.
+
+<p id="xclate">
+The command line also accepts most <code class="sh">xclate</code> options
+to tune the collated output filter.  It doesn't accept the
+<code class="opt">-u</code> option to bind <code class="sh">xclate</code>
+to a named unix domain socket because <code class="sh">hxmd</code> is
+using <code class="sh">xclate</code> to
+recover the <code class="libc">exit</code> codes from
+the processes: any stray processes would interfere with that scheme.
+
+
+<h2 id="how">How to use <code class="sh">hxmd</code></h2>
+
+The mechanics of <code class="sh">hxmd</code> may be
+decomposed into 4 parts:
+<DL>
+<DT>The configuration data <code class="sh">hxmd</code> reads
+<DD>
+The very first resource a site needs to use <code class="sh">hxmd</code> is
+<A href="#config">a list of the target hosts</A>.
+Without at least a list to process
+the tools is of no use at all.
+<DT>A reason to process those hosts
+<DD>
+A list of hosts won't do anything without a reason to visit each
+one, or process a task for each, or report on each.
+Some criteria to <A href="#elect">select a set</A> of hosts to process
+is required.
+<DT>An update to process
+<DD>
+With a reason to visit the host we still need
+<A href="#each">a payload</A> to deliver the update, poll for status or
+generate part of a report.
+<DT>A way to close-the-loop on failed updates
+<DD>
+Sometimes the update fails, then we need
+<A href="#redo">a way to retry</A> updates that failed.
+</DL>
+
+<P>
+After we have those parts in place we have the foundation available to
+build other structures on top of <code class="sh">hxmd</code>.
+We also touch on the evolution of
+tools which <A href="#encapsulate">encapsulate</A> <code class="sh">hxmd</code>,
+and how others would be designed, like <code class="sh">msrc</code>.
+
+
+<h2 id="config">Configure a list of hosts</h2>
+
+I'm assuming that you've already installed the tool-chain up to
+<code class="sh">mmsrc</code> ("micro msrc") and
+can build the tools we refer to here.
+If you have not done that yet you need to see the quick-start
+<A href="../../sbin/msrc/qstart.html">build document</A> first,
+or install the RPMs.
+
+<P>
+The first step after that is to build a host configuration file,
+it is always called <code class="path">site.cf</code> in the examples below (but you can
+change that to any name you like better).
+If you have an older configuration file for
+<code class="sh">distrib</code> you should start with
+that one, as <code class="sh">hxmd</code> reads those too.
+If you don't own one you should create a list of a few test hosts in
+a file.  Later you should add more elements to make it complete,
+but for our purposes less than 10 hosts would be fine.
+
+<P>
+In <code class="path">site.cf</code> you can include comments with the common
+octothorp (`#', aka <A href="http://www.worldwidewords.org/weirdwords/ww-oct1.htm">hash mark</A>) to end-of-line style.
+We'll add more attributes about each hosts here later.
+Mine looks like:
+<blockquote class="file"><pre><code ># ksb's test list
+w01.example.com
+w02.example.com
+adm1.example.com
+adm2.example.com</code></pre></blockquote>
+
+<P>
+To check that configuration output the list of hosts with the command
+below:
+<blockquote class="file"><pre><code >hxmd -Csite.cf "echo HOST"</code></pre></blockquote>
+
+<P>
+The hosts might not in output in exactly the order they
+appear in the <code class="path">site.cf</code> file.
+I know we just implemented a complex version of <code class="sh">cat</code>, but
+that was not really the point.
+We can change <code class="sh">echo</code> to any program
+we like (<code class="sh">ssh</code> springs to mind) to run a shell command for
+each host in the file, just as <code class="sh">xapply</code> might.
+We should add <code class="sh">xapply</code> options to the command
+to leverage the features of the xapply-stack.
+As an example lets collect the same <code class="sh">uname</code> data from
+each host:
+<blockquote class="file"><pre><code >hxmd -Csite.cf "ssh -n HOST uname -nmp"
+</code></pre></blockquote>
+<P>
+Since <code class="sh">ssh</code> takes some time to make a network
+connection the order of the outputs for the hosts may vary across
+multiple executions of the previous example.
+
+<h3 id="ptree">How that works</h3>
+
+In fact <code class="sh">hxmd</code> is building a process tree with
+<code class="sh">xclate</code> and
+<code class="sh">xapply</code> wrappers around
+the <code class="sh">echo</code> processes.
+We can run another program to see that tree:
+if <code class="sh">ptree</code> or
+<code class="sh">pstree</code> is installed try one of these:
+<blockquote class="file"><pre><code >hxmd -Csite.cf "ptree $$" | more
+</code></pre></blockquote>
+or
+<blockquote class="file"><pre><code >hxmd -Csite.cf "pstree -cG $$" | more
+</code></pre></blockquote>
+
+<P>
+The process tree output from either of the above command might look like this:
+<blockquote class="file"><pre><code >  1111  ksh -i -o vi -o viraw
+    51320 hxmd -Csite.cf ptree 1111
+      51322 xclate -m -N >&amp;6 -- xapply -fzmu -P6 %+ -
+        51323 xapply -fzmu -P6 %+ -
+          51428 /usr/local/bin/xclate 0
+            51429 /bin/ksh -c ptree 1111  _
+              51444 ptree 1111
+          51430 /usr/local/bin/xclate 1
+            51433 /bin/ksh -c ptree 1111  _
+              51445 ptree 1111
+          51431 /usr/local/bin/xclate 2
+            51434 /bin/ksh -c ptree 1111  _
+          51440 /usr/local/bin/xclate 3
+            51441 /bin/ksh -c ptree 1111  _
+      51324 hxmd -Csite.cf ptree 1111
+	51450 (m4)
+    51321 more</code></pre></blockquote>
+<P>
+The process tree shows us a few aspects of <code class="sh">hxmd</code> that
+are pretty enlightening:
+
+<DL>
+<DT><code class="sh">hxmd</code> splits into two processes.
+<DD>
+The first process (51320) runs the <code class="sh">xclate</code> sub-tree, the
+second process (51324) works with the first to start the tasks and
+process the <code class="sh">m4</code> requests.
+You might see child
+<code class="sh">m4</code> processes under
+the second <code class="sh">hxmd</code> process.
+<DD>
+These two processes act as a frame around the processes that
+power the simple machine we've built with
+our <code class="sh">xapply</code> command template.
+<DT><code class="sh">hxmd</code> wraps an <code class="sh">xclate -m</code> around all sub-commands.
+<DD>
+This <code class="sh">xclate</code> machine is like a "block and tackle"
+we are going to use to lift a load.
+The load is the problem we are going to solve, and
+the parallel tasks <code class="sh">xapply</code> manages are
+the "threads" that provide the tension.
+One axle is the parent <code class="sh">xclate</code>, while the
+leaf <code class="sh">xclate</code>'s form the other axle.
+<DT><code class="sh">hxmd</code> forces the
+<code class="opt">-u</code> option to <code class="sh">xapply</code>
+<DD>
+This provides unique names for the "threads" used by
+the block and tackle to lift the load.
+That allows <code class="sh">hxmd</code> to identify
+which of the many tasks failed (<A href="#redo">after processing</A>).
+</DL>
+
+<P>
+We could do most of that with <code class="sh">xapply -mu</code> already, so
+we need to press a little more before we stop reading.
+The configuration management applications add a lot more value.
+
+<h3 id="spice">Adding some spice</h3>
+
+A key element of systems administration is the dark place called
+"configuration management".  In short, knowing what gets put (got put)
+on each server, switch, disk, tape, and workstation and <em>why</em>
+it is (was) there.
+We should keep the formative data about each element in the
+<acronym TITLE="information technology infrastructure library">ITIL</acronym>
+<acronym TITLE="configuration management system">CMS</acronym>
+(which used to be called the <acronym TITLE="configuration management database">CMDB</acronym>), but where exactly is that?
+
+<P>
+I propose that no <em>single</em> repository of authoritative
+information exists, or can exist -- it is too much to keep
+up-to-date, and not every structure can be coerced into consulting
+a centralized configuration management repository.
+A <em>federated</em> CMS, which keeps different data sources under
+the control of different masters, might work where
+a single repository doesn't.
+
+<P>
+To make that model work we need a tool which joins these disparate
+data sources, allows us to use the joined stream to select items
+to act upon, then fits the data and items into the format we want
+(to take the action we require).
+That is exactly what <code class="sh">hxmd</code> does for us.
+
+<h3 id="join">Team <code class="sh">m4</code></h3>
+
+To support that idea we need to format many disparate data sources
+in a common way.  One might use XML, YAML, or any database format -- and
+I tried a lot of those.
+As I did it became clear (at least to me) that each was
+more trouble that is was worth.  For example building a DTD for
+each data channel was a pain, and the DTD was always either out-of-date or
+effectively a meaningless place-holder for list of
+<code class="param">name</code>=<code class="param">value</code> pairs.
+
+<P>
+I needed a format that included the mark-up definition inside
+the data stream (like column headers do on paper), I wanted to
+be able to add "columns" at will, and maybe even change columns
+or column order in mid-stream.  Effectively I wanted the same
+format <acronym TITLE="Mike Spitzer">mjs</acronym> and I used 20 years
+ago when we wrote <code class="sh">distrib</code>.
+
+<P>
+Over the years <code class="sh">distrib</code> has been used (abused) to
+solve many problems it was never intended to solve.
+So <code class="sh">hxmd</code> is designed to be a platform to
+replace all those <i>ad hoc</i> solutions.
+After replacing <code class="sh">distrib</code>, itself, I planned
+to replace the old "master source" makefile structure.
+Before you <A href="../../sbin/msrc/msrc.html">read about that</A>
+you should really finish reading this.
+
+<P>
+Each authoritative data source linked into <code class="sh">hxmd</code> keeps
+controlled data in an arbitrary format: as
+long as it can output in the format below when asked to
+join the team.
+In that way we get the best of everything: a clean format
+that is easy to produce and self contained, and no restrictions
+on <em>how</em> that data is actually managed, behind that public view.
+
+<h3 id="format">The common data format</h3>
+
+Configuration data for <code class="sh">hxmd</code> is kept as a white-space
+separated table.  Any line that starts with a percent-sign (<code class="markup">%</code>)
+denotes the column headers for each subsequent row, until the next
+header line, or the end of the file.  Any line of the form
+<blockquote><code class="param">macro</code>=<tt>value</tt></blockquote>
+is taken as a virtual column that applies to all subsequent rows,
+until the next definition of that name.
+
+<P>
+There is a special <tt>value</tt> called "dot" which is an unquoted
+period (<code class="markup">.</code>) which undefines a column or
+macro.  When needed as a value the period is enclosed in quotes (as below).
+
+<P>
+Since the values are white-space separated we need a way to quote
+values containing white-space: either
+the C double-quotes (<code class="markup">"</code><i>...</i><code class="markup">"</code>), or the
+<code class="sh">m4</code> default quotes (<tt>`</tt><i>...</i><tt>'</tt>)
+may be used to suppress the special meaning of white-space, dot, or
+the other kind of quotes.
+
+<P>
+Since someone might not put in a header line we need a default.
+The default header line is just the name of the <i>key</i> macro given
+under the command line option <code class="opt">-k</code>
+(which defaults to "HOST").
+So a file with no header lines should contain a list of keys.
+
+<P>
+Each file starts over with the default header, if you want to catenate
+files use <code class="sh">cat</code>.
+
+<h3 id="meaning">The meaning of a row</h3>
+
+With all that said we need to give meaning to those tables.
+
+<P>
+The tables represent macros used to process streams
+through <code class="sh">m4</code>.  The names must be valid <code class="sh">m4</code>
+macro names, and the values should make sense as the context of our expected
+<code class="sh">m4</code> expanded stream.
+
+<P>
+Each row in a table represents some managed node (a server, switch, disk, tape,
+workstation, or other <acronym TITLE="configuration item">CI</acronym>).
+
+<P>
+Identical spellings of a key represent multiple aspects of the same node,
+so rows are joined on the <code class="param">key</code> macro.
+For example one file might specify serial numbers for each node, while another
+would specify the location in the physical world:
+<blockquote class="file"><pre><code >%HOST    SNUMBER
+adm1.npcguild.org	5271009A
+adm2.npcguild.org	FR1729CAB
+<i>...</i></code></pre></blockquote>
+
+<blockquote class="file"><pre><code >%HOST    LOCATION
+adm1.npcguild.org	A2-13:3
+adm2.npcguild.org	A5-19:7
+<i>...</i></code></pre></blockquote>
+
+<P>
+These files could be given to <code class="sh">hxmd</code> as
+a single stream, or
+as two separate files (under <code class="opt">-C</code>).
+The difference that makes is subtle and explained under
+<code class="opt">-B</code>
+<A href="#opt-uB-number">below</A>.
+
+<P>
+The main concept here is that, to <code class="sh">hxmd</code>,
+the only important macro is the key, the others are just attributes of
+that element.
+Any row that doesn't define the <code class="param">key</code> macro is
+meaningless, and causes <code class="sh">hxmd</code> to complain.
+When a header line doesn't define a <code class="attr">HOST</code> macro
+you might be in trouble.
+<P>
+It is possible to change the key macro name (under
+<A href="#opt-k"><code class="opt">-k</code></A>),
+but it is a much better idea to
+code a processor around <code class="sh">hxmd</code> that
+forces options such as <code class="opt">-k</code>, then
+calls <code class="sh">hxmd</code> indirectly.
+This tactic prevents a lot of command-line botches, and is
+far easier to document.  See <A href="#encapsulate">below</A>.
+
+<P>
+Because it is possible to change the key macro on the command-line, you
+may use the percent-sign (<code class="markup">%</code>) as the value of
+the <code class="param">key</code> specification in any header specification.
+So a another way to write one of the files above would be:
+<blockquote class="file"><pre><code >% <em class="new">%</em>    SNUMBER
+adm1.npcguild.org	5271009A
+adm2.npcguild.org	FR1729CAB
+<i>...</i></code></pre></blockquote>
+
+<h3 id="attributes">The meanings of other macros</h3>
+
+Any other macro has only the meaning you assign to it, or the meaning
+a processor coded <em>on top of</em> <code class="sh">hxmd</code> assigns to it.
+For example the master source builder <code class="sh">msrc</code> uses many
+attribute macros, see
+<A href="../../sbin/msrc/msrc.html">the introduction to msrc</A> for more details.
+
+<P>
+On a related note: sometimes a configuration file may contain attributes
+that you do not actually need or want defined.  For example
+<blockquote class="file"><pre><code >%SHORTHOST	%		OWNER		SNUMBER		COLOR
+adm1	adm1.npcguild.org	`Bob Builder'	5271009A	silver
+adm2	adm2.npcguild.org	`Tom T. Thumb'	FR1729CAB	black
+<i>...</i></code></pre></blockquote>
+If I do <strong>not</strong> want <code class="attr">OWNER</code> defined by
+this file I need to find a way to direct that column to the bit-bucket.
+It is hard to parse the quotes in each line to replace the value with dot,
+but it is pretty easy to replace the word "OWNER" in the header line
+with dot.
+A <code class="sh">sed</code> spell or <code class="sh">perl -pi -e</code>
+fixes the header without dealing with the quoted values.  By changing
+the header to:
+<blockquote class="file"><pre><code >%SHORTHOST	%		<em class="new">.</em>		SNUMBER		COLOR<i>...</i></code></pre></blockquote>
+we ask the configuration file processor to ignore the column with
+the names in it.  And it does.  This is not often required when you
+control all the configuration files, but if you exchange data with
+other operational organizations you might have to filter their files.
+
+
+<h3 id="sources">Attributes from more than one source?</h3>
+
+There are 4 ways to input an attribute macro for <code class="sh">m4</code>
+processing.
+
+<DL>
+<DT><code class="opt">-C</code> <code class="param">config</code>
+<DD>
+All configuration files provisioned under <code class="opt">-C</code>
+create a definition for any undefined hosts, plus set any
+nonexistent macros for already defined hosts.
+The <em>first definition</em> for an attribute is the one that sticks.
+
+<DT><code class="opt">-X</code> <code class="param">ex-config</code>
+<DD>
+All configuration files provisioned under <code class="opt">-X</code>
+only set any nonexistent macros for <em>already defined hosts</em>.
+No hosts which are <em>only</em> mentioned in such a file are
+defined by their mention.
+
+<DT><code class="opt">-Z</code> <code class="param">zero-config</code>
+<DD>
+All configuration files provisioned under <code class="opt">-Z</code>
+set <em>default values</em> for macros.  Normally all <code class="markup">macro=value</code> lines
+are discarded at the end of each file, under <code class="opt">-Z</code>
+the macros in effect at the end of the files are taken as
+default values.  These are applied after every other file has been read.
+
+<DT>the <code class="sh">m4</code> option <code class="opt">-D</code> <code class="param">name</code>=<code class="param">value</code>
+<DD>
+The <code class="opt">-D</code> and its parameter are passed on the
+<code class="sh">m4</code> as given.
+These are also recorded at the top of any <code class="opt">-o</code>
+configuration file generated by <code class="sh">hxmd</code>, unless
+the <code class="param">name</code> is prefixed with an exclamation
+mark (<code class="markup">!</code>) or an octothorp (<code class="markup">#</code>, aka hash mark).  When presented
+with the punctuation prefix the <code class="param">name</code>
+is presented in the merged file as a comment line (without the value).
+</DL>
+
+<P>
+A special note about the default values provided under
+<code class="opt">-Z</code>: the values must <strong>not</strong> be
+bound to header attribute names.  At the end of a configuration file
+all the header attribute names are discarded (there is an example
+of this in the manual page for hxmd in section 5).
+<P>
+Explicitly returning to the default key before any default values are
+defined is a good idea, because of the restriction above.
+The common idiom in a file designed for <code class="opt">-Z</code> is:
+<blockquote class="file"><pre><code ><i>...</i>
+# Default values <i>reason</i>
+%%
+MAX_SLIDE=`landslide'
+MIN_SLIDE=`rule'</code></pre></blockquote>
+
+<h2 id="elect">How do we elect hosts to process?</h2>
+
+Now that we have a list of all the hosts and their attributes we need
+to put them to work.
+
+<P>
+Some tasks may operate on a complete set of hosts, more often
+tasks want to work with a subset of the total population.
+There are 4 <code class="sh">hxmd</code> options that form an election
+process to pick a set of hosts for a task.
+<P>
+Yes, the best model to put here is an <em>election</em>.  Each host can
+suggest a host that should be included in the task at hand.  Most hosts
+suggest themselves, some hosts might suggest more than a single host,
+some might suggest none.
+
+<P id="standing">
+First a host must be defined in a configuration file.  Usually
+that means under
+<code class="opt">-C</code>&nbsp;<code class="param">config</code>,
+but in rare cases hosts might be defined under
+<code class="opt">-Z</code>&nbsp;<code class="param">zero-config</code>.
+(The later is considered <em>poor form</em> by the author.)
+
+<P>
+The easy way to elect a group of hosts is to use a configuration file
+that only includes the hosts you want.
+The works well because any host that is never defined cannot be elected, and
+by default each host suggests itself.
+<blockquote class="file"><pre><code >hxmd <em class="new">-C site.cf</em> <i>...</i>
+</code></pre></blockquote>
+
+<P id="opt-uB-number">
+If you can't find a configuration file that has only the hosts you want
+you can build a
+<A href="http://en.wikipedia.org/wiki/Venn_diagram">Venn diagram</A>
+from multiple configuration files, using
+<code class="opt">-B</code>&nbsp;<code class="param">number</code>.
+For example the <em>intersection</em> between two files (<code class="path">ying.cf</code> and <code class="path">site.cf</code>):
+<blockquote class="file"><pre><code >hxmd -C ying.cf:site.cf <em class="new">-B2</em> <i>...</i>
+</code></pre></blockquote>
+<P>
+While the <em>disjunction</em> may be had with:
+<blockquote class="file"><pre><code >hxmd -C ying.cf:site.cf <em class="new">-B!2</em> <i>...</i>
+</code></pre></blockquote>
+<P>
+The first example selects hosts that are defined in 2 files, the second
+excludes those same hosts.
+
+<P id="opt-uB-name">
+By using an attribute macro name rather than in integer we elect
+each host that has that macro defined <em>in a configuration file</em>.
+The <code class="sh">m4</code> option <code class="opt">-D</code>
+doesn't count as a definition of the attribute for this option
+(as it would apply equally to all hosts, making it useless).
+<P>
+The <code class="param">names</code> parameter may specify a
+comma separated list of attribute macros that must <em>all</em> be
+defined for each elected host.  Each may also be prefixed with
+and exclamation mark (<code class="markup">!</code>) to indicate that the host must
+not have the attribute macro defined.  For example,
+to elect those hosts from both files with the attribute macro
+<code class="attr">YANG</code> defined:
+<blockquote class="file"><pre><code >hxmd -C ying.cf:site.cf -B 2<em class="new">,YANG</em> <i>...</i>
+</code></pre></blockquote>
+
+<P id="opt-uE">
+Just the existence of a macro might not be specific enough, we
+may need to check the value.
+For that task the option
+<code class="opt">-E</code>
+compares an attribute macro to a value as either a string
+or an integer <em>using <code class="sh">m4</code></em>.
+
+<P id="opt-uE-string">
+In the string case the <code class="param">compares</code> expression
+begins with the macro name (<code class="param">name</code>)
+then either an equal sign (<code class="markup">=</code>) or an exclamation mark (<code class="markup">!</code>),
+then an <code class="sh">m4</code> expression.  For example
+<blockquote class="file"><pre><code >hxmd -C site.cf <em class="new">-E COLOR=blue</em> <i>...</i>
+</code></pre></blockquote>
+
+<P>
+Or for an inequality we would use the exclamation mark:
+<blockquote class="file"><pre><code >hxmd -C site.cf -E COLOR<em class="new">!</em>none <i>...</i>
+</code></pre></blockquote>
+
+
+<P id="opt-uE-number">
+<code class="sh">Hxmd</code> differentiates between string and integer operators
+by the spelling of the relational operator.
+The integer operator are taken from <code class="markup">C</code>:
+equal (<code class="markup">==</code>), not equal (<code class="markup">!=</code>), less-than (<code class="markup">&lt;</code>), less-than or equal (<code class="markup">&lt;=</code>),
+greater-than (<code class="markup">&gt;</code>), and greater-than-or-equal (<code class="markup">&gt;=</code>).
+The last four of these must be quoted from the shell.
+
+<P>
+Like the string comparison the first word should be an attribute
+macro name, but may also be a signed number.  Then the operator followed
+by an expression that
+<code class="sh">m4</code>'s <code class="markup">eval</code>
+macro can resolve.  For example, to
+elect hosts with an <code class="attr">AGE</code> greater-than 7:
+<blockquote class="file"><pre><code >hxmd -C site.cf -E "AGE<em class="new">&gt;</em>7" <i>...</i>
+</code></pre></blockquote>
+
+<P>
+Note that the <em>macro name</em> can be a complete macro expression with
+parenthesized parameters:
+<blockquote class="file"><pre><code >hxmd -C site.cf -E "<em class="new">COMPUTONS(CPU,NPROC)</em>&gt;1000" <i>...</i>
+</code></pre></blockquote>
+
+<P id="opt-uG">
+Usually those matching criteria are enough to elect the correct list of
+hosts.  However there is a larger hammer we can use to describe
+indirect relationships.
+
+<P>
+Say that we want to elect the
+<acronym TITLE="network file system">NFS</acronym>
+server that a host depends on, rather than the host itself.
+If we have an attribute macro <code class="attr">NFS_EXPORT</code>
+bound to each host we can select those that provide an NFS export service with
+<blockquote class="file"><pre><code >hxmd -C site.cf <em class="new">-B NFS_EXPORT</em> <i>...</i>
+</code></pre></blockquote>
+
+<P>
+But that only self-elects each host.  Assuming that the attribute
+<code class="sh">NFS_SERVER</code> contains a host from
+the <code class="path">site.cf</code> that
+the target host depends on we can use a <code class="param">guard</code>
+under <code class="opt">-G</code> to nominate <strong>that</strong> host,
+rather than ourself:
+<blockquote class="file"><pre><code >hxmd -C site.cf <em class="new">-G NFS_SERVER</em> <i>...</i>
+</code></pre></blockquote>
+We could also include <code class="code">-B NFS_EXPORT</code> to
+prevent the election of a host without
+the export attribute definition in-scope.
+
+<P>
+When our NFS servers are not listed in
+<code class="path">site.cf</code> we must add some other file to
+the <code class="opt">-C</code> list, otherwise they'll not be eligible,
+since they are not defined at all.  Note that the guard expression
+can be an arbitrary <code class="sh">m4</code> expression, and may
+include more than a single host (separated by white-space).
+
+
+<h2 id="order">What order are hosts processed in?</h2>
+
+As configuration files are read the first definition of each
+host specifies the order processing.
+Any <code class="param">zero-config</code> files are read first,
+then all <code class="param">config</code> files, and
+lastly each <code class="param">ex-config</code>.
+Files to the left (on the command line) are read before files
+of the same class given to the right.  All this makes the order
+of processing hard to predict if any file in the list is not
+one <strong>your</strong> process created, or some command options are
+passed in environment variables.
+
+<P id="divert">
+When a specific order is required the <code class="sh">m4</code> markup
+specified by a <code class="param">guard</code> may do
+more than elect a host, it wraps the elected host in
+markup to reorder it via <code class="sh">m4</code>'s
+<code class="markup">divert</code> macro.
+
+<P>
+When we need to reorder a selection list we
+divert each host to a selected diversion (read more about
+diversion in <code class="sh">m4</code>'s manual page).
+
+<P>
+The command line options <code class="opt">-Y</code> and
+<code class="opt">-j</code> set up any macros needed for such logic.
+Each <code class="param">top</code> specification is an
+<code class="sh">m4</code> directive placed at the top of the election
+stream.
+Usually this is used to <code class="markup">include</code>
+a file of macro definitions, which enclose the hosts elected
+by the <code class="param">guard</code> specifications.
+It is really <em>poor form</em> to include a hostname in
+a <code class="param">top</code> macro to manually elect it.
+
+<P>
+To express an example we'll update my <code class="path">site.cf</code> to include a
+<code class="attr">COLOR</code>:
+<blockquote class="file"><pre><code ># ksb's test list with colors
+%HOST			COLOR
+w01.example.com		blue
+w02.example.com		red
+adm1.example.com	blue
+adm2.example.com	green</code></pre></blockquote>
+
+<P>
+Then sort red hosts first, then blue then anything else:
+<blockquote class="file"><pre><code >hxmd -P1 -C site.cf \
+	-G "<em class="new">divert(ifelse(COLOR,red,1,COLOR,blue,2,3))</em>HOST" 'echo HOST COLOR'
+</code></pre></blockquote>
+
+<P>
+Which outputs:
+<blockquote class="file"><pre><code >w02.example.com red
+w01.example.com blue
+adm1.example.com blue
+adm2.example.com green</code></pre></blockquote>
+
+
+<P>
+We had to specify <code class="opt">-P1</code> because the
+<code class="param">parallel</code> factor tends to obviate
+the effects of such logic.  On the other hand the file
+creation processes are always done sequentially, in the order
+the hosts are elected.  Note that such a sort is stable, which
+is handy under <code class="opt">-o</code> below.
+
+<P>
+The <code class="opt">-j</code> specification includes a common
+<code class="sh">m4</code> markup file in each phase of the process.
+This file might contain macros to make the diversion process look
+simpler on the command line:
+<blockquote class="file"><pre><code >hxmd -P1 <em class="new">-j rainbow.m4</em> -C site.cf \
+	-G "<em class="new">SpectrumOrder(COLOR)</em>HOST" 'echo HOST COLOR'
+</code></pre></blockquote>
+
+<h2 id="remember">How can I remember what was selected?</h2>
+
+From time to time one instance of <code class="sh">hxmd</code> must
+execute another to update some other aspect of the target hosts in
+concert with the current task.  In that case it would be more
+than handy to remember the results of the current election.
+This would allow additional updates to target exactly the same
+population, or even a related set (subset, super-set, or
+complement) of hosts.
+
+<P id="opt-o">
+The command line option <code class="opt">-o</code> remembers
+a list of <code class="param">attributes</code> for each of the
+elected hosts in the elected order.  The filename containing the
+election results is available in the attribute macro
+<code class="attr">HXMD_U_MERGED</code>.
+
+<P>
+As an example I'll use the <code class="path">site.cf</code> with the COLOR attribute (above):
+<blockquote class="file"><pre><code >hxmd -P1 -C site.cf <em class="new">-o "COLOR BLEACH"</em> \
+	-D BACKGROUND=cyan \
+	-G "divert(ifelse(COLOR,red,1,COLOR,blue,2,3))HOST" \
+	'[ %u -eq 0 ] &amp;&amp; <em class="new">cat HXMD_U_MERGED</em>'</code></pre></blockquote>
+
+<P>
+The test expression <code class="sh">[ %u -eq 0 ] &amp;&amp;</code> is
+a common idiom to limit the output to the first host elected, but
+not the only way to do that. See <A href="#opt-uK-again">below</A>.
+If you take that clause out you should see multiple copies
+of the elected hosts.  Here is the output with the clause in place:
+<blockquote class="file"><pre><code >BACKGROUND=`cyan'
+%HOST COLOR BLEACH
+w02.example.com red .
+w01.example.com blue .
+adm1.example.com blue .
+adm2.example.com green .</code></pre></blockquote>
+
+<P>
+Notice that no hosts defines the attribute <code class="attr">BLEACH</code>.
+We can collect attributes that are not set (yet) then merge in
+other configuration files (usually with <code class="opt">-C</code> or
+<code class="opt">-X</code>)
+to add their values down-stream.
+
+<P>
+Note the <code class="opt">-D</code> option in the command: the
+value is represented above the header line.  This is an attempt to
+preserve command line definitions, but it doesn't always do what you
+want.
+One reason is that such definitions are now defined for
+<code class="opt">-B</code>, another is that you might not want
+the command-line definition passed on (this is true for
+<code class="sh"> msrc</code>'s interface to <code class="sh">hxmd</code>.
+For both reasons one may suppress this feature with
+a prefix of <code class="markup">!</code> on the definition as:
+<blockquote class="file"><pre><code >hxmd -P1 -C site.cf -o "COLOR BLEACH" \
+	-D <em class="new">!</em>BACKGROUND=cyan \
+	-G "divert(ifelse(COLOR,red,1,COLOR,blue,2,3))HOST" \
+	'[ %u -eq 0 ] &amp;&amp; cat HXMD_U_MERGED'</code></pre></blockquote>
+which replaces the in-line definition with:
+<blockquote class="file"><pre><code >#BACKGROUND
+%HOST COLOR BLEACH
+w02.example.com red .
+<i>...</i></code></pre></blockquote>
+The comment is there to help someone debug <em>why</em> the attribute
+was not preserved.
+
+<h2 id="each">How do we process each node?</h2>
+
+Both the <code class="param">control</code> and
+<code class="param">files</code> are run
+though <code class="sh">m4</code> once for each host with
+the attributes in-scope for that host defined.
+Each <code class="param">control</code> text itself is processed, while
+the contents of each of the <code class="param">files</code>
+are processed into temporary files.
+
+<P id="opt-j">
+The <code class="sh">m4</code> processes mentioned above are provided
+the <code class="param">m4-opts</code> provided in the
+command-line specification given to <code class="sh">hxmd</code>,
+then each of the <code class="param">m4prep</code> files provided
+under <code class="opt">-j</code>, then the text to be expanded on
+<code class="markup">stdin</code>.  The <code class="param">m4prep</code>
+files serve the same purpose as <code class="opt">-Q</code> or
+<code class="opt">-Y</code> headers lines: they allow the inclusion of
+some initialization code at the start of every <code class="sh">m4</code>
+filter run.  It would be <strong>poor form</strong> to produce any text
+at all from any of these files.
+(They are files because <code class="sh">m4</code> doesn't have a command
+line markup specification parallel to our <code class="opt">-Y</code>.)
+
+<P>
+After that processing is complete the set of parameters is
+passed on to <code class="sh">xapply</code> for execution.
+The output from <code class="param">control</code> is sent
+as text, while the name of the temporary file is sent for
+each of <code class="param">files</code>.
+
+<P id="opt-uF">
+Normally the parameters after <code class="param">control</code> are
+interpreted as filenames by <code class="sh">hxmd</code>.
+Under <code class="opt">-F</code> more (or fewer) of those
+parameters may be taken as literal text.
+The default value for <code class="param">literal</code> is 1.
+That expresses that a single parameter (the left-most) is to
+be processed as text, and all remaining strings are
+<code class="param">files</code>.
+
+<P id="opt-j-think">
+The reason one might want to change this centers on using
+<code class="sh">xapply</code>'s dicer.  Using
+<A href="../../lib/explode/dicer.html">the dicer (or mixer)</A>
+on the temporary filenames <code class="sh">hxmd</code> generates is
+less than useful.
+While using those tools on an attribute macro might be very useful.
+With appropriate use of <code class="opt">-j</code> a substantial amount
+of data may be collected in a short expression on the command-line.
+<blockquote class="file"><pre><code>hxmd -I -- -j report.m4 -F2 "echo HOST:%[1,2]" "report(HOST)"</code></pre></blockquote>
+In this example the dicer expression after the
+<code class="sh">echo</code> command uses the output from the
+<code class="markup">report</code> function.
+I'm assuming that the file
+<code class="path">defs.m4</code> contains the definition of the
+<code class="markup">report</code> function, and that this function
+is useful enough to share with other team members.
+That way the second text parameter may use it to
+generate a well-formed report on
+the host, without hard coding it on the command-line.
+
+<P>
+Let's change <code class="path">site.cf</code> to replace <code class="attr">COLOR</code> with
+the old <code class="sh">distrib</code>
+macro <code class="attr">SHORTHOST</code>.
+Here is a new <code class="path">site.cf</code>, with an error in it:
+<blockquote class="file"><pre><code >%HOST SHORTHOST
+w01.example.com w01
+w02.example.com w02
+adm1.example.com adm1
+adm2.example.com <em class="error">adm1</em></code></pre></blockquote>
+
+<P>
+This was a common error in older configuration files, where one
+builds <code class="attr">SHORTHOST</code> by hand.
+To compare the <code class="attr">SHORTHOST</code>
+of a host to the part before the first "." in
+<code class="attr">HOST</code> we might use:
+<blockquote class="file"><pre><code >hxmd -F2 -C site.cf \
+	"[ _%[1.1] = _\`'SHORTHOST ] || echo HOST %[1.1] SHORTHOST" HOST</code></pre></blockquote>
+<P>
+That code does output the expected results (adm2.example.com adm2 adm1).
+
+<p id="opt-uF-alternates">
+There are two other cases where setting <code class="opt">-F</code> might
+help: setting it to zero and to a negative number.
+
+<P>
+Setting <code class="param">literal</code> to zero forces the
+<code class="param">control</code> parameter to be interpreted as a file,
+rather than literal text.  This script is only executed <strong>after</strong>
+it is processed thought <code class="sh">m4</code>.  This allows a long
+control command to be kept in a file, under revision control.
+
+<P>
+Setting <code class="param">literal</code> to a negative value takes
+arguments on the <strong>right</strong> as literal values.  This allows
+a script (as above) to bind attribute values to positional parameters.
+
+
+<h4>Adapter logic between <code class="sh">hxmd</code> and <code class="sh">xapply</code></h4>
+
+<P>
+<code class="sh">Xapply</code> requires a fixed <code class="param">cmd</code>
+parameter, but the <code class="param">control</code>
+parameter <code class="sh">hxmd</code> has expanded through
+<code class="sh">m4</code> processing might be unique for
+each host elected.
+Looking at the traditional <code class="sh">xapply</code> usage
+it looks like bridging that gap would be very hard, and
+it would be without the <code class="sh">xapply</code>
+expansion <code class="markup">%+</code>.
+The "shift and eval" function <code class="markup">%+</code> provides is
+explained in
+<A href="../../bin/xapply/xapply.html#markup-plus">xapply's section on %+</A>.
+
+<P id="opt-c">
+The <code class="sh">hxmd</code> command line option
+<code class="opt">-c</code> allows the specification of a
+replacement for the default <code class="markup">%+</code> that
+<code class="sh">hxmd</code> uses to point <code class="sh">xapply</code>
+at the filtered <code class="param">control</code> parameter.
+
+<P>
+As an example we could force a <code class="sh">date</code> command
+before and after each <code class="param">control</code>:
+<blockquote class="file"><pre><code >hxmd -c "date;%+;date" -C site.cf 'echo HOST'</code></pre></blockquote>
+or to wrap an <code class="sh">op</code> (or
+<code class="sh">sudo</code>) around each command:
+<blockquote class="file"><pre><code >hxmd -c "op %+" -C site.cf 'echo HOST'</code></pre></blockquote>
+This is usually not needed,
+even when you script a very complex <code class="sh">hxmd</code> process.
+A driver shell command built on <code class="sh">hxmd</code> might
+use this hook to setup and tear down structural elements.
+
+
+<h3 id="nested">When <code class="sh">hxmd</code> calls <code class="sh">hxmd</code></h3>
+
+<P id="loop-back">
+Some <code class="sh">m4</code> attribute macros are defined by
+<code class="sh">hxmd</code> to help one <code class="sh">hxmd</code> call
+another instance:
+<DL>
+<DT><code class="attr">HXMD_OPT_C</code>
+<DD>
+The list of files read under <code class="opt">-C</code>.
+The paths are converted to absolute references so that a
+change of working directory will not (by default) change the
+file referenced.
+When <code class="markup">stdin</code> is referenced it
+is copied to a temporary file, and that filename is used in place of
+<code class="markup">-</code>.
+<DT><code class="attr">HXMD_OPT_X</code>
+<DD>
+The list of files read under <code class="opt">-X</code>.
+With the same path conversions as above.
+<DT><code class="attr">HXMD_OPT_Z</code>
+<DD>
+The list of files read under <code class="opt">-Z</code>.
+With the same path conversions as above.
+<DT><code class="attr">HXMD_U_MERGED</code>
+<DD>
+Under <code class="opt">-o</code> this is the file of
+merged attributes for the unique hosts elected.
+<DT><code class="attr">HXMD_U_COUNT</code>
+<DD>
+The count of the total number of unique hosts defined.
+<DT><code class="attr">HXMD_U_SELECTED</code>
+<DD>
+The count of the number of unique hosts elected.
+</DL>
+
+<P>
+Other than <code class="attr">HXMD_U_COUNT</code> these are
+only defined when <code class="sh">hxmd</code> had valid
+data for them.  For example <code class="attr">HXMD_OPT_Z</code>
+is left undefined when no file was read as
+a <code class="param">zero-config</code>.
+
+<h3 id="phase">The phases of <code class="sh">m4</code> processing</h3>
+
+As <code class="sh">hxmd</code> build <code class="sh">m4</code> streams to
+process the various files it includes a
+synthetic macro <code class="attr">HXMD_PHASE</code> to
+help included files self-configure for the context in which they
+are included.  This is actually mostly useful when you are
+debugging complex processes that are based on this stack.
+
+<P>
+The macro can have any of these values:
+<dl>
+<dt><code class="markup">selection</code>
+<dd>
+The current <code class="sh">m4</code> stream is part of the
+selection of target <code class="param">keys</code>.
+<dt><code class="param">integer</code>
+<dd>
+As each of the <code class="param">files</code> is processed this
+integer increments (starting at zero).
+<dt><code class="markup">filter</code>
+<dd>
+The current <code class="sh">m4</code> is constructing the exit code list.
+(See the next section for the retry process flow.)
+<dt><code class="markup">redo</code>
+<dd>
+The current <code class="sh">m4</code> is constructing redo command.
+</dl>
+
+<p>
+As a simple example we'll output the phases for 2 positional "files"
+(actually literal strings to make it fit on a single line):
+<blockquote class="file"><pre><code >$ hxmd -Cauto.cf -E HOST=localhost -F2 'echo HXMD_PHASE' 'HXMD_PHASE'
+0 1</code></pre></blockquote>
+
+<h2 id="redo">How might I retry failed processing?</h2>
+
+Updates processed by <code class="sh">hxmd</code> usually
+depend on the target hosts being available.
+When a host fails an update it would be great if
+an agent process could ask for a redo.
+
+<P>
+To detect failed commands we need to examine the exit codes
+from each of the <code class="param">control</code> processes
+and take an action on that list.  To do this <code class="sh">hxmd</code>
+processes two <code class="sh">m4</code> streams: a <em>list</em> and
+a <em>command</em>.
+<code class="sh">Hxmd</code> doesn't specify the format of
+the list being constructed:
+a shell script, or a configuration file in
+the <code class="sh">hxmd</code> style, or
+many other data file formats are all possible.
+No limits are placed on the the command either.
+
+<P>
+In the context of these <code class="sh">m4</code> streams
+several synthetic attribute macros are defined by <code class="sh">hxmd</code>:
+<DL>
+<DT><code class="attr">HXMD_U</code>
+<DD>
+The value that <code class="sh">xapply</code> gives for
+<code class="markup">%u</code> for each host.
+<DT><code class="attr">HXMD_STATUS</code>
+<DD>
+The <code class="libc">exit</code> code for this host's process.
+<DT><code class="attr">HXMD_0</code>
+<DD>
+The name of the <em>list</em> file we are building.
+</DL>
+
+<P>
+The <em>list</em> is generated in much the same way the original
+<A href="#elect">election process</A> generated the list of elected hosts.
+In this case we start with the list we elected and
+select for the hosts that we need to retry, so not every host
+needs to be passed on to the <em>command</em>.
+Normally this file is used as input data to the <em>command</em>.
+This lets the retry <code class="param">command</code> act as a filter
+for the list, if needed.
+
+<P id="opt-uQ">
+To frame the <em>list</em> each <code class="param">ward</code>
+specified on the command-line (under <code class="opt">-Q</code>)
+is output at the top of the <code class="sh">m4</code> input stream,
+as <code class="param">-Y</code>'s <code class="param">top</code>
+directives were in the election process.
+
+
+<P id="opt-r">
+A block of <code class="sh">m4</code> markup is output for each
+elected hosts.
+It starts with the attribute definitions defined for the host,
+then the attributes listed above, and
+all <code class="opt">-r</code> options to form the selection criteria.
+Also included are all the macros defined in
+<A href="#nested">the recursive call</A> above.
+
+<P id="opt-uK">
+The <code class="param">filter</code> command is sent though an
+<code class="sh">m4</code> process with the same attributes defined,
+except for the host specific attributes.  The results of that
+stream are the retry <em>command</em>.
+
+<P>
+If the <em>command</em> starts with
+a pipe (<code class="markup">|</code>) then the <em>file</em> is used as
+<code class="markup">stdin</code> and the pipe symbol is removed.
+Otherwise the <em>command</em> should use
+<code class="attr">HXMD_0</code> to process the list of selected hosts.
+
+<P>
+The default value for <code class="param">filter</code> is a shell
+command to page the generated list.
+The default list contains (in order) the values of
+<code class="attr">HOST</code>,
+<code class="attr">HXMD_STATUS</code>, and
+<code class="attr">HXMD_U</code>.
+To see those defaults specify <code class="opt">-Q</code> as a no-op, like
+<code class="markup">dnl</code>:
+<blockquote class="file"><pre><code >hxmd -Q "dnl" -C site.cf  <i>...</i> :</code></pre></blockquote>
+
+<h3 id="xapply-un">No hosts elected</h3>
+
+Another situation in which one might view as a retry case is
+the case when no hosts were ever elected.
+
+<p>
+The <code class="sh">xapply</code> option <code class="opt">-N</code>
+triggers when no hosts are elected, but the option is <em>not</em>
+run through any <code class="sh">m4</code> processing.  In this case
+it is more typical to code a script with a name like
+<code class="path">fallback</code>:
+<blockquote class="file"><pre><code >hxmd -N "./fallback %0" -C site.cf  <i>...</i></code></pre></blockquote>
+Such a script should exist before the <code class="sh">hxmd</code>
+process begins.  The <code class="libc">exit</code> code from this
+process is passed back from <code class="sh">hxmd</code>.
+
+<P>
+Another common fallback is to use a <code class="sh">make</code> target, to
+trigger the build process only if no hosts are elected:
+<blockquote class="file"><pre><code >hxmd -N "make fallback %0" -C site.cf  <i>...</i></code></pre></blockquote>
+
+<h2 id="metaTricks">Other tricks and abstractions</h2>
+
+I wouldn't be doing <code class="sh">hxmd</code> justice if I didn't
+put some more context here: we don't use it in isolation, it is part of
+a larger tool-set.  So here are some of the linkages.
+
+<h3 id="firstPrime">Fetch an element by number</h3>
+
+Once in a while it is handy to be able iterate over the
+hosts in a configuration file <strong>outside</strong> of
+<code class="sh">hxmd</code>.  I almost never do this, but in the
+next section we'll look at a case where I just want the first element
+from the configuration to take an action, which amounts to the same thing.
+
+<P>
+Let's code a <code class="param">guard</code> to extract a host
+from the current configuration file by number.
+Let's start with number of the key to match on the command-line as a
+define specification to <code class="sh">m4</code>:
+<blockquote class="file"><pre><code >$ hxmd <em class="new">-DPick=1</em> -C <i>...</i></code></pre></blockquote>
+Then we should add the logic to make that into a loop counter:
+<blockquote class="file"><pre><code >hxmd -DPick=1 <em class="new">-G "define(\`Pick',expr(Pick+0-1))ifelse(Pick,0,HOST)"</em> \
+	-C <i>...</i> 'echo HOST'</code></pre></blockquote>
+
+<P>
+The best part of that logic is that it works with <code class="opt">-E</code>
+and <code class="opt">-B</code>.  If you add a limit on
+the <code class="attr">COLOR</code> of the host it will pick the
+<code class="param">N</code>-th one of the color you selected.
+This allows an external program to index a configuration file by a
+counting number, which is a clean abstraction.  I almost never use it,
+myself.  The end of the loop is the empty string, or you can fetch the
+total number of hosts selected with the first key request, that's up
+to you.
+
+<P>
+You could write a <code class="param">guard</code> to pick the odd or even
+hosts from the list even easier.
+Note that you can't use <code class="attr">HXMD_U</code> because it is
+only defined in phases after <code class="markup">selection</code>.
+
+<h3 id="posseMethod">Forming a posse</h3>
+
+<p id="clouds">
+Currently hosts are pretty cheap, and virtualization allows us to
+construct new images almost at will.  Once we have hosts running we
+need to be able to group them into abstract clusters, clouds, gangs,
+teams, or whatever you want to call it: I call them <em>posses</em>.
+
+<P>
+As an example we'll base posse membership on the <em>services</em>
+configured for each host.
+This is an abstraction I use a lot to manage both applications and
+support facilities on my hosts.  You can create posses from
+other data sources, but since
+we are using the tools at-hand we'll stick with this method in
+the examples here and in <code class="sh">msrc</code>'s documents.
+
+<P>
+The service feature allows each host to specify a list of
+"services" attached to the attribute macro <code class="attr">SERVICE</code>.
+The list is space-separated and most of the services are lowercase words
+(by convention).
+Also the underscore (<code class="markup">_</code>),
+colon (<code class="markup">:</code>), comma (<code class="markup">,</code>) and
+the commercial at sign (<code class="markup">@</code>) characters are
+<em>never</em> part of a service name.
+
+<P>
+The support macro <code class="attr">SERVICES</code> answers the question,
+"Does the current host support the service named <code class="markup">$1</code>?"
+<P>
+For example the host "sulaco" supports the "httpd" and "msrc" services
+in this configuration file:
+<blockquote class="file"><pre><code ><em class="new">SERVICES</em>=`ifelse(-1,index(` 'SERVICE` ',` '$1` '),0,yes)'
+%HOST
+SERVICE="<em class="new">http msrc</em>"
+sulaco.example.com
+SERVICE="msrc"
+nostromo.example.com
+SERVICE="terraform lunch"
+lv426.example.com</code></pre></blockquote>
+
+<P>
+Because each host only knows the list of services <strong>it</strong>
+supports, it is hard to check from <em>within</em> the processing of
+any host to ascertain if any <em>other host</em> supports a given service.
+We'll talk about host to overcome that in 
+<A href="../../sbin/msrc/msrc.html#addPosse"><code class="sh">msrc</code>'s
+description of posse indirection</A>.
+
+<P>
+We need some script leverage to help us build posse list at run-time.
+I'm going to make the script general enough that you could use
+any <code class="sh">m4</code> and macro attributes at hand to make
+your posses.
+We are going to call <code class="sh">mk</code> with the marker 
+<code class="markup">Posse</code>, and a submarker of the
+name of the posse we want to extract.  The command selected needs to
+output the list of member hosts for the given posse to
+<code class="markup">stdout</code>.
+By adding the code to the the configuration itself it will always
+(we hope) know how to extract posse lists from itself (the idea
+being that a single file should agree with itself, while the script
+and any given configuration file might easily drift).
+
+<P>
+In then example above we insert this spell near the top of
+the configuration file:
+<blockquote class="file"><pre><code ># $Posse(*): ${hxmd-hxmd} -C%f -P1 -E "yes=SERVICES(%s)" 'echo HOST'
+</code></pre></blockquote>
+
+<P>
+We may later add specific marked lines before the default glob match for
+services that are not covered by that default spell, but we'll leave that for
+another time.
+See the <A href="../../bin/mk/mk.html">mk HTML docs</A> for more on
+why <code class="sh">m4</code> is so useful.
+
+<P>
+There is example code for this in
+the <A href="../msrc/dmz.sh"><code class="path">dmz.sh</code> script</A>, in
+the <code class="markup">if</code> block with
+the only <code class="sh">export</code> command in it.  I'll build a
+shorter example here:
+<blockquote class="file"><pre><code >#!/bin/ksh
+# Posse script: usage service-list configs
+sList=${1?'missing service-list'}
+shift
+set -e
+MK=
+for cFile
+do
+	cPath=$(<em class="new">efmd -C $cFile -T HXMD_OPT_C dnl</em>)
+	xapply "mk -smPosse -d%1 $cPath" $(echo $sList |tr ':,' '  ')
+done |oue</code></pre></blockquote>
+
+<P>
+In the example above we use <code class="sh">efmd</code> to filter
+change the specification of a configuration file into a path
+in the filesystem.  We've not yet talked about <code class="sh">efmd</code>,
+but it is a report generator that take most of the same options
+as <code class="sh">hxmd</code> but doesn't launch as many shell processes.
+In the real code we use <code class="sh">efmd</code> to
+extract the path to each configuration file.
+The call <code class="sh">mk</code> on the configuration files to
+extract the posse membership lists.  That process might use
+any tool it needs, and any attribute in the elements to extract
+the list.
+<P>
+In Real Life &trade; we would also use <code class="sh">efmd</code> to
+extract the posse membership list, because it is way faster:
+<blockquote class="file"><pre><code ># $Posse(*): <em class="new">${efmd-efmd}</em> -C%f -E "yes=SERVICES(%s)" <em class="new">-L</em>
+</code></pre></blockquote>
+<!-- if you are apt to put spaces in filenames put quotes around %f,
+  ~~ if you are apt to put quotes in filenames, seek help now. -->
+
+By filtering all those lists through <code class="sh">oue</code> we
+get a list of only the unique hosts the
+(see <A href="../../bin/oue/oue.html">HTML document on <code class="sh">oue</code> for details)</A>.
+This outputs all the hosts in the "apache" posse from <code class="path">dmz.cf</code> once when run as:
+<blockquote class="file"><pre><code >$ <em class="new"><A href="posse.sh">posse</A> apache dmz.cf</em>
+</code></pre></blockquote>
+
+<h3 id="metaUniq">Listing all the unique values of any attribute</h3>
+
+By changing the <code class="param">key</code> macro we can form a
+unique list of any attribute's values.
+
+<P>
+For example:
+<blockquote class="file"><pre><code >hxmd -Csite.cf -k HOSTTYPE 'echo HOSTTYPE'
+</code></pre></blockquote>
+
+<P>
+This also has the feature that elements that do <em>not</em>
+define a <code class="attr">HOSTTYPE</code> output an error on
+<code class="markup">stderr</code>.
+
+<h3 id="opt-s">Avoiding resource impact on the source host</h3>
+
+<code class="sh">Hxmd</code> takes care not to "fork bomb" the local
+host.  This is a real issue for programs like <code class="sh">ssh</code>
+which consult (and update) a common file, as the contention for that
+file may reduce performance dramatically.  The logic behind the
+slow-start code is explained in the manual page, as is the command
+line option <code class="opt">-s</code> which disables it.
+
+<P id="opt-n">
+Like most of my tools the option <code class="opt">-n</code> prevents
+execution of the processed <code class="param">control</code> directive.
+Unlike other tools this output ends up on <i>stderr</i>.  This is because
+<code class="sh">xclate</code> is translating the <i>stdout</i> from
+<code class="sh">xapply</code> to the widow stream, because it is not
+part of the output from any managed task.
+
+<P id="xclate-W">
+Passing the <code class="opt">-W</code> option to <code class="sh">xclate</code>
+on the command line will direct those messages to another file:
+<blockquote class="file"><pre><code >hxmd -Csite.cf -W /tmp/todo.sh -n 'ping HOST'
+cat /tmp/todo.sh</code></pre></blockquote>
+
+<P id="xapply-n">
+The file should be a clean script because,
+with <code class="opt">-n</code> set, there is no way to
+get other widow output from <code class="sh">xapply</code>.
+Be aware that the script doesn't have the same
+effect as the original source, for one thing any
+<code class="sh">cd</code> commands are cumulative.
+
+<P id="ptbwenv">
+More importantly the invariants established by <code class="sh">ptbw</code>
+are not enforced.  This makes use of this output as a shell
+script quite unsafe.
+
+<P id="opt-k">
+Changing the <code class="param">key</code> attribute name with
+<code class="opt">-k</code> is normally <em>only</em> done by a structure
+built on top of <code class="sh">hxmd</code>.
+See <A href="#encapsulate">below</A>.
+
+<P id="opt-o-again">
+Complex boolean logic is not <code class="sh">hxmd</code>'s
+strong point, but with <code class="opt">-o</code> and a pipe
+we may build any conjunction or disjunction needed.
+Use the <code class="attr">HXMD_U_MERGED</code> file as output from the
+first <code class="sh">hxmd</code>:
+<blockquote class="file"><pre><code >hxmd <i>...</i> -o "" '[ %u -eq 0 ] &amp;&amp; cat HXMD_U_MERGED'
+</code></pre></blockquote>
+
+<P>
+<!-- any version of efmd better than 1.13 is a good one -->
+Another way to do this is with <code class="sh">efmd</code>, which is
+an extraction filter that processes the same configuration files as
+<code class="sh">hxmd</code>.
+See the <A href="../efmd/efmd.html">HTML document</A> for examples.
+This tool might not be installed on your system, as it is an add-on to the
+<code class="sh">msrc</code> tool-chain.  It also can produce a merged configuration file on
+<code class="markup">stdout</code>, under the correct options, which is
+useful in recipe files that merge multiple realm's configurations for
+a common task.
+
+<P>
+This does have the bug that <code class="sh">hxmd</code> still
+forks a process for each host, all but one of which simply exit.
+
+<P id="opt-uK-again">
+Another very clever trick is to use the <code class="opt">-K</code>
+option to save the <code class="attr">HXMD_U_MERGED</code> file produced by
+<code class="opt">-o</code>.  For example:
+<blockquote class="file"><pre><code >hxmd -o "" -K "cp HXMD_U_MERGED $TFILE" <i>...</i>
+</code></pre></blockquote>
+
+<P>
+This limits the use of <code class="opt">-K</code> for any actual redo logic.
+
+<p id="doubledash">
+The command-line configuration file options (<code class="opt">-C</code>
+<code class="opt">-X</code>, and <code class="opt">-Z</code>) all
+accept the directory name <code class="markup">--</code> (double-dash) as
+a synonym for the first absolute path in
+the <code class="env">HXMD_PATH</code> environment variable, or
+the built-in default path.  Also in play here: the
+name of a directory in the place of the configuration file is taken
+as a request for the default <code class="param">zero-config</code>
+name from that directory.
+With those two rules we can use
+<blockquote class="file"><pre><code >hxmd -Z <em class="new">--</em>:my.cf <i>...</i></code></pre></blockquote>
+to ask for both the default zero configuration file, and
+<code class="path">my.cf</code>.  Sometimes you just want to add a feature
+to the site configuration, not override the whole thing.
+
+<P id="opt-g">
+There is a forward-looking option to ask <code class="sh">hxmd</code> to
+wrap itself in a <code class="sh">gtfw</code>, if there is not presently
+any <code class="sh">gtfw</code> diversion open in the environment.
+For the purposes of this document that feature is not important, later in
+the appropriate document we'll explain why that is here.
+
+<h2 id="cache">Replacing <code class="sh">m4</code> markup with a <code class="sh">make</code> recipe (the shell)</h2>
+
+If you can't build the file you want with <code class="sh">m4</code> you
+can fall back to a <code class="sh">make</code> recipe by the specification of
+a <em>directory</em> in-place of a file on the command-line.  The directory
+<strong>must</strong> contain a marked-up recipe file named
+<code class="path">Cache.m4</code>.
+
+<P>
+Using this feature might drive you to
+change the <code class="param">preload</code> specification on
+the command-line.
+Usually the 2 slot preload is enough to keep process creation running
+smoothly.  If some cache updates take longer than the
+<code class="param">control</code> task, then a specification of a
+larger <code class="param">preload</code> might help a little.
+Usually it doesn't help, since task file creation is defined as
+a sequential operation, but
+it does keep the process creation tasks flowing while
+any <code class="param">control</code> is blocked.
+
+<h3 id="cacheMarkup">Cache control markup</h3>
+
+The <code class="path">Cache.m4</code> recipe file is marked-up with
+<code class="sh">m4</code> so it can be customized for each target.
+All of the common markup available in the context of
+a <code class="param">file</code> specified on the command-line is
+available.
+In the context of that file there are 3 additional macros defined:
+<dl>
+<dt id="recipe"><code class="attr">HXMD_CACHE_RECIPE</code>
+<dd>
+<P>This is the absolute path to the temporary file built by
+running <code class="sh">m4</code> over <code class="path">Cache.m4</code>
+in the context of the current element.  This allows the recipe to refer
+to itself for recursive calls to <code class="sh">make</code>, should
+any be needed.  It also allows for the use of <code class="sh">mk</code>
+markup in the processed recipe file.
+<dd>
+<P>This is also really useful for debugging, as you might
+<code class="sh">cat</code> the processed recipe file to
+<code class="markup">stderr</code>.
+<dt id="target"><code class="attr">HXMD_CACHE_TARGET</code>
+<dd>
+<P>This is the <code class="param">target</code> provided to
+<code class="sh">make</code> to produce the requested content.  It
+is made from some string manipulation on the directory path specified.
+<p>
+We trim the path to the basename (only characters to the right of
+the last slash <code class="path">/</code>).  Then we remove any
+leading dots (<code class="path">.</code>), and any extender after
+the right-most dot.  If that string is empty we replace it with the
+value of the key macro.
+
+For example here are some common idioms:
+<blockquote><table summary="example targets from paths" border="1">
+<tr><th>Path</th> <th align=center>Resulting target</th> <th>Description</th></tr>
+<tr><td>/tmp/ksb</td> <td align=center>ksb</td> <td>The last component of the directory path is the target recipe</td></tr>
+<tr><td>/tmp/ksb/.</td> <td align=center><I>key</I></td> <td>The <code class="param">key</code> macro for the host is the target recipe</td></tr>
+<tr><td>/tmp/ksb/.all</td> <td align=center>all</td> <td>Use the generic <code class="markup">all</code>, usually a symbolic link alias to a directory</td></tr>
+<tr> <td>/tmp/ksb.host</td> <td align=center>ksb</td> <td>Use the <code class="path">.host</code> suffix from <code class="sh">msrc</code> to force the directory into <code class="make">MAP</code> rather than <code class="make">SUBDIR</code></td></tr>
+</table></blockquote>
+<P>
+In the <code class="sh">.all</code> case above the node
+<code class="path">.all</code> is usually a symbolic link to
+<code class="path">.</code> -- which accesses
+<code class="file">Cache.m4</code> from the current directory.
+In other cases it is a symbolic link to a common cache that
+multiple spells share and reuse.
+These are both a bit hackish, but it does exactly what you want at
+very little cost.  It is not common to build an actual cache
+directory with a leading dot in the name.
+
+<dt id="dir"><code class="attr">HXMD_CACHE_DIR</code>
+<dd>
+<P>The path to the cache directory.  This allows reference to files in
+that directory via <code class="sh">m4</code>
+<code class="markup">include</code> or <code class="markup">paste</code>
+directives from <code class="path">Cache.m4</code>.
+<P>
+This hides more of the details of the cache inside the "object" itself.
+Changes to the local policy for a given cache should be local to the
+cache directory and as opaque as needed to the client spells.
+Since the build process <code class="libc">chdir</code>s into this
+directory, it is largely not needed for anything else.  We try not to
+build "come from code" into any cache logic, as that would be Poor Form.
+</dl>
+
+<h3 id="cacheCommand">Per-target cache updates and generation</h3>
+
+Under the various paths (from the table above) each of the listed targets
+are updated.  Additional targets might be enabled with symbolic links, or by
+creating other directories that chain back to the original directory.
+
+<P>
+The utility of the structure comes largely from the arbitrary shell pipeline
+that <code class="sh">make</code> launches.
+To keep our examples easy to understand I use <code class="sh">echo</code>
+commands below.
+We could use, for example, a call to <code class="sh">efmd</code> with
+<code class="opt">-C</code> <code class="attr">HXMD_U_MERGED</code>,
+a remote access to the target host to fetch data, or
+consolidation of previously generated <code class="attr">HXMD_1</code>
+and <code class="attr">HXMD_2</code> files.
+
+<P>
+Merging multiple data sources with a cache recipe is really powerful.
+There is almost nothing you cannot build with this tactic.
+
+<P>
+Given the example above the <code class="sh">/tmp/ksb/Cache.m4</code> file
+might contain:
+<blockquote class="file"><pre><code >
+dnl $Id: Cache.m4,v <i>...</i>
+`# Updated in the context of this directory, m4 processed for each target
+all:
+	echo "Everybody needs a common cause"
+
+ksb:
+	echo "called remotely for 'HOST`"
+
+nathan.stack.org:
+	echo "This is for Mark Twain"
+
+<i>generic_fetch:</i>
+	make -f Control $@
+'dnl</code></pre></blockquote>
+
+<P>
+The <code class="markup">generic_fetch</code> target represents any
+file that is not custom for each host, but might be managed by
+the common logic below (usually listed in <code class="make">FETCH</code>).
+
+<h3 id="cacheControl">Per directory cache control logic</h3>
+
+There is a <em>cultural notion</em> that the per-target marked-up recipe should be
+partnered with a plain-text recipe file <code class="path">Control</code>, or
+<code class="path">Control.mk</code>.  This file provides targets to
+control the cache itself: common data gathering, purge operations,
+reset operations, and sanity checks.
+That way no instance of <code class="sh">m4</code> is required to
+perform these common tasks.  The cache recipe might know how to chain to
+the control recipe for some operations, or even
+<code class="markup">paste</code> the whole file into the processed
+control file.
+<blockquote class="file"><pre><code ># $Id: Control,v <i>...</i>
+# cache control recipe file for ntp.conf, msrc 2009
+FETCH=	interface.cl
+
+quit: FRC .SILENT
+	echo 1>&amp;2 "Use msrc (or dmz) to build from the parent directory."
+	false
+
+init: ${FETCH}
+
+<i># All the FETCH target logic...</i>
+interface.cl:
+	rsync -arH <i>...</i> interface.cl
+
+purge: FRC
+	rm -f ${FETCH} temp.cl a.out core *.core errs lint.out
+
+FRC:</code></pre></blockquote>
+
+<P>
+Notice that the only silent markup (<code class="markup">.SILENT</code> or
+leading <code class="markup">@</code> on individual commands) used in
+this file is for the <code class="markup">quit</code> target.
+When <code class="sh">hxmd</code> executes
+<code class="sh">make</code> it specifies <code class="opt">-s</code> on
+the <code class="sh">make</code> command line.
+When you explicitly mark a target as silent it is much harder to debug it
+as you test the recipes.
+
+<h3 id="cacheMake">The default recipe file in a cache directory</h3>
+
+It is <strong>not typical</strong> to use the default recipe name
+(viz. <code class="path">Makefile</code>) for the tasks above.
+The default recipe file is usually used to recover files from the
+local configuration management structure and
+keep <code class="sh">msrc</code> from acting on the cache directory:
+<blockquote class="file"><pre><code ># $Id: Makefile...
+# Keep msrc from acting on this cache directory.
+INTO=	_Not _an _msrc _directoty, _rather _a _cache _directory
+
+GEN=
+SOURCE=	Makefile Cache.m4 Control <i>...</i>
+
+quit: FRC
+	@echo 1>&amp;2 "Use msrc (or dmz) to build this."
+	@false
+
+source: ${SOURCE}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# hook for msrc to build stuff before a push
+__msrc: source
+</code></pre></blockquote>
+
+<P>
+The <code class="markup">__msrc</code> target might be used from
+the parent directory to setup for a push, but any command-line use of
+<code class="sh">msrc</code> in the directory outputs:
+<blockquote class="file"><pre><code >msrc: Makefile: Not an msrc directoty, rather a cache directory
+</code></pre></blockquote>
+
+<h3 id="cacheClean">Cache cleanup triggers</h3>
+
+Usually the parent recipe files has a cleanup trigger that cleans all
+the subdirectories.  This is often a hook in <code class="sh">Msrc.hxmd</code>
+under the <code class="sh">msrc</code> structure, but could be done in
+a shell script that calls <code class="sh">hxmd</code> in at least 3
+ways.
+
+<P>
+These usually hook into the control recipe, rather than the cache interface:
+<dl>
+<dd>
+<P>Use an explicit command at the end of the script.
+<blockquote class="file"><pre><code >cd ${CACHE_DIR} &amp;&amp; make -sf Control clean
+</code></pre></blockquote>
+
+<dd>
+<P>Use the <code class="param">redo</code> command to clean the cache,
+as needed:
+<blockquote class="file"><pre><code >hxmd -K "cd ${CACHE_DIR} &amp;&amp; make -sf Control clean" ... ${CACHE_DIR} ...
+</code></pre></blockquote>
+
+<dd>
+<P>But it is possible to use <code class="opt">-K</code>
+to process the marked-up cache recipe in the context of the redo command.
+For example:
+<blockquote class="file"><pre><code >hxmd -r "define(\`END_GAME',1)include(${CACHE_DIR}/Cache.m4)divert(-1)" -K "make -sf HXMD_0 clean" ... ${CACHE_DIR} ...
+</code></pre></blockquote>
+
+<P>
+In that example the cache recipe may have markup to
+catch <code class="attr">END_GAME</code>, or not.  This spell doesn't
+scale out when there are multiple caches in a single instance.  In that
+case you'll have to apply some other structure.  {Under modern
+<code class="sh">hxmd</code> versions "END_GAME" is true when
+<code class="attr">HXMD_PHASE</code> is <code class="markup">redo</code>.
+</dl>
+
+<P>
+The cache could also generate a cleanup script as it collects data, then
+a hook in the structure could execute the script to purge the cache.
+In other cases <code class="sh">efmd</code> might create a passible
+recipe file from <code class="path">Cache.m4</code>, or cleanup commands from
+a list of targets processed by
+the cache, (viz. from a copy of <code class="sh">HXMD_U_MERGED</code>).
+
+<P>
+The last idea is to have the <code class="markup">init</code> target
+reset the cache at the top of each run.  This wastes some space, as the
+cache is never clean for very long, but disk-space is usually cheap.
+Leaving the bread-crumb trail has the upside that it is easier to
+debug the cache logic after any faulty update.
+
+<h3 id="cycle">Read and update logic</h3>
+
+The other use for the cache directory is "read and replace" or "fetch
+and update" logic.  In the context of <code class="path">Cache.m4</code>
+we know that we are accessing each host in turn.  We might reach out
+to the host to fetch the current contents of a file we want to update.
+In the example below I use <code class="path">/etc/motd</code> to
+show how to fetch a file.
+
+<P>
+To fetch the message of the day: build a directory
+<code class="path">motd.host</code> and a cache recipe in
+<code class="path">motd.host/Cache.m4</code> like:
+<blockquote class="file"><pre><code >dnl $Id...
+`motd:
+	ssh -o "BatchMode yes" 'ifdef(`ENTRY_LOGIN',`ENTRY_LOGIN@')HOST` -nx cat /etc/motd
+'dnl
+</code></pre></blockquote>
+
+<P>
+Test that with a request to <code class="sh">cat</code> the
+directory via <code class="sh">hxmd</code>:
+<blockquote class="file"><pre><code >hxmd -d CD -Csite.cf -E SHORTHOST=sulaco cat motd.host</code></pre></blockquote>
+
+<P>
+By adding <code class="opt">-d CD</code> to the <code class="sh">hxmd</code>
+command-line (above) we see the intervening process called
+<code class="sh">make</code> with this invocation:
+<blockquote class="file"><pre><code ><i>...</i> chdir motd.host
+make -f /tmp/hxtfkXIhHF/makeJ7yVh7 motd >/tmp/hxtfkXIhHF/My/Cache.m4</code></pre></blockquote>
+
+<P>
+That <code class="sh">make</code> ran:
+<blockquote class="file"><pre><code >ssh -o "BatchMode yes" sulaco.example.com -nx cat /etc/motd</code></pre></blockquote>
+to get the message of the day file from the selected host into a
+temporary file.
+
+<P>
+It always looks strange to <code class="sh">cat</code> a directory on
+the command-line, but because <code class="sh">hxmd</code> replaces
+that directory with the output from the logic above it all works fine.
+Moreover we can process that file with any filter we like to update,
+the send it back to the host if we like.  That's more of what
+<code class="sh">msrc</code> does, which is why we named the directory
+<code class="sh">motd.host</code> (so <code class="sh">msrc</code> would
+send it back to the target host as <code class="sh">motd</code>), but
+that's for later.
+
+<h3 id="cacheHosts">A working example -- <code class="path">/etc/hosts</code></h3>
+
+A good example of a cache configuration task would ber building the
+<code class="path">/etc/hosts</code> file for each host in a large
+population.  This is a good example because we have to
+run <code class="sh">dig</code> or <code class="sh">host</code> to
+map the <code class="attr">HOST</code> to its IP address, and
+a <code class="sh">make</code> recipe is just better than
+<code class="sh">m4</code> for that task.
+
+<P>
+Once a machine is up on the network it really doesn't
+need much from the hosts file, after all it has a nameserver to
+chat with to get name-to-IP and IP-to-name mappings, right?
+But while the host is booting it doesn't have a network to look up
+IP addresses to configure the network interfaces and routes, and
+that goes double for host hosts that run the nameservers.
+
+<P>
+To prevent a deadlock when all the machines in the data center need to
+restart after the lights come back on, we need to have a minimal
+<code class="path">/etc/hosts</code> installed on every host.  By minimal
+we mean it needs to have the host's interfaces mapped back to the
+<acronym title="fully qualified domain name">FQDN</acronym> of
+the host, and "localhost" mapped for the loopback address.
+
+<P>
+Let's build a prototype hosts file with a cache directory (I would call
+this file <code class="path">hosts.host/Cache.m4</code>):
+<blockquote class="file"><pre><code >`# $Id...
+# Output a minimal /etc/hosts to install to get the network going.
+
+'HXMD_CACHE_TARGET`:
+	echo "# hxmd generated proto hosts file for 'HOST`"
+	echo "127.0.0.1	localhost 'HOST ifdef(`SHORTHOST',` SHORTHOST')`"
+	dig +short A 'HOST` |sed -n -e "s/^[0-9.:]*$$/&amp;	'HOST ifdef(`SHORTHOST',` SHORTHOST')`/p"
+'dnl</code></pre></blockquote>
+
+<P>
+That has 4 levels of markup: for <code class="sh">m4</code>
+(the <code class="markup">`</code>quotes<code class="markup">'</code>),
+for <code class="sh">make</code> (the <code class="markup">$$</code>),
+for the shell (the <code class="markup">"</code>quotes<code class="markup">"</code> and the pipe <code class="markup">|</code>), then the regular expression for
+<code class="sh">sed</code>.  You can give yourself a <em>gold star</em>, if
+you picked all that up the first time you read the spell.
+Example output for my workstation:
+<blockquote class="file"><pre><code >$ hxmd -Csite.cf -E view=SHORTHOST cat host.hosts
+# hxmd generated proto hosts file for view.example.com
+127.0.0.1	localhost view.example.com  view
+10.6.26.7	view.example.com  view</code></pre></blockquote>
+
+<P>
+Local site policy might add other lines to the recipe: our default router,
+our NFS server, our time-base, or any hosts on
+an RFC1918 address space directly connected to a network we manage.
+All that logic would be added to the recipe file maintained here.
+This spell is a necessary part of getting the
+data center going after a total shutdown, which is easier to build before
+you need it (rather than by-hand on each machine's console).
+It really helps at my home, where the power fails about once a month.
+
+<P>
+Of course the output file gets stale as IP addresses change, but it
+might be refreshed (or compared to a refreshed copy) once a week or so.
+That way we can keep stale data from making the cold-start problem even worse.
+(Surely I know about
+<acronym title="dynamic host configuration protocol">DHCP</acronym>, but
+both your DHCP and DNS servers need some static addresses to get started,
+and while they are coming on-line your other servers should be able
+to get past the first <code class="sh">ifconfig</code> or
+<code class="sh">route</code> command in their startup scripts.)
+
+<P>
+Configuration files with static addresses in them are
+a <strong>Bad Idea</strong>, but the few that we have to keep
+<em>should</em> be built with automation, not with an editor on
+each host.
+
+
+
+<h2 id="encapsulate">Build on the stack <code class="sh">hxmd</code> provides</h2>
+
+<code class="sh">Hxmd</code> is designed to be enclosed in a script, or other
+program.  The number of command-line options one must type for a
+complete specification is daunting, and the chances of a spectacularly
+bad result from even a small typing error are high.
+
+<P id="hxmdpass">
+By putting a more polished interface (even a
+<acronym title="graphic user interface">GUI</acronym>)
+between the Customer and <code class="sh">hxmd</code> one might
+be able to craft a harness for the power, without getting the
+moving parts too close to anyones fingers.
+
+<P id="opt-z">
+<code class="sh">Hxmd</code> reads one of two environment variables for
+additional option specifications to provide a unique form of
+encapsulation assistance.  The standard <code class="env">HXMD</code>
+specification is handled as any other of ksb's tools, that is the
+options specified in that variable are processed before the
+explicit command line options, and the variable remains in effect.
+
+<P>
+The <code class="env">HXMD_PASS</code> environment variable
+is read in preference to the <code class="env">HXMD</code>
+variable, when it is set to a non-empty string.  This has two
+effects: first it suppresses the Customer's normal environment
+specification, second it allows encapsulating programs to specify
+options of their own design.
+
+<P>
+The command line option <code class="opt">-z</code> removes the
+<code class="env">HXMD_PASS</code> variable from the environment
+of every inferior process <code class="sh">hxmd</code> starts.
+It is typically set in the <code class="env">HXMD_PASS</code> specification.
+For an example see
+<code class="sh">msrc</code>'s facility that reads <code class="sh">hxmd</code> options from
+files that end in ".hxmd" (viz. <code class="make">HXINCLUDE</code>).
+
+<P>
+Since <code class="opt">-z</code> removes the pass variable, the Customers
+use of $<code class="env">HXMD</code> is restored for any descendent
+processes.
+
+<h3 id="distrib">For more compatibility with <code class="sh">distrib</code></h3>
+
+Build a file in /usr/local/lib/hxmd named
+<code class="path">site.zf</code> which defines the local hosts type
+(MYTYPE, MYOS) then use "-Z site.zf" to get the
+backwards compatible distrib defs.  Keep that under a local master
+source policy, and/or build it from your local master copy of
+<code class="path">hxmd/lib</code>.
+
+<P>
+Here is an example <code class="path">site.zf</code> file:
+<blockquote class="file"><pre><code >MYOS=`80100'
+MYTYPE=`FREEBSD'</code></pre></blockquote>
+
+And an example usage to produce a list of hosts with our OS type:
+<blockquote class="file"><pre><code >hxmd -Z site.zf -C site.cf -E "MYTYPE=HOSTTYPE" 'echo HOST'</code></pre></blockquote>
+
+<P>
+Any script built on top of <code class="sh">hxmd</code> might set
+the <code class="param">zero-config</code> policy file, and
+<code class="param">config</code>
+file by default, like the <code class="path">dmz.sh</code> script that is built
+on top of <code class="sh">msrc</code>.
+
+<h2>Bugs</h2>
+
+Processing any host named <code class="markup">dnl</code> or
+<code class="sh">dumpdef</code> is going to hurt.
+The use of <code class="sh">m4</code> limits the value of some attributes.
+
+
+<HR>
+<pre>$Id: hxmd.html,v 1.43 2010/08/08 20:44:19 ksb Exp $
+</pre>
+
+</BODY></HTML>

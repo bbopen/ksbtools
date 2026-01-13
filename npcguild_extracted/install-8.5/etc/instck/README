@@ -1,0 +1,52 @@
+# $Id: README,v 8.2 1997/03/08 21:35:38 ksb Exp $
+
+Instck is a member of the install family of sys admin tools.
+
+Instck has 4 main functions:
+
+	1/ cleaning up after aborted or broken installs (wrong link count)
+
+	2/ generating checklist files for install
+
+	3/ processing a checklist to find errors in the current system
+
+	4/ backend for "modecanon"
+
+
+When install or purge notifies the admin that a link count is wrong she
+may run instck (as directed by install).  For example if install tells
+you that the link count is wrong for /usr/bin/OLD/cu, one might run:
+	instck -iS /usr/bin/OLD
+
+which would prompt with something like:
+	instck: linking ../tip to ../cu (cwd=/usr/bin/OLD)
+	instck: rm -f ../tip {was link into OLD} [nfhqy] y
+	instck: ln ../cu ../tip [nfhqy] y
+
+These commands repair the problem.  Instck can not always find the link, but
+when it can't the super user is really trying (mounted file system obscures
+the missing link, or doesn't include some part of the file system).
+
+
+Instck will generate a checklist file for install: try
+	instck -SG /bin/ /lib/
+
+retry with combinations of -v, -l, -L and -x if you like.  In places
+with mixed binary and text files -x is cool.  Build small files and
+chain then together with shell scripts for best results.
+
+
+Instck checks the currently installed products against install's check
+list (/usr/local/lib/install.cf) and reports bad modes/owners/groups.
+Instck can be run from crontab as often as purge(1l) is, possibly not
+at the same time.  (Instck should take very little time to run.)
+
+The best case here is like "TripWire".  Fix the modes from the vendor
+install media (CDROM and patches) then record them with instck and check
+them as needed (once a year at least).
+
+Since modecanon is not released yet you can't even guess.  :-)
+
+
+--
+Kevin Braunsdorf, DSPD UNIX Support, ksb@fedex.com

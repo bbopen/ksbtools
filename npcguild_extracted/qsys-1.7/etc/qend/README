@@ -1,0 +1,12 @@
+# $Id: README,v 1.3 1997/01/06 02:12:17 kb207252 Exp $
+
+Qend is supposed to shut the queue system down neatly (stop on a dime!).
+It enqueues a job which signals the qmgr running the queue with a TERM.
+The qmgr should respond by refusing to start new jobs, and after all the
+running jobs quit it should terminate neatly.
+
+Of course it takes the TERM on the chin now and croaks.  I'll get around
+to adding the signal handler in qmgr soon...  maybe.
+
+--
+ksb

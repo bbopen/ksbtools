@@ -1,0 +1,22 @@
+# $Id: PULL,v 1.1 2000/07/30 22:17:48 ksb Exp $
+
+People asked me over and over for a _pull_ version of the master
+source.  The most often stated need was to avoid having to make all
+sorts of hosts trust a common one to build local tools from.  (That
+is to say there are bone-heads that we don't want to build stuff
+on _our_ hosts that work for the same Dept.)
+
+I hate to break it to you, but the same people that you don't want
+pushing stuff to you can hose you just as quickly by changing the
+repository...
+
+Eh, if it makes you feel good here is how to use a pull version of
+the master source.
+
+If you have a Friend that has it all setup ask them to rsyncd it
+read-only to you so you can pull it down.  I include the "RBOOT"
+script in my /usr/msrc/local .. you can get it from this directory.
+I've included my (internal) web page to help my Customers get started.
+
+--
+ksb

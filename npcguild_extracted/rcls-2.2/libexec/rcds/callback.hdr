@@ -1,0 +1,35 @@
+/* $Id: callback.hdr,v 2.1 2000/06/04 01:47:35 ksb Exp $
+ * Tell each class module how to call-back for some functions that	(ksb)
+ * are common to all classes (like attribute merge and util_ppm).
+ */
+
+#if !defined(U_CSTRING)
+#define U_CSTRING       1
+typedef char *Cstring;
+#endif
+
+#if !defined(U_CARGV)
+#define U_CARGV 1
+typedef char **Cargv;
+#endif
+
+typedef struct UCnode {
+	char *pcunit;
+	int iver;
+	int (*pfiinit)();
+	int (*pfiput)();
+	int (*pfiget)();
+	int (*pfisearch)();
+	int (*pfiinfo)();
+	int (*pfiuncache)();
+	int (*pficleanup)();
+} UNIT_CALLS;
+
+
+/* find the first spec delimiter in a unit-name
+ */
+extern char *unit_spec(char *);
+extern char *progname;
+extern void unit_register(UNIT_CALLS *pUC);
+extern void *unit_entry(char *, char *);
+extern void ServDown();

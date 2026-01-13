@@ -1,0 +1,5 @@
+# chain to unsqueeze file (.MW) for akb					(ksb)
+# $Id: MW,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+# no magic number to check!  Ouch
+$*(*):		%g%~/is/squeeze

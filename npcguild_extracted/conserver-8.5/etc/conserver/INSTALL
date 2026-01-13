@@ -1,0 +1,142 @@
+# $Id: INSTALL,v 8.1 1998/06/07 16:24:55 ksb Exp $
+#
+# lpr this file, you need to read it with other stuff on the screen.
+#
+
+N.B.:
+ The format of the console configuration file (conserver.cf) has
+ changed from version 6 so that you can use `passwd -f conserver.cf'
+ to change passwords on console groups.  The trailing password field
+ is now the second field in the line.
+
+Basic installation:
+
+ First off, this stuff isn't guaranteed to work, or compile or anything.
+ Second, the Makefile doesn't even really do that much, because most people
+ with large networks don't have very normal configurations (that's a lot like
+ an excuse :-).  Third, I assume you have the hardware set up done, and don't
+ need any help there (just use normal serial lines, or see Sun-serial).
+
+ With that out of the way, let's get started.
+
+
+Prep:
+
+ If you are a serious kinda guy you will want to add the console service to
+ /etc/services, here is the line we use:
+	console		782/tcp		conserver	# console server
+
+ Otherwise you'll have to hard code a PORT in cons.h (there are a comments
+ at the apropos points.
+
+ If you do not have the PUCC ptyd daemon (and I'll bet you don't) you have
+ to edit conserver/Makefile, look at the block that sets HAVE_PTYD.
+
+ Later, on the console server you will have to add a line to /etc/rc.local,
+ or an atboot/cronboot job to start the console server
+	nice --4 /usr/local/etc/conserver >/dev/console 2>&1 </dev/null &
+
+ [we run it from roots .profile on an auto-login port {from X!}.]
+
+
+Compiling:
+
+ Save a copy of cons.h and edit the one in this directory to your desires.
+ It should be self-explanatory, some of these defines could be forced in
+ the Makefiles (-DPORT=782 -DHOST=\"console.my.domain.com\" ...).
+
+ Edit Makefile, setting BIN and PROG if you want to change the names.
+
+ Type "make".  This compiles the server.  If you fail on `XTABS' in
+ group.c either change XTABS to TAB3 or #if 0 the block.  I've not
+ had time to track this down.
+
+ cd ../conserver.cf and follow the INSTALL there.  (Then come back here.)
+
+ cd ../console and follow INSTALL there.  (Then come back here.)
+
+ If you changed from using /usr/local/{bin,etc} you may want to change the
+ "FILES" section in the man page "conserver.man".
+
+ If everything went well, type "make install" in each directory.  You will
+ probably need to run this as root, depending on where you're putting stuff.
+
+ This only installs things on the local machine (unless you have a kinky
+ system configuration).  You will have to distribute at least the client
+ program to your other machines.  {Compile on unlike CPU types, of course.}
+
+
+How did we do?
+
+ Now run:
+	conserver -V
+
+ You should get something like:
+	conserver: <$>Id: conserver.m,v 7.0 1995/10/17 15:48:02 ksb Alpha $
+	conserver: default access type `r'
+	conserver: default escape sequence `\005\143'
+	conserver: configuration in `/usr/local/lib/conserver.cf'
+	conserver: limited to 20 groups with 10 members
+	conserver: service name `conserver'
+
+Testing the console server:
+
+ To test it (use the dummy config you build in ../conserver.cf) run
+	# conserver -C ../conserve.cf/dummy.cf -v &
+
+ You should get an output that looks like:
+	conserver: 1: dumb is on /dev/ttya (9600e) logged to /tmp/dummy.log
+	conserver: group 1 on port 1270
+	conserver: access type 't' for "127.0.0.1"
+	conserver: access type 'a' for "cc.purdue.edu"
+	
+ In another login window (or this one, I guess)
+	$ console -vA dumb
+ You should get an output like this:
+	console: attach to dumb (on localhost)
+	conserver: dumb: login root@nostromo.cc.purdue.edu
+	Enter `^Ec?' for help.
+	[ok, attached]
+	[replay]
+
+ You can type to your device now, and it should answer you.  Use ^Ec? for
+ help and ^Ec. to hangup on it.
+
+
+If that worked...
+
+ You can check over the real conserver.cf and start a real console server.
+ You are set.
+
+
+Details/limits/bugs:
+
+ The log files grow without bound.  Move the log files to OLD (with PUCC
+ install) and HUP the conserver process to get him to re-open the log files.
+ Here is the install cmd we use:
+	install -cq /dev/null /usr/adm/his.console
+
+ You might wanna start stamper with the console server, but it doesn't
+ re-open log files -- some later version of the console server will assume
+ stampers job.  Or just use syslogd's time stamp, which you might want
+ to turn way back (8 times a day is enough usually).
+
+Hardware:
+ A light box for RS232 really helps a lot!
+
+ If you are using a (recommended) Central Data MUX you might have to run
+	cdmdmctl +rts /dev/ttyc??
+ to make AIX (IBM RS6000) serial ports talk to you.
+
+ On HP 700 hosts you should set the boot console to rs232.9600 from ISL.
+ On Sun and SGI systems just unplug the keyboard.
+
+ Debug with a uucp Direct line.  On HP it looks like
+	Direct tty00 - 9600 direct
+ in "/usr/lib/uucp/Devices" (or "/etc/uucp/Devices") and on the command line:
+	cu -s9600 -ltty00 dir
+ this will let you prove that the hardware line works before you try the
+ console server.
+
+--
+ksb, June 1996

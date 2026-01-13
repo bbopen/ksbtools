@@ -1,0 +1,7 @@
+# $Id: params,v 5.0 1999/02/26 17:43:03 ksb Exp $
+
+$Compile: %b -a%C%N%I%V -mParams -e/dev/null:./@ -t/dev/null:./@@ -l 69 %f
+
+$Params(1): [ "%T" = "/dev/null:./@@" ] && [ _"%t" = _"-t/dev/null:./@@" ]
+$Params(2): [ "%E" = "/dev/null:./@" ] && [ _"%e" = _"-e/dev/null:./@" ]
+$Params(3): [ "%L" = "69" ] && [ _"%l" = _"-l69" ]

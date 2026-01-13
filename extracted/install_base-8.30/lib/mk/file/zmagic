@@ -1,0 +1,4 @@
+# executable file with ZMAGIC or NMAGIC header				(ksb)
+# $Id: zmagic,v 5.0 1996/09/09 20:59:59 kb207252 Exp $
+
+$Info(*):	${echo-echo} 'binary executable (zmagic)'

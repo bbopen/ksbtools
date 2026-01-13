@@ -1,0 +1,107 @@
+# $Id: TODO,v 8.12 2009/10/15 17:44:52 ksb Exp $
+
+Bugs:
+   - This backout case didn't work in a test, but I can't repeat it.
+	date >file; mkdir OLD; ln file OLD/f1 ; ln file OLD/f2
+
+   - the "instck: stat: foo: Too many levels of symbolic links" bug
+	is still in the -G thing
+
+   - the chown of an OLD directory to "bin" as root could be more
+     clever; if the directory has the same owner as ".." (from it)
+     then assume that that policy is in place and don't change the
+     onwer (same for group).
+
+
+Add
+	file !@link
+	node !:link
+to mean "remove this link, or make it read `link'."
+
+Add a link type (i) for links that _do_not_ point to a file, like the malloc
+config link on FreeBSD (viz. uses "readlink" rather than open/read/close
+to save a system call pair and fd entry, "/etc/malloc.conf").  This would
+allow us to stat(2) the normal link an carp about it being missing, because
+we'd make the others.  Under -G generate the new type for files that both do
+not exist and have no slashs in them; maybe just a comment.  A link that
+points to itself should be marked as this type all the time.
+Viz.	/etc/malloc.conf	@
+
+
+Features:
+   + In the OLD dir scan if we find a subdirectory, count files, dirs inside:
+	? check for mount point below? [abort]
+	? check that is is not a home directory! [skip]
+	? named "OLD" -- purge might do this as well
+		offer to promote files to this directory
+		? empty -> rmdir it [done]
+		else continue
+	* [count block/char special if any abort this]
+	+ if it is empty offer to rmdir it, win
+	+ if only files in the directory [no subdirs]
+		? offer to promote all the files within into OLD
+		+ and rescan OLD (!)
+	? offer to cpio-compress it into a $DIR.cpio.gz and rm -rf $DIR
+	? offer to cpio/tar it to a tape?
+     that way purge can purge the DIR.cpio file after the 14 day expire, eh?
+
+Ideas:
+   + Better directory mode options
+	An option to inherit modes under -G, especially if g+s on the
+	parent dir.  Or maybe always if g+s, and an option to force?
+	Or is this modecanon land?
+
+   + Better symbolic link compression (in modecanon?)
+	A symbolic link
+		/usr/xpg4/bin/fgrep @/usr/xpg4/bin/egrep
+	should be shorted to
+		/usr/xpg4/bin/fgrep @egrep
+	(the same as the present "./foo" -> "foo")
+
+	Watch for /usr/xpg4/bin/fgrep @../bin/egrep?
+
+	Note the new link type (i) for links that -> themself.
+
+   + Same link compression for hard links (for the spelling in file.cf)?
+
+   + Better code to compress based on .extender in a directory
+	 *.h -> mode, *.so -> mode would be _nice_.
+     The present code only finds one common extender, two is _way_
+     better than one, and N is really cool.
+
+   + A way to say a file's length (or the number of files in a directory)
+     should be N bytes (entries), zero begin the most useful, I think.
+     Maybe in place of the "strip/library" fields (viz. "0", or "!0") would
+     be easy.
+	instck: file: should be size 0 (not 13) bytes
+     that makes me happy, I think.   We can check "flags" files in that way.
+
+Notes:
+
+Instck is still a young tool.  Some of the design lines have been blured
+over the last few years.  For example the -G option should really be
+able to `edit' an existing configuration [but can't].
+
+The format for some of the warnings is not quite what is should be.
+The format should be
+	`file' problem, cause (secondary info)
+like
+	`./Makefiles.tmpl' unchecked directory, mode drwxr-sr-x (group staff)
+
+now the (secondary info) is redundant in most cases (mostly).
+
+
+Know even more about common link strutures (batch, at, aq, atrm).
+But don't hard code them in the binary.  We do that now.  Give me
+a instck.ldb file with the link clues in it (plain text please).
+
+Know about patched and first customer ship stuff?
+	$file.old	$file.FCS	o$file
+	$file.rej	$file.orig	$file~
+	~$file		#$file
+Such information could be use in gen.c and old.c, maybe magic.c?
+Also in backups.c to pick an Orig Target.  Might be in an external
+format, but I don't see that changing often.
+
+--
+KSBraunsdorf, isntall@ksb.npcguild.org

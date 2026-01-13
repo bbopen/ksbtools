@@ -1,0 +1,11 @@
+# the file is a directory, what to do?					(ksb)
+# $Id: d,v 5.1 2010/04/09 15:19:48 ksb Exp $
+
+$Display(*):	${ls-ls} %s %f%;
+$Display(*):	${ls-ls} -dl %f%;
+$Display(*):	${ls-ls} -aF %f%;
+
+$Info(*):	${echo-echo} "%<%~/map/dirs>"%;
+
+$*(*):		: '%f is a directory, cannot %m(%s) it.' && ${false-false}%;
+$*(*):		: '%f is a directory, cannot %m it.' && ${false-false}%;

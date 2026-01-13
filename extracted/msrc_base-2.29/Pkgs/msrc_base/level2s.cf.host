@@ -1,0 +1,11 @@
+`# $Id: level2s.cf.host,v 1.8 2009/09/30 19:10:44 ksb Exp $
+'include(class.m4)dnl
+`# $Guard: egrep "^source:" /etc/passwd >/dev/null && egrep "^source:" /etc/group >/dev/null && exit 'dnl
+ifelse(SERVICES(msrc),`yes',`0',`1')
+`level2s-chown		/usr/sbin/chown -R $u:source $* ;
+		uid=root
+		groups=^source$
+		%u@g=^source$
+		$*=^/tmp/.*-[0-9][0-9.]*,^/usr/msrc/,^/usr/src/
+		!*=/\.\./
+'dnl

@@ -1,0 +1,56 @@
+.\" $Id: rcls.man,v 2.1 2000/06/05 23:45:02 ksb Exp $
+.\" by Kevin Braunsdorf
+.TH RCLS 1L LOCAL
+.SH NAME
+rcls \- remote Customer login services (for WISE)
+.SH SYNOPSIS
+.ds PN "rcls
+\fI\*(PN\fP [\-\fBr\fP] [\-\fBD\fP \fIdir\fP] [\-\fBP\fP\fIjobs\fP] [\-\fBR\fP \fIroot\fP] [\fIclass [args]\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.sp
+.SH DESCRIPTION
+The remote Customer login services (rcls) RPC service provides a weakly
+authenticated credentials service for website Customers under the WISE
+stater model.
+
+.SH OPTIONS
+.TP
+\fB\-D\fP \fIdir\fP
+Class modules location in the local UNIX filesytem.
+.TP
+\fB\-h\fP
+Print a help message.
+.TP
+\fB\-P\fP\fIjobs\fP
+Number of tasks to run in parallel, not implmented in version 2.0.
+.TP
+\fB\-r\fP
+Run recovery, or given more than once run recovery_fatal on the
+underlying Berkeley DB,
+.TP
+\fB\-R\fP \fIroot\fP
+The top of the index heirarchy, defaults to /var/rcls.
+.TP
+\fB\-V\fP
+Show version information.
+
+.SH EXAMPLES
+See \fI/etc/init.d/rcls\fP.
+
+.SH BUGS
+None known.
+
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Support
+.br
+ksb@sac.fedex.com.  {Via work done off hours.}
+
+.SH "SEE ALSO"
+sh(1), rcds(8)

@@ -1,0 +1,55 @@
+# $Id: TODO,v 3.5 2010/08/16 16:22:34 ksb Exp $
+
+This product is stable.
+
+Ideas:
+
+People have suggested having preend issue an archive command as
+	-A "keep4ever %s"
+which would remove files from the crypts (the %s would expand to
+/userx/tomb/uid/file@time, or maybe uid/file@time under -p) to
+stage them on tape (or write-once media).
+
+I'm not sure this is clever or not because:
+	- if the keep4ever command can block for a long time preend might
+	  hang with a full tomb -- if we put them in bg we might fill the
+	  process table (use the top-of-the-loop-wait trick?).
+
+	- keep4ever might have to understand the uid/file@time format
+	  preend uses in the tombs -- then we are locked into that format.
+
+	- maybe a command line like:
+		keep4ever uid files
+	  save me from more %escapes... (grin)
+
+	- fork() is really expensive -- we want to give keep4ever a longer
+	  list of file -- adding mucho complexity to preentomb.c
+
+	- what if keep4ever fails?
+
+	- do we need a list of glob expressions NOT to keep4ever?
+	  (I don't think so -- let it do that, or though then environ.)
+
+Maybe a filter to pass files to on stdin:
+	+ open when we find at least one file to offload
+
+	+ write file names to the pipe
+
+	+ emulate -print0 from find?
+
+	+ closed after the next preen run that finds no files to off-load,
+		or at the end of the present run
+
+	+ EPIPE errors turn off the filter until we close/open it
+
+	+ the filter can grep -v out the files not to off-line
+
+Nits:
+	+ I don't think we should entomb "nohup.out" (in preentomb.c)
+
+	+ How can we see if a file is presently open -- we should not
+	  keep4ever open files, we should not chown open files either.
+
+--
+``I have always been a storm, always been a storm.''
+kayessbee, Kevin Braunsdorf, entomb atish ksb.npcguid.org  14 Aug 2010

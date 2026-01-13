@@ -1,0 +1,17 @@
+# an m4 source file -- simple, but needed for recursive calls		(ksb)
+# $Id: m4,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	${m4-m4} %s %f
+$Compile(*):	${m4-m4} %f
+
+$M4(*):		${m4-m4} %s %f
+$M4(*):		${m4-m4} %f
+
+$Display(*):	${m4-m4} %s %f |${PAGER-${more-more}}
+$Display(*):	${m4-m4} %f |${PAGER-${more-more}}
+
+$Depend(*):	${maketd-maketd} -4 %s %f
+$Depend(*):	${maketd-maketd} -4 -r %f
+$Depend(*):	${maketd-maketd} -4 %f
+
+$Info(*):	${echo-echo} "m4 source"

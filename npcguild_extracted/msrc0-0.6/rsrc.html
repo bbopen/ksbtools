@@ -1,0 +1,289 @@
+<HTML>
+<!-- $Id: rsrc.html,v 1.1 2000/07/30 22:15:27 ksb Exp $ -->
+<HEAD><TITLE>How to use the pull version of msrc</TITLE></HEAD>
+<BODY BGCOLOR="#F5DEB3">
+<H1>The Need to Pull</H1>
+
+Even when you do <BOLD>not</BOLD> want to trust the SAC master source
+host to install system programs directly on your hosts you may
+still want to have access to the latest versions of those tools.
+
+<P>
+This document explains how to use the
+<A href="http://rsync.samba.org/">rsync</A> utility to pull
+the recent master copy of a SAC tool to your platform source
+(or your master source) for you to install or inspect.
+
+<H2>Getting started</H2>
+
+You need the source (or a binary for your platform) to <CODE>rsync</CODE>:
+SAC caches a copy of the recommended release at:
+<A href="ftp://ftp.sac.fedex.com/pub/gnu/rsync-2.3.1.tar.gz">
+ftp://ftp.sac.fedex.com/pub/gnu/rsync-2.3.1.tar.gz</A>.
+Note version 2.3.2 has been released, but we have not upgraded due
+to peak freeze.
+
+<P>
+Down-load the source to <CODE>rsync</CODE> and install it someplace in
+your search path.  We install it in <CODE>/usr/local/bin/rsync</CODE>
+on our hosts.
+
+<P>
+To test this application run:
+<BLOCKQUOTE><CODE>
+rsync rsync://msrc.sac.fedex.com/
+</CODE></BLOCKQUOTE>
+Which should output a table, like:
+<BLOCKQUOTE><CODE>
+ftp             SA+C ftp spool
+<BR>
+msrc            the SA+C master source tree
+<BR>
+Admin           the SA+C master source admin tools
+</CODE></BLOCKQUOTE>
+
+<H2>Getting setup</H2>
+
+You need two toplevel directories to use the pull system.  One to
+hold the pull code and one that caches the source you pull down.
+We are going to call these <CODE>Admin</CODE> and <CODE>src</CODE>.
+They can be placed in any directory you can write.
+
+<P>
+These are the steps to initialize these directories:
+
+<OL>
+<P><LI>
+Make the <CODE>Admin</CODE> directory, I used <CODE>/tftp/Admin</CODE>
+in my example below (only becaue /tftp had a lot of space).
+<BLOCKQUOTE><CODE>
+export TOP=<I>some-directory</I>
+<BR>
+cd $TOP
+<BR>
+mkdir Admin Pkgs msrc
+</CODE></BLOCKQUOTE>
+
+<P><LI>
+Build a <CODE>.rsrc</CODE> file to tell the <CODE>rsrc</CODE> script
+where to pull sources from.  Later we will install other <CODE>rsrc</CODE>
+control files to pull different products from different master source
+hosts.
+<BLOCKQUOTE><CODE>
+echo RSRC_ROOT=\"${PWD}/\" &GT; .rsrc
+<BR>
+echo RSRC_MSRC=\"rsync://msrc.sac.fedex.com\" &GT;&GT; .rsrc
+</CODE></BLOCKQUOTE>
+The FQDN of the master source host might have to be changed to a
+local server if you are not on the FedEx Corporate network.
+
+<P><LI>
+To provide the <CODE>rsrc</CODE> and <CODE>makeme</CODE> programs
+that we'll use to pull down the rest of the master source we
+install the bin directory from the master source with <CODE>rsync</CODE>,
+and install it in our PATH.
+<BLOCKQUOTE><CODE>
+rsync -ra rsync://msrc.sac.fedex.com/Admin/bin/ Admin/bin
+<BR>
+PATH=$TOP/Admin/bin:$PATH
+</CODE></BLOCKQUOTE>
+
+<P><LI>
+Test the configuration of the <CODE>bin/rsrc</CODE> program:
+<BLOCKQUOTE><CODE>
+rsrc -version
+</CODE></BLOCKQUOTE>
+Should output something like:
+
+<BLOCKQUOTE><CODE><PRE>
+rsrc: <I>a revision token from RCS</I>
+Control file basename: .rsrc
+Read control files:  <I>$TOP</I>/.rsrc
+
+Local directory $TOP/, with
+shell preferences from /usr/local/lib/distrib/local.defs
+This host w01.sac.fedex.com should be listed in
+/usr/local/lib/distrib/distrib.cf:
+/home/ksb/Admin/bin/rsrc[120]: distrib:  not found
+
+Remote master source pool is: rsync://msrc.sac.fedex.com
+Copied with: rsync --exclude=.rsrc -r $URL/ .
+
+This directory: <I>$TOP</I>/Admin
+is made from the URL: rsync://msrc.sac.fedex.com
+</PRE></CODE></BLOCKQUOTE>
+
+<P>
+If that looks like what you want you can go on, else read the
+comments in the <CODE>bin/rsrc</CODE> script about building shell
+variables to modify the run-time behavior of the program to get
+sources from your favorite site.
+
+<P><LI>
+Pull down a test file with <CODE>rsrc</CODE>.
+
+<BLOCKQUOTE><CODE>
+cd Admin
+<BR>
+rsrc -get README Targets Macros Levers
+</CODE></BLOCKQUOTE>
+
+<P>
+View some of those files to be sure they look sane.  If the <CODE>rsrc</CODE>
+scrip fails run it with <CODE>ksb -x</CODE> to see what looks wrong.
+
+<P><LI>
+You might have to build a <CODE>local.defs</CODE> file someplace
+and set the path to it.  You can use something like:
+<BLOCKQUOTE><CODE><PRE>
+PATH=/usr/local/bin:/usr/local/etc:$PATH:/usr/ccs/bin
+export PATH
+umask 022
+</PRE></CODE></BLOCKQUOTE>
+To get you going on a Sun.  It <STRONG>must</STRONG> set a PATH
+to find the C compiler and local tools.  It should set a umask.
+
+
+<P><LI>
+Stop to build the <STRONG>product</STRONG> side of the system at this
+point (come back later to fill in the Admin script and templates if
+you are going to create your own master source pool).  You need a
+top level master source cache.  I would put it next to the Admin
+cache (not under it).  Check the <CODE>-version</CODE> output carefully.
+
+<BLOCKQUOTE><CODE>
+cd <I>$TOP</I>/msrc
+<BR>
+rsrc -get RBOOT
+</CODE></BLOCKQUOTE>
+(Once again change the master source hostname if you must.)
+
+<P><LI>
+If you don't have <CODE>mkcmd</CODE> installed you can use
+the RBOOT script to install the minimal ksb tools.  You must
+have <CODE>rsrc</CODE> and <CODE>makeme</CODE> in you search path.
+Run it with:
+<BLOCKQUOTE><CODE>
+ksh -x ./RBOOT
+</CODE></BLOCKQUOTE>
+
+<P>
+Note that it trys to <STRONG>install</STRONG> the tools under
+<CODE>/usr/local</CODE>: if you don't have permission to install
+there you'll have to build with:
+<BLOCKQUOTE><CODE>
+ksh ./RBOOT DESTDIR=/tmp/myroot
+</CODE></BLOCKQUOTE>
+<P>
+Which builds a version of the basic stuff in <CODE>/tmp/myroot</CODE>.
+
+
+<P><LI>
+Now pull down any package you like and use <CODE>makeme</CODE> to
+build it locally, or configure <CODE>distrib</CODE> to know about
+the local platforms and build as I do.
+<OL>
+<P><LI>Change directory to the location where the source should be.
+If the directory structure is not there <CODE>mkdir -p</CODE> down
+to the product (for example <CODE>sbp</CODE>).
+<BLOCKQUOTE><CODE>
+mkdir -p local/etc
+<BR>
+cd local/etc
+</CODE></BLOCKQUOTE>
+
+<P><LI>Use <CODE>rsrc</CODE> to get the product, and move into the product's
+source.
+<BLOCKQUOTE><CODE>
+rsrc -get sbp
+<BR>
+cd sbp
+</CODE></BLOCKQUOTE>
+<P><LI>Use either <CODE>makeme</CODE> or <CODE>make</CODE> to build it
+locally or across many hosts.
+<BLOCKQUOTE><CODE>
+makeme install
+</CODE></BLOCKQUOTE>
+or
+<BLOCKQUOTE><CODE>
+make HOSTS=-mnostromo,sulaco,yaruro install
+</CODE></BLOCKQUOTE>
+<P><LI>Cleanup and cruft: either remove the whole shadow copy, or
+make clean.
+</OL>
+</OL>
+
+<H2>Thoughts</H2>
+
+This really doesn't fix the issue that so many people complained
+about: we are still trusting the master source host to hold "pure
+and clean" source.  If they put a nasty bit of code in the repositoy
+we are going to pull it down and run it.
+
+<P>
+The only difference is when.  We'll do it when we choose.  That
+might be a bigger problem, because the keeper of the source might
+be in the middle of a change.
+
+<P>
+I still prefer the push model.
+
+
+<H2>Known Bugs</H2>
+
+There are some problems with the pull version of the master source!
+Almost all of these are problems with "makeme", if you don't use
+that script more than from "RBOOT" you'll be happy.
+
+<DL>
+<DT>mkcmd's lib
+<DD>
+The hosttype.m file is processed via distrib on the way over and
+doesn't work correcly from an rsrc boot.  I know how to fix it.
+<P>
+You should edit it by hand, or run <CODE>m4</CODE> over it by hand.
+<BLOCKQUOTE><CODE>
+	vi /usr/local/lib/mkcmd/type/hosttype.m
+</CODE></BLOCKQUOTE>
+
+<DT>rdist'd bin
+<DD>
+The hack.ed file suffers from the same issue as above.
+<P>
+Don't build rdist with <CODE>makeme</CODE>.
+
+<DT>mk's lib
+<DD>
+Is broken by the rsrc spell for an even larger reason.
+<P>
+Don't build this withe <CODE>makeme</CODE>
+</DL>
+
+<H2>The next steps</H2>
+
+We can pull code from <STRONG>different sources</STRONG> with the
+pull system.  In any product or package directory you can build a
+<CODE>.rsrc</CODE> control file to force that product's source to
+come from a different rsync server (or ftp for that matter).
+
+<P>
+Let's look at the shell code in Admin/bin/rsrc.  It reads
+the <CODE>.rsrc</CODE> control file in your home directory, and
+the first one it finds on the way up to slash.  We put on at
+the top of the Admin and msrc directories when we build the caches.
+
+<P>
+These control files are shell scrips.  They set variables like:
+<TABLE>
+<TR></TR>
+<TR>RSRC_LOCAL_DEFS</TR>
+<TR>RSRC_MSRC</TR>
+RSRC_LIST
+SRC_MAKEME
+VIA_RSYNC
+VIA_FTP
+RSRC_DISTRIBS
+</TABLE>
+
+</BODY>
+</HTML>

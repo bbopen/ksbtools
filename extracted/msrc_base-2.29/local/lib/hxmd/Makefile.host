@@ -1,0 +1,66 @@
+`# $Id: Makefile.host,v 1.14 2010/06/18 17:26:45 ksb Exp $
+# platform Makefile for hxmd-lib, the on-ramp to the new master source
+
+LIB=	${DESTDIR}/usr/local/lib/hxmd
+DOC=	${DESTDIR}/usr/local/man
+
+# Add your local files to the macro below and to the SOURCE in Makefle
+GEN=	empty
+DATA=	msrc.cf auto.cf class.m4 cronsup.m4 fqdn.m4 gnumake.m4 sendfile.m4
+MAN=	hxmd.man
+OTHER=	README
+SOURCE=	Makefile ${OTHER} ${MAN} ${DATA}
+
+all: ${DATA} ${GEN}
+
+# We are chained before install, so do not try to use -dr
+boot: all FRC
+	mkdir -p ${LIB}
+	install -c -m 644 ${GEN} ${DATA} ${LIB}/
+
+empty:
+	touch $@
+
+clean: FRC
+	rm -f Makefile.bak ${GEN} a.out core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	for dink in ${DATA} ;\
+	do \
+		install -Rm 644 ${LIB}/$$dink ;\
+	done
+	mkcat -r${DOC} -D ${MAN}
+
+depend: FRC
+
+dirs: ${LIB}
+
+distrib: FRC
+	distrib -c ${LIB} HOST
+
+install: all dirs FRC
+	install -cm 644 ${GEN} ${DATA} ${LIB}/
+
+lint: FRC
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${LIB} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

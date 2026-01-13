@@ -1,0 +1,13 @@
+/* $Id: tftp_server.mi,v 8.21 1998/11/29 18:52:37 ksb Exp $
+ */
+typedef struct ISnode {
+	int irexmt;
+	int imaxtime;
+} TFTP_SERVER;
+
+extern int tserv_accept(int, FILE *, const char *);
+extern int tserv_serve(int, FILE *, const char *);
+extern void tserv_init(void);
+extern int tserv_rexmt(int);
+extern int tserv_timeout(int);
+static TFTP_SERVER *tserv_status();

@@ -1,0 +1,54 @@
+# $Id: TODO,v 1.25 2010/07/22 22:30:01 ksb Exp $
+
+I had a strong intuition that an environment transistor for the dashdash
+token that was a dicer expression on the HXMD_PATH value would be more than
+a little useful in the future, but I can't remember why.  The default would
+be "%[1:2]" where 1 is HXMD_PATH, and 2 was the built-in default -- or
+something like that.  I think we'd read the value from $HXMD_DASHDASH or so.
+That would force us to include the dicer.c file in mmsrc, Oh, save me.  Then
+we could implement xapply in mmsrc... no.
+
+Could be the rule for double-dash should be first absolute path that exists.
+Not just the first one.  Maybe.
+
+Under -d M (debug missing stuff in config reader) we should vetch about
+	MACRO=naked-value
+since distrib will fail for the missing quotes (which hxmd doesn't really
+need).  That would be in hostdb.m about about line 500, after the case for
+HT_WORD and HT_MACRO, we'd check for the debug flag and carp there.  We'd
+also want to only carp once per configuration file, for sure.
+
+Nothing else.  Make a book or better website for the use of this tool-chain.
+
+
+ ---- Other ideas ----
+
+We've thought about these, just so you know we didn't just put in every idea
+that came to us (mostly).
+
+I turned down -Z and -C allowing "/dev/null" as a specification.  Today they
+reject special files, because it is mostly silly.  We document that the file
+"empty" in .../lib/hxmd is an empty file, use that (-Cempty).  If you want
+a FIFO use ... -C - </my/fifo/path... really.
+
+I changed this into the cache directory idea:
+	When a files parameter starts with a pipe, viz.
+		hxmd -E ... 'HX_CMD' '|./forbid.sh HOST'
+	we process the text of the file (w/o the pipe) through m4,
+	then launch the command as
+		sh -c "m4-processed-string" </dev/null >HXMD_$N
+	which allows us to use a processor (other than m4) to generate
+	the temp files.
+I changed that into the cache directory: specify a directory and we process
+it indirectly enough to make this happen.
+
+I also turned down "adaptive preload", way too complex for the tiny gain.
+Tune the preload, if you must (2 to 4 works really well most of the time).
+
+I also turned down some other `good' ideas, because this program is already
+too complex for most people to use fully: it helps if you were exposed to
+xapply, m4, distrib, and make.  Then xclate, ptbw, and a lot of cross
+platform + multi-host tasks, then hxmd.
+
+--
+ksb, Jul 2010

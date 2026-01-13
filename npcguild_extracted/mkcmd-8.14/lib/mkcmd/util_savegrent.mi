@@ -1,0 +1,4 @@
+/* deep copy a group entry structure					(ksb)
+ * $Id: util_savegrent.mi,v 8.12 1999/06/14 14:37:48 ksb Exp $
+ */
+%extern struct group *%K<util_savegrent>1v()%;

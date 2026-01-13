@@ -1,0 +1,64 @@
+# $Id: INSTALL,v 8.1 1997/10/15 17:50:21 ksb Exp $
+
+To install the BSD install replacement:
+
+1) read the manual pages
+
+2) edit the file `configure.h' and read about the site options
+   you may or may not want to turn on
+	+ syslog installs by the superuser
+	+ check a list of files and modes to assure important files
+		are not lost || miss installed
+	+ the name of some routines (getwd)
+	+ how default modes are built
+		- inherit from destination directory
+		- use compiled-in defaults
+	+ can source be a symlink (SLINKOK)
+	+ maybe define some defaults: (override those in install.h)
+		DEF{OWNER,GROUP,MODE}		- file modes
+		DEFDIR{OWNER,GROUP,MODE}	- directory modes
+		ODIR{OWNER,GROUP,MODE}		- OLD file modes
+		OLDDIR				- name of OLD
+
+3) look over install.cf (if you are going to be using CONFIG)
+
+4) make depend if you have it
+	make depend
+	maketd -a *.c
+	mkdep *.c
+  or some such
+
+5) make the binary
+	make all
+
+6) run
+	./installp -V
+   as a user to be sure you have the defaults the way you
+   like them.
+
+7) Look at the Makefile for where it would be installed
+	${DESTDIR}/${BIN}/install    [and such]
+   you might want to edit these a little.  We don't replace the SYSV
+   install with its funky $PATH search -- yucko.
+
+8) make install, and install the install.cf you want (also see the
+   notes in ../../lib/install.cf).  We touch an empty one if you don't
+   have anything installed.
+
+9) run some tests:
+	install -vn -o fred /dev/null /etc/passwd
+	install -vn /etc/motd /dev/null
+	install -d -vn /tmp
+	install -vn -m7555 /etc/motd /bin/sh
+	install -vn -m666 /etc/motd /etc/passwd
+   these should all report some kind of error would happen, if the
+   install.cf I use is in place.
+
+10) make clean
+
+That should about do it.
+Any questions?  Mail to ksb@fedex.com
+
+--
+"I think therefore I am, I thunk therefore I call-by-name!"
+kayessbee, Kevin Braunsdorf, ksb@fedex.com (901)922-2451

@@ -1,0 +1,88 @@
+`# Makefile for cdecl
+# $Id: Makefile.host,v 2.16 2010/12/03 23:28:16 ksb Exp $
+#			Kevin Braunsdorf, FedEx
+
+SHELL=/bin/sh
+BIN=	${DESTDIR}/usr/local/bin
+DOC=	${DESTDIR}/usr/local/man/man1
+YACC=	'ifelse(
+HOSTTYPE,`HPUX9',`bison -y',`yacc')`
+LEX=	'ifelse(
+HOSTTYPE,`HPUX9',`flex',`lex')`
+
+I=/usr/include
+S=/usr/include/sys
+
+INCLUDE=
+DEBUG=	-O
+CDEFS=
+CFLAGS=	${DEBUG} ${CDEFS} ${INCLUDE}
+'ifelse(index(`|HPUX9|HPUX8|HPUX7',`|'HOSTTYPE),-1,`',`CC=gcc
+')dnl
+`
+HDR=	machine.h
+SRC=	support.c
+OBJ=	support.o gram.o scan.o
+GEN=	scan.c gram.c
+MAN=	cdecl.man
+SOURCE=	Makefile ITO.spec ${HDR} ${SRC} scan.l gram.y ${MAN}
+
+all: cdecl
+
+cdecl: ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}
+
+y.tab.h: gram.c
+
+gram.c: gram.y
+	${YACC} -d gram.y && mv y.tab.c gram.c
+
+scan.c: scan.l
+	${LEX} scan.l && mv lex.yy.c scan.c
+
+clean: FRC
+	rm -f Makefile.bak cdecl scan.c gram.c *.o a.out core errs tags y.*
+
+depend: y.tab.h ${HDR} ${SRC} ${GEN} FRC
+	maketd -a ${CDEFS} ${INCLUDE} ${SRC} ${GEN}
+
+install: all dirs FRC
+	install -cs cdecl ${BIN}/cdecl
+
+lint: y.tab.h ${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${SRC} ${GEN}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"cdecl source" ${SOURCE}
+
+dirs: ${BIN} ${DOC}
+
+${BIN} ${DOC}:
+	install -dr $@
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR}
+	ctags -t ${SRC} ${HDR}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+support.o: $I/stdio.h support.c
+
+scan.o: $I/ctype.h $I/stdio.h scan.c y.tab.h
+
+gram.o: $I/stdio.h gram.c gram.y
+
+# *** Do not add anything here - It will go away. ***
+'dnl

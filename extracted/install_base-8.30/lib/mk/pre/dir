@@ -1,0 +1,15 @@
+# a dbm dir file (if it were a directory we would trap with type/d)	(ksb)
+# $Id: dir,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+# XXX no magic number check
+
+$Info(*):	${echo-echo} "dbm directory or data"
+
+$Display(*):	${perl-perl} \\\n\t-e 'dbmopen(Junk, "%P", 0644);' \\\n\t-e 'while (($dir,$pag) = each %%Junk) { print $%x, "\\n"; %s; }' \\\n\t-e 'dbmclose(Junk);' |${PAGER-${more-more}}
+$Display(*):	${perl-perl} \\\n\t-e 'dbmopen(Junk, "%P", 0644);' \\\n\t-e 'while (($dir,$pag) = each %%Junk) { print $%x, "\\n"; }' \\\n\t-e 'dbmclose(Junk);' |${PAGER-${more-more}}
+
+$Display(*):	${perl-perl} \\\n\t-e 'dbmopen(Junk, "%P", 0644);' \\\n\t-e 'while (($dir,$pag) = each %%Junk) { print $dir, "=", $pag, "\\n"; %s; }' \\\n\t-e 'dbmclose(Junk);' |${PAGER-${more-more}}
+$Display(*):	${perl-perl} \\\n\t-e 'dbmopen(Junk, "%P", 0644);' \\\n\t-e 'while (($dir,$pag) = each %%Junk) { print $dir, "=", $pag, "\\n"; }' \\\n\t-e 'dbmclose(Junk);' |${PAGER-${more-more}}
+
+$*(*):	: '%P is a nbdm file, will not %m(%s) it' && ${false-false}
+$*(*):	: '%P is a nbdm file, will not %m it' && ${false-false}

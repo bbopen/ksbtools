@@ -1,0 +1,58 @@
+`# $Id: Makefile.host,v 8.3 2008/11/17 23:17:28 ksb Exp $
+# platform makefile for install.cf, msrc 2008
+
+SHELL=/bin/sh
+LIB=	${DESTDIR}/usr/local/lib
+DOC=	${DESTDIR}/usr/local/man/man5
+
+SRC=	install.cf
+MAN=	install.cf.man
+OTHER=	README
+SOURCE=	Makefile ${OTHER} ${MAN} ${SRC}
+
+all: install.cf
+
+boot: all FRC
+	mkdir -p ${LIB} ${DOC}
+	install -c -m 0644 install.cf ${LIB}/install.cf
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${LIB}/install.cf
+	mkcat -r${DOC} -D ${MAN}
+
+depend: FRC
+
+dirs: ${LIB} ${DOC}
+
+distrib: FRC
+	distrib -c ${LIB}/install.cf HOST
+
+install: all dirs FRC
+	install -c -m 0644 install.cf ${LIB}/install.cf
+
+lint: FRC
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"install-lib source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+${LIB} ${DOC}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

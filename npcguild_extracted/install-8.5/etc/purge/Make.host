@@ -1,0 +1,116 @@
+`#	$Id: Make.host,v 8.6 2000/06/20 14:04:50 ksb Exp $
+#
+#	Makefile for purge
+#
+
+SHELL=/bin/sh
+PROG=	purge
+ETC=	${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/etc',`/usr/local/etc')`
+MANROOT= ${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/man',`/usr/local/man')`
+
+# where is the source code for install(1L)?
+#INSTALLD= ../install.d
+INSTALLD= ../../bin/install.d
+
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE= -I${INSTALLD}
+DEBUG='ifelse(HOSTTYPE,`V386',`',`-O')`
+CDEFS=  -D'HOSTTYPE`'ifelse(
+HOSTTYPE,`SUN5',` -DBSD=43',
+HOSTTYPE,`EPIX',` -systype bsd43')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+GENH=	'ifelse(MKCMD,`no',`',`main.h')`
+GENC=	'ifelse(MKCMD,`no',`',`main.c')`
+GEN=	${GENC} ${GENH}
+HDR=	'ifelse(MKCMD,`no',`main.h ')`purge.h filedup.h
+SRC=	'ifelse(MKCMD,`no',`main.c ')`purge.c filedup.c
+EXP=	scandir.c
+DEP=	${GENC} ${SRC} ${EXP}
+OBJ=	main.o purge.o filedup.o'ifelse(
+HOSTTYPE,`SUN5',` scandir.o')`
+MAN=	purge.man
+OTHER=	README TODO purge.m
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}'ifelse(
+HOSTTYPE,`V386',` -L/usr/local/lib -lsocket -lbsd',
+HOSTTYPE,`ETA10',` -lbsd')`
+
+'ifelse(MKCMD,`no',`',`main.h: main.c
+
+main.c: ${PROG}.m
+	mkcmd std_help.m ${PROG}.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+')`
+
+${EXP}:
+	explode $@
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} ${EXP} *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+depend: ${SRC} ${HDR} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${ETC}
+
+distrib: source FRC
+	distrib -c ${ETC}/${PROG}
+
+install: all dirs FRC
+	install -cs ${PROG} ${ETC}/${PROG}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat -r${MANROOT} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+/ ${ETC}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+filedup.o: filedup.c filedup.h
+
+purge.o: filedup.h purge.c purge.h main.h
+
+scandir.o: scandir.c
+
+main.o: main.c main.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

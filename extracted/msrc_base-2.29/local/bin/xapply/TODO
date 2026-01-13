@@ -1,0 +1,36 @@
+# $Id: TODO,v 3.20 2007/09/01 01:33:42 ksb Exp $
+
+Next steps:
+
+Currently we only ask ptbw for tokens once.  We should come back to ask
+for more when we didn't get the max and we are out of tokens to run tasks
+(with more waiting).  I just don't have the energy to do it (yet).
+Also I think we could free more resources earlier, maybe.
+
+
+Nits:
+
+We allocate _way_ too much memory, sanity check -P's parameter?
+	$ xapply -P100000 -f ...
+At compile time the first one that succeeds is the LIMIT (-D it)
+	bash -c "ulimit -u"
+	sysctl kern.maxprocperuid
+	sysctl kern.maxproc
+	CHILD_MAX | MAXUPRC from <sys/limits.h> or <sys/param.h>
+	echo 65536
+make -V report it, I guess.
+
+
+Expander ideas:
+
++ %Q... might quote the word such that no special characters are evaluated
+  by /bin/sh or /bin/ksh, without shell quotes around the word. That is
+  quote $, ", `, ', #, ~, &, *, ?, [, (, ), {, ;, |, >, <, \, and white-space.
+  Rules for # are hard, ${foo##*} shouldn't have a \ on the #'s.
+
+Code bugs: we just plain die when someone tried to build a command bigger
+than NCARGS (we don't check the expander buffer at all), we should fix that.
+
+
+--
+ksb, Sep 2006

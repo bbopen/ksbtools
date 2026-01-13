@@ -1,0 +1,71 @@
+# $Id: README,v 8.1 2009/10/14 17:21:58 ksb Exp $
+#
+
+The tools is one of ksb's best friends, that doesn't mean you have to
+be friends with it.  It is a strange markup language that lets him
+build UNIX shell command line parsers from lots of component parts
+(named like "command.m").  This is the glue that holds all of his
+tools together, so you can't build anything he coded in C without it.
+
+It is not something you want to learn, unless you want to code new
+tools in the "ksb style".  If you just want to manaintain ports of his
+tools you just need to use it.  Changes to the embedded C code usually
+don't require you to understand the meta language that binds them
+together, for example.
+
+You can always run mkcmd to build the plain C code, then maintain that
+code as if that were the original program.  Just like yacc, lex, or
+rpcgen -- the output is just plain C.
+
+There are about 13k lines of code in the mkcmd repo (lib/mkcmd) and some
+of them (like std_help.m and util_ppm.m) are used in many 100's of programs.
+That's not to say that anyone else needs to learn mkcmd to be happy.  But
+you should learn msrc to be happy.
+
+I've changed mkcmd a little since I left PUCC, don't blame anyone at Purdue
+for mkcmd -- they don't use it anymore as far as I can tell.  But I'm
+not going back to coding manpages, parsers, and importing code with cut/paste.
+
+Below is the original PUCC README (which is really out of date).  Now days
+you just let "msrc_base" install mkcmd and don't ever think about it again.
+
+
+  -- ksb, Oct 2009   (bugs to mkcmd at-no-spam-please ksb.npcguild.org)
+
+
+--- snip ---
+Here at PUCC (The Purdue University Computing Center) we administer
+lots of UNIX platforms.  We sometimes have to run off quick tools to
+solve problems for our customers.  This program lets us build a nifty
+command line option parser and some on-line documentation in a snap.
+
+
+First edit the Makefile here to change `/usr/local/lib/mkcmd' and
+`/usr/local/bin' if you do not want to install this program under
+/usr/local.  You can look at other tuning params in "machine.h" and
+override them in CDEFS in the Makefile.
+	vi Makefile
+
+Build mkcmd:
+	make all
+
+Install mkcmd:
+	make install
+
+If you have mkcat (a PUCC tool to install manual pages):
+	mkcat mkcmd.man
+
+Install the library files:
+	(cd ../lib; make install)
+
+Test mkcmd:
+	make self
+
+Read the Notes file again, try some stuff from ../../examples.
+
+Send bugs with a *.m file to me.  Patches are OK too :-).
+
+-- 
+"Cold waves wash over, and drift away with dreams of youth
+ So time is stolen, I cannot hold you long enough."              --Enya
+kayessbee, ksb@cc.purdue.edu, uunet!purdue!ksb  (Kevin S Braunsdorf)

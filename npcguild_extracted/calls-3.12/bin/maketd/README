@@ -1,0 +1,11 @@
+# $Id: README,v 4.0 1996/03/19 15:14:02 kb207252 Beta $
+
+Maketd is kinda like mkmf or mkdep, it is older (here at FedEX) and
+we still use it quite a bit.  The compressed output makes it neat,
+and the options are nice.
+
+So give it a try.
+
+kayessbee,
+--
+Kevin Braunsdorf, ksb@fedex.com

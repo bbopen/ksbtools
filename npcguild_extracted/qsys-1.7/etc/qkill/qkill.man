@@ -1,0 +1,57 @@
+.\" $Id: qkill.man,v 1.2 1997/01/06 02:38:39 kb207252 Exp $
+.\" by 
+.TH QKILL 8L LOCAL
+.SH NAME
+qkill \- send a signal to a process tree
+.SH SYNOPSIS
+.ds PN "qkill
+\fI\*(PN\fP [\-\fBn\fP\fBv\fP] [\-\fIsig\fP] [\fIpids\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.sp
+.SH DESCRIPTION
+.PP
+When a process tree short at the top leaves unwanted children
+of init use \fIqkill\fP to clean them up.  \fPQkill\fP traverses
+the children of the given \fIpids\fP killing them in depth-first
+order.
+
+.SH OPTIONS
+.TP
+.I sig
+Send this signal to all the process in the tree. No symbolic names
+are accepted (sorry).  The default is 0 which just checks to be
+sure you \fBcould\fP send a signal.
+.TP
+.BI \-h 
+Print a help message.
+.TP
+.BI \-n
+Do not really kill any processes.
+.TP
+.BI \-v 
+Output actions as shell commands.
+.TP
+.BI \-V 
+Show version information.
+.SH EXAMPLES
+.TP
+qkill -15 1245
+Send a TERM signal to each process spawned from proces 1245.
+.TP
+qkill -V
+Give version information.
+.SH BUGS
+Using this on init (process 1) would be a Bad Idea.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Group
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+qrm(8L)

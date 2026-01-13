@@ -1,0 +1,4 @@
+/* Wrapper around Victor A. Abell's time code				(ksb)
+ * $Id: util_time.mh,v 8.4 1999/06/14 14:44:18 ksb Exp $
+ */
+%extern long %K<Atotm>1ev(/*a, tz*/)%;

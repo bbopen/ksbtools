@@ -1,0 +1,18 @@
+# $Id: TODO,v 1.2 1994/09/08 03:08:16 ksb Exp $
+
+What could we do with an interactive interface to the qmgr?
+Could we make a command to `drop' a job, or to run the next one (poll now)?
+
+How many commands?
+	add		add a job
+	concurent #	set the number of concurent jobs to #
+	kill		terminate a running job
+	lock "message"	lock the queue qith qlock
+	poll		force a scan of the queue (default command)
+	rm		remove a job
+	shutdown	wait for all jobs to finish and exit
+	source		read a file of commands
+	stat		run qstat (or emulate it)
+	stop/start	enable/disable polling for jobs (automatically)
+	unlock		remove a qlock lock
+	version		output a version string

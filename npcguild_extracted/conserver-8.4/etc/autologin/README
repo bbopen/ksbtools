@@ -1,0 +1,17 @@
+# $Id: README,v 2.2 1995/07/28 20:30:00 kb207252 Exp $
+
+This program can be used to put a root shell on the console at boot time.
+See the manual page.
+
+Ports to: HOST	OS	CDEFS
+	SUN3	4.1.1	-DSUNOS
+	SUN4	4.1.2	-DSUNOS
+	SUN5	2.3	-DSUN5
+	V386	?	-DSRM
+	EPIX	?	-DEPIX -systype posix -I/usr/include (+ extra .o files)
+	IBMR2		-DIBMR2
+	FREEBSD	2.0	-DFREEBSD
+	HPUX9		-DHPUX9
+	HPUX[78]	-DHPUX8
+
+ksb

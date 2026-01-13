@@ -1,0 +1,11 @@
+# $Id: Distfile,v 8.1 1999/03/06 15:17:35 ksb Exp $
+# this Distfile must be run with -o nodescend set
+`( . ) -> ( 'HOST` )
+	install ${INTO} ;
+
+( @Make.host@ ) -> ( 'HOST` )
+	install -b ${INTO}/Makefile ;
+
+( lib etc README ) -> ( 'HOST` )
+	install -w ${INTO} ;
+'dnl

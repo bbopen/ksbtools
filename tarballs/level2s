@@ -1,0 +1,484 @@
+#!/usr/bin/env ksh
+# $Id: level2s,v 4.45 2012/06/19 19:10:21 ksb Exp $
+# Trap missing mk marked lines in all ITO.spec files
+# An explicit level2 name of "." means you can't build one, must be
+# built at level3 (or not at all).  A failed exit code bars the build too.
+#	$Level2: ${false:-false}
+# No explict level3 takes the component name of the directory, like level2:
+#	$Level3: ${false:-false}
+# No explicit KeyFile means use ITO.spec as the version key file:
+#	$KeyFile: ${echo:-echo} ITO.spec
+#
+# This must be in the first 99 lines of this script for mk to find the lines,
+# that's true of the marked lines in the spec file as well. --ksb
+PROGNAME=`basename $0 .ksh`
+PATH=$PATH:/usr/local/sbin
+IAMIN=`whence $0 2>/dev/null || whence level2s 2>/dev/null`
+[ -z "$IAMIN" ] && IAMIN=/dev/null
+export PROGNAME IAMIN PATH
+
+TMPL=${TMPDIR:-/tmp}/l2d.XXXXXX
+IDS=`mktemp -d $TMPL`
+trap 'rm -r $IDS' EXIT INT
+# In $IDS/ level2 level3 list new temp
+>$IDS/list
+
+: ${SOURCE:=source}
+VERB=${1:-help}
+[ $# -gt 0 ] && shift
+# Set RPM_ROOT in the environment to override our default, see -V
+# Also set BUILD_ARCH, we need for rpm build
+if [ -d /usr/src/rpm ] ; then
+	: ${RPM_ROOT:=/usr/src/rpm}
+elif [ -d /usr/src/redhat ] ; then
+	: ${RPM_ROOT:=/usr/src/redhat}
+else
+	: ${RPM_ROOT:=$HOME/rpm}
+fi
+if file /bin/ls | grep "Intel 80386" >/dev/null ; then
+	: ${BUILD_ARCH:=i386}
+else
+	: ${BUILD_ARCH:=x86_64}
+fi
+: ${MSRC_ROOT:=/usr/msrc}
+export BUILD_ARCH RPM_ROOT MSRC_ROOT
+
+# If we require a complete list of the level2 products go build one, it
+# doesn't take as long as you'd think.
+case $VERB in
+help|version|cpan2rpm|rpm|restore|-h*|-V*)
+	# These don't need the level2 and level3 lists
+	;;
+*)	# These do need the level2 list and we use level3 for and error msg
+	find /usr/msrc/ -name Pkgs -prune -o -name Example -prune -o \
+		-name ITO.spec -print0 2>/dev/null |
+	MK=-sl0 xapply -f -z 'FL=`mk -t $IAMIN -mKeyFile %1`
+		SN=`msync -N %[1/-$]/Makefile`
+		PN=`mk -t $IAMIN -smLevel2 %1 || echo %[1/-$/$]` || exit
+		[ _. = _"$PN" ] && exit
+		echo "%[1/-$]:$FL:$SN:$PN"' - >$IDS/level2
+	find /usr/msrc/Pkgs/ -name Example -prune -o \
+		-name ITO.spec -print0 2>/dev/null |
+	MK=-sl0 xapply -f -z 'FL=`mk -mKeyFile %1`
+		SN=`msync -N %[1/-$]/Makefile`
+		PN=`mk -t $IAMIN -smLevel3 %1 || echo %[1/-$/$]` || exit
+		[ _. = _"$PN" ] && exit
+		echo "%[1/-$]:$FL:$SN:$PN"' - >$IDS/level3
+	;;
+esac
+
+# Turn the command-line products into the correct working format
+>$IDS/new
+while [ $# -gt 0 ] ; do
+	PROD=$1
+	shift
+	case $VERB in
+	help|version|-V*|-h*)
+		continue ;;
+	rpm|restore)	# needs a list of tar files
+		echo $PROD >>$IDS/new
+		continue ;;
+	cpan2rpm)	# needs an absolute path to the file
+		case $PROD in
+		/*)
+			echo $PROD ;;
+		./*)
+			echo `pwd`/${PROD#./} ;;
+		*)
+			echo `pwd`/$PROD ;;
+		esac >>$IDS/new
+		continue ;;
+	*)	# others require a level2 package from our list
+		;;
+	esac
+	if [ _-- = _$PROD ] ; then
+		break
+	fi
+	grep "[/:]$PROD:" $IDS/level2 >$IDS/temp
+	if [ -s $IDS/temp ] ; then
+		cat $IDS/temp >>$IDS/new
+		continue
+	fi
+	if [ -f $PROD -a _ITO.spec = _${PROD##*/} ] ; then
+		echo ${PROD%/ITO.spec} >>$IDS/new
+		continue
+	fi
+	if grep "[/:]$PROD:" $IDS/level3 >/dev/null ; then
+		echo "$PROGNAME: $PROD is a level3 Pkgs directory, use level3s to $VERB it" 1>&2
+	else
+		echo "$PROGNAME: $PROD level2 msrc directory not located" 1>&2
+	fi
+	exit 65
+done
+rm -f $IDS/temp
+[ -s $IDS/new ] && cp $IDS/new $IDS/list
+
+case "$VERB" in
+missing)
+	if [ ! -s $IDS/list ] ; then
+		cp $IDS/level2 $IDS/list
+	fi
+	xapply -f "set -e
+		HEAD=\`rlog %[1:1]/%[1:2] 2>&1 | sed -n -e 's/^head:[ 	]*//p'\`
+		CHECK=\`msync -N -- %[1:1]/%[1:2]\`
+		OUT=%[1:4]
+		: \${OUT:=%[1:1/$]}
+		[ -f \$OUT-\$HEAD.tgz ] || echo missing tar file \$OUT-\$HEAD.tgz
+		[ -h \$OUT-\$CHECK.tgz ] || echo missing link \$OUT-\$CHECK.tgz
+		" $IDS/list
+	;;
+build)
+	if [ ! -s $IDS/list ] ; then
+		cp $IDS/level2 $IDS/list
+	fi
+	xapply -f "set -e
+		SPOOL=\`pwd\`
+		cd %[1:1/-$]
+		HEAD=\`rlog %[1:1]/%[1:2] 2>&1 | sed -n -e 's/^head:[ 	]*//p'\`
+		CHECK=\`msync -N -- %[1:1/$]/%[1:2]\`
+		if ! [ _\$CHECK = _%[1:3] ] ; then
+			echo \"\$PROGNAME: %[1:1] listed name %[1:3] is not found \$CHECK\"
+			exit 65
+		fi
+		MSD=/tmp/l2.\$\$.%u
+		OUT=%[1:4]
+		: \${OUT:=%[1:1/$]}
+		mkdir \$MSD || exit 73
+		rcsvg -mS \$MSD/\$OUT \$CHECK %[1:1/$]
+		cd \$MSD
+		mv \$OUT \$OUT-\$HEAD
+		addlic \$OUT-\$HEAD
+		if [ -f \$OUT-\$HEAD/ITO.spec ] ; then
+			CV=\`sed -n -e 's/^Version[ :	]*//p' <\$OUT-\$HEAD/ITO.spec\`
+			if [ _\$CV != _\$HEAD ] ; then
+				echo \"%[1:1] listed version \$CV doesn't match head version \$HEAD\"
+			fi
+		fi
+		op -u source level2s-chown \$MSD/\$OUT-\$HEAD 2>>$IDS/errs
+		tar cf - \$OUT-\$HEAD | gzip -9 >\$SPOOL/\$OUT-\$HEAD.tgz
+		ln -sf \$OUT-\$HEAD.tgz \$SPOOL/\$OUT-\$CHECK.tgz
+		cd ..
+		op -u $USER level2s-chown \$MSD/\$OUT-\$HEAD 2>>$IDS/errs
+		rm -rf \$MSD
+		" $IDS/list
+	if [ -s $IDS/errs ] ; then
+		cat $IDS/errs 1>&2
+	fi
+	;;
+msync)	# if you put msync options after the list with "--" we'll take'm here
+	if [ ! -s $IDS/list ] ; then
+		cp $IDS/level2 $IDS/list
+	fi
+	xapply -fv "cd %[1:1] && msync $*" $IDS/list
+	;;
+sane)
+	if [ ! -s $IDS/list ] ; then
+		cp $IDS/level2 $IDS/list
+	fi
+	if [ _/usr/src = _"$MSRC_ROOT" ] ; then
+		echo "$PROGNAME: /usr/src is not a correct place to root the master source" 1>&2
+	fi
+	# This is local site policy you may have to change --ksb
+	echo "Sane for" `wc -l <$IDS/list` "products"
+	xapply -f "if ! cd %[1:1] ; then
+			echo \"\$PROGNAME: %[1:1]: missing source directory\"
+			exit 0
+		fi
+		if [ ! -d RCS ] ; then
+			echo \"$PROGNAME: %q[1:1]: missing RCS cache\"
+		fi
+		if [ ! -s %[1:1]/ITO.spec ] ; then
+			echo \"$PROGNAME: %q[1:1]: missing specfile ITO.spec\"
+		fi
+		if [ ! -f \"%q[1:2]\" ] ; then
+			echo \"$PROGNAME: %q[1:1]: missing key file %q[1:2]\"
+		fi
+		INTO=\`mmsrc -b INTO\`
+		CSD=\`echo \$INTO |sed -e \"s:/usr/src:\$MSRC_ROOT:\"\`
+		ALT=\`echo \$INTO |sed -e \"s:/usr/src:\$MSRC_ROOT/usr:\"\`
+		if [ _\"%q[1:1]\" != _\$CSD -a _\"%q[1:1]\" != _\$ALT ] ; then
+			echo \"\$PROGNAME: %q[1:1]: recipe INTO does not match msrc location:\"
+			echo \"	INTO=\$CSD and actual=%q[1:1]\"
+		fi
+		co -q -r'%[1:3]' -p \"%q[1:2]\" >/dev/null ||
+			echo \"\$PROGNAME: %1[1:1]: co -r%[1:3] %[1:2] failed\"
+		" $IDS/list
+	;;
+list)
+	if [ ! -s $IDS/list ] ; then
+		cp $IDS/level2 $IDS/list
+	fi
+	cat $IDS/list
+	;;
+restore)	# put the tar files back into /usr/msrc ($MSRC_ROOT really)
+	export IDS MSRC_ROOT
+	if [ _/usr/src = _"$MSRC_ROOT" ] ; then
+		echo "$PROGNAME: /usr/src is not a correct place to root the master source" 1>&2
+		exit 65
+	fi
+	xapply -f -e 'F=%[1/$.-$]' "set -e
+		tar zxf %q1 -C \$IDS \$F/[Mm]src.mk 2>/dev/null ||
+		tar zxf %q1 -C \$IDS \$F/[Mm]akefile
+		if [ ! -d \$IDS/\$F ] ; then
+			echo \"$PROGNAME: \$F: no files extracted\" 1>&2
+			exit 0
+		fi
+		TO=\`cd \$IDS/\$F && mmsrc -b INTO\`
+		rm -rf \$IDS/\$F
+		if expr _\"\$TO\" : '.*/Pkgs/.*' >/dev/null ; then
+			echo \"$PROGNAME: %q1: is a level3 package\" 1>&2
+			exec level3s restore \"%q1\"
+			exit 70		# EX_SOFTWARE
+		fi
+		IN=\`echo \$TO |sed -e \"s:/usr/src:\$MSRC_ROOT:\"\`
+		if [ -z \"\$TO\" ] ; then
+			echo \"$PROGNAME: \$F: recipe missing INTO macro?\" 1>&2
+			exit 0
+		fi
+		if [ _\"\$IN\" = _\"\$TO\" ] ; then
+			echo \"$PROGNAME: \$F: not rooted at /usr/src\" 1>&2
+			echo \"$PROGNAME: INTO=\$TO\" 1>&2
+			exit 0
+		fi
+		if [ -d \"\$IN\" ] ; then
+			echo \"$PROGNAME: \$IN: directory exists\" 1>&2
+			exit 0
+		fi
+		mkdir -p -m 2775 \$IN
+		tar zxf %q1 -C \$IDS
+		mv \$IDS/\$F/* \$IN
+		rm -rf \$IDS/\$F
+		# We set the group on the extracted files to source, note
+		# that is is local site policy.
+		chgrp -R \${SOURCE} \$IN" $IDS/list
+	;;
+rpm)	# Take a build tar file and turn it into RPMs (with anderson)
+	# We do this w/o xapply for the boot-strap case -- ksb
+	for P1 in `cat $IDS/list`
+	do
+		if ! [ -s $P1 ] ; then
+			echo "$PROGNAME: rpm: $P1: must be a gzipped-tar file" 1>&2
+			continue
+		fi
+		KEYTMP=$IDS/l2skeyuser
+		if grep ^%_gpg_name ~/.rpmmacros 2>&1 >/dev/null ; then
+			grep ^%_gpg_name ~/.rpmmacros 2>/dev/null | sed -e 's/^%_gpg_name[\ 	]*//g' > $KEYTMP
+		fi
+		if [ -e $KEYTMP ] ; then
+			HAVEKEYS=`gpg --list-keys 2>/dev/null| fgrep -f $KEYTMP 2>/dev/null`
+			rm $KEYTMP
+		fi
+		if [ -f /etc/redhat-release ]; then
+			VERS=`sed -e 's/^.*\ \([1-9][0-9]*\)\.*[0-9]*[0-9]*\ .*/\1/' /etc/redhat-release`
+			if grep ^Red\ Hat /etc/redhat-release >/dev/null; then
+				OSTYPE="el"
+			fi
+			if grep ^CentOS /etc/redhat-release >/dev/null; then
+				OSTYPE="el"
+			fi
+			if grep ^Fedora /etc/redhat-release >/dev/null; then
+				OSTYPE="fc"
+			fi
+			: ${OSTYPE:="unk"}
+			OSDIST=".$OSTYPE$VERS"
+			#RPM_BUILD_FLAGS="$RPM_BUILD_FLAGS --define=\"osdist $OSDIST\" "
+		fi
+		if [ ! -z "$HAVEKEYS" ] ; then
+			RPM_BUILD_FLAGS="$RPM_BUILD_FLAGS --sign"
+		fi
+		export RPM_BUILD_FLAGS OSDIST
+		(
+		set -e
+		B1=${P1%.*}	# %[1.-$]
+		N1=${P1%%-*}	# %[1-1]
+		tar xzf $P1 $B1/ITO.spec
+		chown root:root $P1 $B1/ITO.spec 2>/dev/null || true
+		REL=`grep ^[Rr]elease: $B1/ITO.spec | sed s/[^0-9]//g`
+		mv $B1/ITO.spec $RPM_ROOT/SPECS/$N1.spec
+		grep ^Release.*osdist $RPM_ROOT/SPECS/$N1.spec > /dev/null || ( sed -e '/^Release:/s/$/%{osdist}/' $RPM_ROOT/SPECS/$N1.spec >/tmp/$N1.spec && cp /tmp/$N1.spec $RPM_ROOT/SPECS/$N1.spec )
+		rmdir $B1
+		rm -f $RPM_ROOT/SOURCES/$N1-*.*
+		mv $P1 $RPM_ROOT/SOURCES/
+		rpmbuild -ba --define="osdist $OSDIST" $RPM_BUILD_FLAGS $RPM_ADD $RPM_ROOT/SPECS/$N1.spec
+		rpm -U $RPM_ROOT/RPMS/$BUILD_ARCH/$B1-$REL$OSDIST.$BUILD_ARCH.rpm
+		)
+	done
+	;;
+cpan2rpm)	# Take a CPAN tar file and turn it into RPMs (with ksb)
+	for P1 in `cat $IDS/list`
+	do
+		if ! [ -s $P1 ] ; then
+			echo "$PROGNAME: cpan2rpm: $P1: must be a gzipped-tar file" 1>&2
+			continue
+		fi
+		KEYTMP=$IDS/l2skeyuser
+		if grep ^%_gpg_name ~/.rpmmacros 2>&1 >/dev/null ; then
+			grep ^%_gpg_name ~/.rpmmacros 2>/dev/null | sed -e 's/^%_gpg_name[\ 	]*//g' > $KEYTMP
+		fi
+		if [ -e $KEYTMP ] ; then
+			HAVEKEYS=`gpg --list-keys 2>/dev/null| fgrep -f $KEYTMP 2>/dev/null`
+			rm $KEYTMP
+		fi
+		if [ ! -z "$HAVEKEYS" ] ; then
+			RPM_BUILD_FLAGS="--sign"
+			export RPM_BUILD_FLAGS
+		fi
+		(
+		set -e
+		# go ahead and die if we are an old perl
+		perl -e 'if (! $^V) { print "perl is too old for this\n"; exit (1); }'
+		PERLVER=`perl -e 'printf "%vd\n", $^V;'`
+		BASE=`basename $P1`
+		# earlier B1 B2 logic didn't work for things that MSRC makes
+		# that are MakeMakered (i.e. named .tgz)
+		B2=`echo $BASE | sed -e 's/\.ta*r*\.*gz//'` # strip off extn
+		cd $IDS
+		tar zxf $P1
+		cd $B2
+		X=`find . \( -name \*.c -or -name \*.h -or -name \*.xs \) -exec perl -e 'printf "%vd\n", $^V;' \; | uniq`
+		if [ ! -z "$X" ] ; then
+			X="perl$X"
+		fi
+		if [ 0 -eq `find . -name Makefile.PL | wc -l` ] ; then
+			echo "$PROGNAME: need Makefile.PL" 1>&2
+			exit 66
+		fi
+		IBASE=/usr/local
+		IARCH=$IBASE/lib/sac/$X
+		IBIN=$IBASE/bin
+		IMAN1=$IBASE/man/man1
+		IMAN3=$IBASE/man/man3
+		if ! whence pod2text >/dev/null ; then
+			echo "$PROGNAME: need pod2text" 1>&2
+			exit 66
+		fi
+		PKGNAME=`echo $BASE | perl -lane 'for ($F[0]) { s/^(.*?)(-\d.*)$/\1/; print $_;}'`
+		PKGVERS=`echo $BASE | perl -lane '@foo=split(/-/,$F[0]); for ($foo[$#foo]) { s/\.ta*r*\.*gz$//; s/(\.\d+)\./\1_/g; ($maj,$min) = split(/_/); if (defined $min ) { print "$maj.$min"; } else { print "$maj";}  }'`
+		USEFILE=`find . -type f | grep $(echo $PKGNAME.pm | sed s#-#/#) | head -n 1`
+		if [ -z "$USEFILE" ] ; then
+			USEFILE=`find . -type f | grep $(echo $PKGNAME.pm | sed s#^[^-]*-#/#) | head -n 1`
+		fi
+		if [ -z "$USEFILE" ] ; then
+			echo "$PROGNAME: no usable file for getting descriptions" 1>&2
+			exit 66
+		fi
+		SHORTDESCR=`pod2text $USEFILE |perl -00 -e 'while (<>) { if ( $_ =~ /^NAME\n(.*?)\n/) { print "$1\n\n"; } }'`
+		LONGDESCR=`pod2text $USEFILE |perl -00 -e 'while (<>) { if ($_ =~ /DESCRIPTION.*?\n(.*?)\n/) { s/DESCRIPTION\n//; print $_; } }'`
+		BUILDER="`date +\"* %a %b %d %Y\"` `whoami`@`uname -n`"
+		OUT=$RPM_ROOT/SPECS/perl-$PKGNAME.spec
+		cat <<RPM_SPEC_END >$OUT
+%define _tmpdir			/tmp
+%define _local_prefix		$IBASE
+%define _local_parch		$IARCH
+%define _local_pbin		$IBIN
+%define _local_doc1dir		$IMAN1
+%define _local_doc3dir		$IMAN3
+%define debug_package %{nil}
+
+%define distguess %(cat /etc/{redhat,fedora,suse,ubuntu}-release | sed -e 's/Fedora Core/fc@/; s/Fedora/f@/; s/Red Hat[^0-9]*\(Enterprise|Server\)*[^0-9]*/rhel@/; s/Red Hat[^0-9]*/rh/; s/.*Suse[^0-9]*/se@/; s/Ubuntu[^0-9]*/ubuntu@/; s/@[^0-9]*//;s/\([0-9][0-9]*\)[^0-9][^0-9]*\([0-9][0-9]*\)/\1_\2/; s/[^0-9]*$//')
+%{!?dist:%define dist .%{distguess}}
+
+
+Name:		perl-$PKGNAME
+Version:	$PKGVERS
+Release:	1%{?dist}
+BuildRoot:	%{_tmpdir}/%{name}-%{version}-%{release}
+Vendor:		cpan.perl.org
+Packager:	NPCGuild.org
+Summary:	perl module for $SHORTDESCR
+Group:		Utilities
+License:	BSD
+URL:		http://search.cpan.org/search?query=$PKGNAME&mode=all
+Autoreq:	0
+BuildRequires:	gcc m4 perl
+Requires:	/bin/ksh perl
+Source:		$P1
+Source0:	$P1
+%description
+$LONGDESCR
+
+%prep
+%setup -q -n $B2
+%build
+%install
+umask 022
+
+perl -I$IBASE/lib -I$IBASE/lib/sac -I$IBASE/lib/sac/perl$PERLVER \
+	Makefile.PL \
+	INSTALLARCHLIB=\$RPM_BUILD_ROOT/%{_local_parch} \
+	INSTALLSITEARCH=\$RPM_BUILD_ROOT/%{_local_parch} \
+	INSTALLVENDORARCH=\$RPM_BUILD_ROOT/%{_local_parch} \
+	INSTALLPRIVLIB=\$RPM_BUILD_ROOT/%{_local_parch} \
+	INSTALLSITELIB=\$RPM_BUILD_ROOT/%{_local_parch} \
+	INSTALLVENDORLIB=\$RPM_BUILD_ROOT/%{_local_parch} \
+	INSTALLBIN=\$RPM_BUILD_ROOT/%{_local_pbin} \
+	INSTALLSITEBIN=\$RPM_BUILD_ROOT/%{_local_pbin} \
+	INSTALLVENDORBIN=\$RPM_BUILD_ROOT/%{_local_pbin} \
+	INSTALLSCRIPT=\$RPM_BUILD_ROOT/%{_local_pbin} \
+	INSTALLSITESCRIPT=\$RPM_BUILD_ROOT/%{_local_pbin} \
+	INSTALLVENDORSCRIPT=\$RPM_BUILD_ROOT/%{_local_pbin} \
+	INSTALLMAN1DIR=\$RPM_BUILD_ROOT/%{_local_doc1dir} \
+	INSTALLSITEMAN1DIR=\$RPM_BUILD_ROOT/%{_local_doc1dir} \
+	INSTALLVENDORMAN1DIR=\$RPM_BUILD_ROOT/%{_local_doc1dir} \
+	INSTALLMAN3DIR=\$RPM_BUILD_ROOT/%{_local_doc3dir} \
+	INSTALLSITEMAN3DIR=\$RPM_BUILD_ROOT/%{_local_doc3dir} \
+	INSTALLVENDORMAN3DIR=\$RPM_BUILD_ROOT/%{_local_doc3dir}
+make
+make install
+find \$RPM_BUILD_ROOT -depth -type d -name OLD -exec rm -rf \{\} \;
+find \$RPM_BUILD_ROOT \( -name perllocal.pod -o -name .packlist \) -exec rm -v \{\} \;
+find \$RPM_BUILD_ROOT/usr -type f | \
+	sed "s@^\$RPM_BUILD_ROOT@@g" | \
+	grep -v \/man[13]\/ > %{name}.filelist
+if [ "_\$(cat %{name}.filelist)X" = "_X" ]; then
+	echo "$PROGNAME: EMPTY FILELIST" 1>&2
+	exit 70
+fi
+
+%clean
+# Do not confilct with the next user of the fixed-path build directory
+rm -rf %{buildroot}
+%files -f %{name}.filelist
+%defattr(-,root,root)
+%doc %{_local_prefix}/man/*/*
+
+%changelog
+$BUILDER
+- Built the specfile with automation $PROGNAME
+RPM_SPEC_END
+	cd -
+	mv $P1 $RPM_ROOT/SOURCES/
+	rpmbuild -ba $RPM_BUILD_FLAGS $OUT
+	rpm -U $RPM_ROOT/RPMS/$BUILD_ARCH/perl-$PKGNAME-$PKGVERS-1.$BUILD_ARCH.rpm
+	)
+	done
+	;;
+-V*|version)
+	echo "$PROGNAME: "'$Id: level2s,v 4.45 2012/06/19 19:10:21 ksb Exp $'
+	echo "$PROGNAME: template for private file space: $TMPL"
+	NOTE=""
+	[ ! -d "$RPM_ROOT" ] && NOTE=" [nonexistant]"
+	echo "$PROGNAME: \$RPM_ROOT: $RPM_ROOT" "$NOTE"
+	echo "$PROGNAME: \$BUILD_ARCH: $BUILD_ARCH"
+	NOTE=""
+	[ ! -d "$MSRC_ROOT" ] && NOTE=" [nonexistant]"
+	echo "$PROGNAME: \$MSRC_ROOT: $MSRC_ROOT" "$NOTE"
+	echo "$PROGNAME: mk flags: -t $IAMIN"
+	;;
+-h*|help)
+	echo "$PROGNAME: usage {build|help|missing|msync|rpm|cpan2rpm|restore|sane} [product-list]"
+	echo "$PROGNAME: usage -h"
+	echo "$PROGNAME: usage -V"
+
+	echo "build    build all packages, missing or not"
+	echo "help     this text"
+	echo "list     list the generated table of level2 products"
+	echo "missing  list all the level2 tar files missing from our pwd"
+	echo "msync    output msync status for every product source directory"
+	echo "rpm      extract ITO.spec and build RPMs from local tar files, reads \$RPM_ADD"
+	echo "cpan2rpm build a .spec file and RPMs from cpan tar files, reads \$RPM_ADD"
+	echo "restore  put the msrc directory back from the tar files"
+	echo "sane     run some sanity checks on each level2 product"
+	;;
+esac
+exit 0

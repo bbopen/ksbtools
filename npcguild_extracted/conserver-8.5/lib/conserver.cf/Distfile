@@ -1,0 +1,15 @@
+# $Id: Distfile,v 7.1 1999/01/10 00:32:24 ksb Exp $
+#
+# there comes a time to make amends
+# never to late to try again
+# to save our soul
+#
+( . ) -> ( HOST )
+	except_pat ( /RCS /Distfile /Make.host /Makefile /pod .m4);
+	install ${INTO} ;
+
+( @Make.host@ ) -> ( HOST )
+	install ${INTO}/Makefile ;
+
+( @conserver.m4@ ) -> ( HOST )
+	install -b ${INTO}/conserver.cf ;

@@ -1,0 +1,9 @@
+$Id: TODO,v 1.2 1993/10/15 13:34:34 bj Exp $
+
+Reset ws_row/ws_col
+
+chdir("/")
+
+ptyd -V report client and server versions
+
+ksb

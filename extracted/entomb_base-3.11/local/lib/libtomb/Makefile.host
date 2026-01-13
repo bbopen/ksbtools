@@ -1,0 +1,111 @@
+`# $Id: Makefile.host,v 3.16 2000/11/03 15:20:30 ksb Exp $
+#
+#	Makefile for "libtomb"
+#	By ksb and Matthew Bradburn, PUCC Unix Group
+
+SHELL=/bin/sh
+PROG= libtomb.a
+LIBDEST= ${DESTDIR}/usr/local/lib
+CPP=/lib/cpp
+
+S=/usr/include/sys
+I=/usr/include
+
+INCLUDE= 
+CDEFS=	-D'HOSTTYPE`'ifelse(
+HOSTTYPE,`IBMR2',` -DAIX_LIB_FAKE',
+HOSTTYPE,`SUN5',` -DNEED_PROTO_DEFINE',
+HOSTTYPE,`SUN4',`-DDEFAULT_EV="\"no,copy:*.o:a.out:core:y.output:y.tab.?:lex.yy.?\""',
+`')`
+DEBUG=	-O
+CFLAGS=	${DEBUG} ${CDEFS} ${INCLUDE}
+CC=	'ifelse(HOSTTYPE,`AIX4',`bsdcc',`gcc')`
+
+HDR=	libtomb.h debug.h
+SRC= 	libtomb.c debug.c ecreat.c eopen.c erename.c etruncate.c eunlink.c
+OBJ= 	libtomb.o debug.o 'ifelse(HOSTTYPE,`NETBSD',`',HOSTTYPE,`FREEBSD',`',`ecreat.o ')`eopen.o erename.o etruncate.o eunlink.o
+MAN=	libtomb.man
+SOURCE= README TODO Makefile ${HDR} ${SRC} ${MAN}
+
+
+'ifelse(
+HOSTTYPE,`IBMR2',
+`all: ${OBJ} libsys_r.a
+
+libsys_r.a:$P libsys_r.c
+	${CC} -o $@ libsys_r.c -bM:SRE -e_nostart -bE:libsys_r.exp
+',
+``all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	ar vrc $@ ${OBJ}'ifelse(
+HOSTTYPE,`SUN5',`',`
+	ranlib $@')')`
+
+clean: FRC
+	rm -f Makefile.bak a.out core *.a *.s *.o
+
+depend: ${SRC} ${HDR} FRC
+	maketd ${CDEFS} ${INCLUDE} ${SRC}
+
+distrib: FRC
+	distrib -c ${LIBDEST}/${PROG}
+
+'ifelse(HOSTTYPE,`IBMR2',
+`pre_install: libsys_r.a
+	install -c -l -m 644 libsys_r.a ${LIBDEST}/libsys_r.a
+
+install: ${OBJ} pre_install
+	${CC} -o ${PROG} -bM:SRE -e_nostart ${OBJ} -L ${LIBDEST} -lsys_r -bE:libtomb.exp
+	install -c -l -m 644 ${PROG} ${LIBDEST}/${PROG}',
+
+`install: all ${LIBDEST}
+	install -c -l -m 644 ${PROG} ${LIBDEST}/${PROG}')`
+
+mkcat: ${MAN}
+	mkcat -t ${MAN}
+
+lint: ${HDR} ${SRC} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${SRC}
+
+print:  Makefile ${HDR} ${SRC} FRC
+	 lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR}
+	ctags -t ${SRC} ${HDR}
+
+${SOURCE}:
+	co -q $@
+
+${LIBDEST}:
+	install -rdv $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+libtomb.o: libtomb.c libtomb.h
+
+entomb.o: fslist.h debug.h entomb.c entomb.h libtomb.h
+
+debug.o: debug.c debug.h libtomb.h
+
+dink.o: dink.c libtomb.h
+
+ecreat.o: ecreat.c libtomb.h
+
+eopen.o: eopen.c libtomb.h
+
+erename.o: erename.c libtomb.h
+
+etruncate.o: etruncate.c libtomb.h
+
+eunlink.o: eunlink.c libtomb.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

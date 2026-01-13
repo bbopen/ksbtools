@@ -1,0 +1,88 @@
+`# Makefile for ptyd and getpsuedotty
+# $Id: Make.host,v 1.24 2000/06/20 14:06:09 ksb Exp $
+
+SHELL=/bin/sh
+ETC=	${DESTDIR}/usr/local/etc
+LIBSRC=	../../lib/libptyd
+
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE= -I${LIBSRC}
+DEBUG=	-O
+CDEFS=  -D'HOSTTYPE`
+CFLAGS=	${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	'ifelse(MKCMD,`no',`main.h ')`daemon.h machine.h
+SRC=	'ifelse(MKCMD,`no',`main.c ')`daemon.c ptyd.c logutmp.c
+GENC=	'ifelse(MKCMD,`no',`',`main.c ')`
+GENH=	'ifelse(MKCMD,`no',`',`main.h ')`
+GEN=	${GENC} ${GENH}
+DEP=	${GENC} ${SRC}
+OBJ=	main.o ptyd.o logutmp.o daemon.o 
+OTHER=	README TODO S82ptyd ptyd.m
+SOURCE=	Makefile ${OTHER} ${HDR} ${SRC}
+MAN=	ptyd.man
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ptyd
+
+ptyd:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}'ifelse(
+HOSTTYPE,`NETBSD',` -lutil')`
+
+'ifelse(MKCMD,`no',`',
+`main.h: main.c
+
+main.c: ptyd.m
+	mkcmd ptyd.m
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated) )
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated) )
+	rm -f prog.[ch]
+')`
+clean: FRC
+	rm -f Makefile.bak ptyd maintest *.o a.out core errs tags ${GEN}
+
+depend: ${SRC} ${HDR} ${GEN} FRC
+	maketd -a ${CDEFS} ${INCLUDE} ${DEP} 
+
+dirs: ${ETC}
+
+install: all dirs FRC
+	install -c -s ptyd ${ETC}
+
+distrib: FRC
+	distrib -c ${ETC}/ptyd HOST
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat:	${MAN} FRC
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"ptyd source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} 
+	ctags -t ${SRC}
+
+${ETC}:
+	install -d -r $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

@@ -1,0 +1,8 @@
+# $Id: Distfile,v 8.0 1996/03/13 15:44:36 kb207252 Dist $
+
+( . ) -> ( HOST )
+	except_pat ( Distfile /RCS Makefile.* Make.host );
+	install ${INTO} ;
+
+( @Make.host@ ) -> ( HOST )
+	install -b ${INTO}/Makefile ;

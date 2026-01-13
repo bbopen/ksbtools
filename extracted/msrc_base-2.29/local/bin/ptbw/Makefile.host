@@ -1,0 +1,135 @@
+`# $Id: Makefile.host,v 1.14 2008/11/13 23:10:31 ksb Exp $
+#
+#	master Makefile for ptbw (parallel token broker, wrapper)
+'define(M4_HAVE_BSDCRED,ifelse(
+HOSTTYPE,`FREEBSD',`yes',
+HOSTTYPE,`NETBSD',`yes',
+HOSTTYPE,`OPENBSD',`yes',
+`no'))dnl
+`
+PROG=	ptbw
+BIN=	${DESTDIR}/usr/local/bin/
+LIB=	${DESTDIR}/usr/local/lib/explode
+DOC=	${DESTDIR}/usr/local/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE=
+DEBUG=	
+CDEFS=  -D'HOSTTYPE` -DHOSTOS='HOSTOS`'ifelse(
+HOSTTYPE,LINUX,` -D_GNU_SOURCE')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+GENC=	ptbw.c setenv.c fdwrapper.c
+GENH=	ptbw.h setenv.h fdrights.h
+GEN=	${GENC} ${GENH}
+HDR=	machine.h
+SRC=	machine.c
+DEP=	${GENC} ${LINKC} ${SRC}
+OBJ=	ptbw.o'ifelse(
+M4_HAVE_BSDCRED,`yes',`')` fdwrapper.o'dnl
+ifelse(HOSTTYPE,`SUN5',` setenv.o mkdtemp.o',
+HOSTTYPE,`IBMR2',` setenv.o mkdtemp.o',
+HOSTTYPE,`HPUX11',` setenv.o mkdtemp.o')`'dnl
+` machine.o
+MAN=	ptbw.man
+OTHER=	README TODO
+# explode export modules
+EEXP=	ptbc.m ptbc.html
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC} ${EEXP}
+
+all: ${PROG} ${EEXP}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}'ifelse(
+HOSTTYPE,`SUN5',` -lsocket -lnsl')`
+
+ptbw.h: ptbw.c
+
+ptbw.c: ${PROG}.m ptbc.m util_nproc.m util_nproc.mc util_nproc.mh util_nproc.mi
+	mkcmd ${PROG}.m
+	-(cmp -s prog.c main.c || (cp prog.c ptbw.c && echo ptbw.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h ptbw.h && echo ptbw.h updated))
+	rm -f prog.[ch]
+
+setenv.c setenv.h fdrights.h:
+	explode -s $@
+
+fdwrapper.c:
+	MACHINE_H="#include \"machine.h\"" explode -u explode -o - -u wrapper,recv fdrights.c  >$@
+
+mkdtemp.c:
+	explode -u dtemp mk.c
+
+boot: all dirs FRC
+	install -c ${PROG} ${BIN}/${PROG}
+	for i in ${EEXP} ; do \
+		cmp -s $$i ${LIB}/$$i || install -c -m 444 $$i ${LIB}/$$i ;\
+	done
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} ${LINK} *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} ${LINK} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${BIN} ${LIB}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all dirs FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+	for i in ${EEXP} ; do \
+		cmp -s $$i ${LIB}/$$i || install -c -m 444 $$i ${LIB}/$$i ;\
+	done
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${BIN} ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+ptbw.o: ptbw.c fdrights.h machine.h
+
+machine.o: machine.c machine.h
+
+setenv.o: setenv.c
+
+fdwrapper.o: fdwrapper.c fdrights.h machine.h
+
+mkdtemp.o: mkdtemp.c machine.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

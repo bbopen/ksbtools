@@ -1,0 +1,33 @@
+# $Id: README,v 2.4 2011/09/14 16:35:05 ksb Exp $
+
+Only unique elements (oue) is a filter that represents the
+common perl idiom where we touch a key in a hash for each
+element to "next" a loop to avoid duplicate processing.
+
+This has a clear advantage over "sort -u", we start working on
+the first element almost immediately.  It also has some very clever
+uses in an xapply pipe-line.
+
+$ data-source | oue | xapply -f 'template' -
+The obvious one, process only the unique input items, less obvious
+is that is starts almost as soon as "data-source" outputs the first
+line.
+
+$ data-source | xapply -f -P5 -m 'template' - | oue
+Still pretty obvious, only output the unique results.
+
+$ MY_HASH=/tmp/$$.$((RANDOM%100))
+$ export MY_HASH
+$ oue -D $MY_HASH /dev/null
+$ data-source | xapply -P7 'template | oue -D$MY_HASH' -
+$ rm $MY_HASH
+
+A little less obvious, we lock the common tied-hash before we update it,
+so this only outputs unique elements, but from any of the 7 xapply
+children in some order.  Some applications might put the '-m' in the xapply
+flags (I would).
+
+In ksh you can use oue as a co-process, if you are careful.
+
+--
+ksb, Sep 2011, xapply@ksb.npcguild.org

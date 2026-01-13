@@ -1,0 +1,40 @@
+# $Id: README,v 3.0 1997/10/25 19:49:19 ksb Exp $
+
+[You'll need msrc0 and mkcmd if you've not done this before. -- ksb]
+
+This package contains the source to three of my lesser works for
+advanced process and pipe management.
+
+xapply	version Three (3.2)
+	Replaces both xargs and apply in one better tool.
+
+	Extended apply does most everything apply does, and all the
+	best parts of xargs.  It should take the GNU `-null' switch to
+	handle input from GNU find.  [But doesn't.]
+
+	Version 3.X has a nice string chopper that makes taking passwd
+	file-like or email addresses a snap. (E.g. %[3@1] is the login
+	part of the third email address.)
+
+curly	version Three (3.3)
+uncurly
+	Expand a list of filenames (strings) like the csh(1) curly brace
+	list does.  Uncurly "undoes" this to build a such an expression.
+	This is handy to store long lists in a compressed format.
+
+Tee	version Two (2.5)
+	Replaces /bin/tee with a program for bigger jobs.  Will handle
+	as many file descriptors as the kernel will open (forks to get
+	more when a single process won't do) and will write to processes
+	on a pipe (Tee '|wc -l') to replace most of what people use perl
+	for :-).
+
+flock	version Two (2.5) [Featured in a magazine a while back.]
+	Lock a file and run shell command.  Used to sync unrelated
+	processes (such as those started by Tee or xapply).
+
+in a later release I'll include the others like this.  But not yet.
+
+
+--
+ksb, Oct 1997, ksb@fedex.com

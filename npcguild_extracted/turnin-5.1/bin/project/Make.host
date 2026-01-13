@@ -1,0 +1,106 @@
+`#	$Id: Make.host,v 4.3 2000/06/20 14:08:32 ksb Exp $
+#
+#	Makefile for project
+#
+# if you do nat have strcasecmp in libc get it and add it to SRC and OBJ
+# (Berkeley has a free one, mkcat uses that one)
+
+SHELL=/bin/sh
+PROG=	project
+BIN=	${DESTDIR}/usr/local/bin
+
+L=/usr/'ifelse(HOSTTYPE,`SUN5',`local/`include'',``include'/local')`
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE= -I$L
+DEBUG=	-O
+CDEFS=  -D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+'
+dnl
+dnl Decide if we need setenv(3) source
+dnl
+define(SEND_SETENV,ifelse(
+HOSTTYPE,`NEXT2',`yes',
+HOSTTYPE,`HPUX7',`yes',
+HOSTTYPE,`HPUX8',`yes',
+HOSTTYPE,`HPUX9',`yes',`no'))dnl
+dnl
+`HDR=	machine.h
+SRC=	project.c
+OBJ=	main.o project.o'ifelse(
+SEND_SETENV,`yes',` setenv.o')`'ifelse(
+HOSTTYPE,CONSENSYS,` strcasecmp.o')`
+GENC=	main.c setenv.c strcasecmp.o
+GENH=	main.h
+GEN=	${GENC} ${GENH} machine.HPUX7
+DEP=	${GENC} ${SRC}
+OTHER=	project.m path.m path.mh
+MAN=	project.man
+SOURCE=	Makefile ${HDR} ${SRC} ${MAN} ${OTHER}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}
+
+main.h: main.c
+
+main.c: project.m
+	mkcmd project.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -rf prog.[ch]
+
+setenv.c strcasecmp.c:
+	explode $@
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} *.o a.out core errs tags
+
+depend: ${HDR} ${SRC} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+project.o: machine.h project.c
+
+setenv.o: setenv.c
+
+strcasecmp.o: strcasecmp.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

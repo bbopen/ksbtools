@@ -1,0 +1,1174 @@
+'\" te
+.\" $Id: hxmd.man,v 1.93 2010/07/26 17:24:35 ksb Exp $
+.\" by KS Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: groff -tbl -Tascii -man %f | ${PAGER:-less}
+.\" $Display(*): groff -tbl -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man8/hxmd.8
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt][18]/hxmd.[18]*
+.TH HXMD 8 LOCAL
+.SH NAME
+hxmd \- collate the output from macro expanded shell commands executed in parallel
+
+.SH SYNOPSIS
+.ds PN "hxmd
+\fI\*(PN\fP [\fB\-gnsz\fP] [\fB\-\fP\fIpreload\fP] [\fB\-B\fP\~\fInames\fP] [\fB\-c\fP\~\fIcmd\fP] [\fB\-C\fP\~\fIconfig\fP] [\fB\-d\fP\~\fIflags\fP] [\fB\-E\fP\~\fIcompares\fP] [\fB\-F\fP\~\fIliteral\fP] [\fB\-G\fP\~\fIguard\fP] [\fB\-j\fP\~\fIm4prep\fP] [\fB\-k\fP\~\fIkey\fP] [\fB\-K\fP\~\fIfilter\fP] [\fB\-o\fP\~\fIattributes\fP] [\fB\-Q\fP\~\fIward\fP] [\fB\-r\fP\~\fIredo\fP] [\fB\-X\fP\~\fIex-config\fP] [\fB\-Y\fP\~\fItop\fP] [\fB\-Z\fP\~\fIzero-config\fP] [\fIxapply-opts\fP] [\fIxclate-opts\fP] [\fIm4-opts\fP] \fIcontrol\fP [\fIfiles\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.sp
+.SH "COMPLETE"
+.br
+\fI\*(PN\fP [\fB\-Agnsvxz\fP] [\fB\-\fP\fIpreload\fP] [\fB\-a\fP\~\fIc\fP] [\fB\-B\fP\~\fInames\fP] [\fB\-c\fP\~\fIcmd\fP] [\fB\-C\fP\~\fIconfig\fP] [\fB\-d\fP\~\fIflags\fP] [\fB\-D\fP\~\fIname=value\fP] [\fB\-e\fP\~\fIvar=dicer\fP] [\fB\-E\fP\~\fInames\fP] [\fB\-G\fP\~\fIguard\fP] [\fB\-H\fP\~\fIhr\fP] [\fB\-i\fP\~\fIinput\fP] [\fB\-I\fP\~\fIdirname\fP] [\fB\-j\fP\~\fIm4prep\fP] [\fB\-J\fP\~\fItasks\fP] [\fB\-k\fP\~\fIkey\fP] [\fB\-K\fP\~\fIfilter\fP] [\fB\-L\fP\~\fIcap\fP] [\fB\-M\fP\~\fIprefix\fP] [\fB\-N\fP\~\fIelse\fP] [\fB\-o\fP\~\fIattributes\fP] [\fB\-O\fP\~\fIoutput\fP] [\fB\-P\fP\fIjobs\fP] [\fB\-R\fP\~\fIreq\fP] [\fB\-Q\fP\~\fIward\fP] [\fB\-r\fP\~\fIredo\fP] [\fB\-S\fP\~\fIshell\fP] [\fB\-t\fP\~\fItags\fP] [\fB\-T\fP\~\fItitle\fP] [\fB\-U\fP\~\fIname\fP] [\fB\-W\fP\~\fIwidow\fP] [\fB\-Z\fP\~\fIzero-config\fP] \fIcontrol\fP [\fIfiles\fP]
+.br
+
+.sp
+.SH DESCRIPTION
+\fBHxmd\fP is a front-end for \fBxapply\fP and \fBm4\fP which uses
+\fBxclate\fP to collate the output from the many parallel tasks.
+The positional parameter \fIcontrol\fP
+is a shell command expanded by \fBm4\fP then passed on to
+\fBxapply\fP(1L) for parallel execution.  When the \fIcontrol\fP
+string is the empty string \fI\*(PN\fP substitutes
+the macro \fBHX_CMD\fP in the hope that it is
+defined in the \fIconfig\fP file.
+
+.P
+Each of the \fIfiles\fP presented on the command line is
+processed through \fBm4\fP to create a customized file for
+the hosts selected.
+Each file is available via the \fBxapply\fP
+percent expander, as well as an \fBm4\fP macro named for its
+position on the command-line (prefixed with \*(lqHXMD_\(rq).
+
+.P
+Any one of \fIfiles\fP, \fIzero-config\fP, \fIconfig\fP, \fIcontrol\fP
+may be drawn from \fIstdin\fP with the common dash (\-) name.  Note that
+only one of these may be active in any instance of \fI\*(PN\fP.
+
+.P
+If \fBm4\fP fails to expand any of \fIfiles\fP or the \fIcontrol\fP
+the selected host is skipped, but processing continues with the
+next selected host.  This allows the \fBm4\fP macro \fIm4exit\fP to
+reject a host at the last possible instant.
+
+.SH OPTIONS
+The environment variable $\fBHXMD\fP is read for options before
+any explicit arguments, unless the environment variable $\fBHXMD_PASS\fP
+is set to a non-empty string, in which case it is read.
+Many options are passed through to another processor, for those
+see the manual page for the specified command.
+.TP
+.nf
+\fB\-\fP\fIpreload\fP
+.fi
+The number of tasks held ready in addition to those running.  This allows
+\fB\*(PN\fP to launch the next task immediately after a task finishes.
+The default of 2 usually works fine, unless the preparation time for
+each host is quite long compared to the update time.
+Since task preparation is always done sequentially this number doesn't
+drive the concurrent demand for CPU as high as \fB\-P\fP does.
+.TP
+\fB\-A\fP
+Passed on the \fBxapply\fP to present elements from \fItags\fP as
+shell parameters.
+.TP
+\fB\-a\fP \fIc\fP
+Passed to \fBxapply\fP as given.
+.TP
+\fB\-B\fP \fInames\fP
+Each of the \fIname\fP macros must be defined (to any value) in a specified
+configuration file (under \fB\-C\fP, \fB\-X\fP, or \fB\-Z\fP)
+for a host to be selected.
+Alternately any of \fInames\fP may be prefixed with
+an exclamation mark (`!') to select hosts which do not
+have that macro name defined.
+.sp
+When multiple \fInames\fP are specified (separated by a comma (`,')
+or as multiple \fB\-B\fP options) each \fIname\fP must be satisfied for
+the host to be selected.
+.TP
+\fB\-B\fP \fInumber\fP
+When multiple \fIconfig\fP files are presented a count of the number
+of files that define a host may be matched to synthesize an
+intersection (\fB\-B 2\fP) or disjunction (\fB\-B 1\fP) relationship.
+Each file presented to \fB\-C\fP or \fB\-Z\fP which
+defines the host (at least once) adds one to this counter.
+.TP
+\fB\-c\fP \fIcmd\fP
+Specify a custom \fIcmd\fP for \fBxapply\fP, rather than "%+".
+This option is provided for alternate shells, mostly.
+There is little reason to change the default.
+.\" unless you grok why the option is provided, viz. no macro processing. --ksb
+.TP
+\fB\-C\fP \fIconfig\fP
+The list of hosts and attributes in the same format \fBdistrib\fP used.
+Multiple configuration files may be presented, the first definition
+of any macro attribute for a given hosts remains in effect.
+Multiple \fIconfig\fP files may be separated by a colon (`:').
+Any \fIconfig\fP specification of a directory searches that directory
+for a file with the name of the program suffixed with ".cf".
+The directory name double-dash (`--' or `--/') is replaced by
+the first absolute path in the search list.
+After all \fIconfig\fP files have been read any macro defined in a
+a \fIzero-config\fP file are applied as defaults, with the last
+definition given as the final value.
+.TP
+\fB\-d\fP \fIflags\fP
+Debug mask to allow some visibility into the processing logic.
+Not for general use, also filtered a bit and passed on the \fBm4\fP.
+.TS
+r l.
+\fBB\fP	Trace boolean excludes
+\fBC\fP	Debug cache control recipe files (\fBCache.m4\fP)
+\fBD\fP	Debug defines given to \fBm4\fP
+\fBG\fP	Trace \fIguards\fP and \fIcompares\fP
+\fBL\fP	Display host searches
+\fBM\fP	Debug missing values in host definitions
+\fBR\fP	Trace file cleanup
+\fBX\fP	Trace execution of the slave \fBxclate\fP (and \fBxapply\fP) process
+\fB?\fP	Output a brief on-line flags usage message and exit
+.TE
+.PP
+.RS
+These are reserved by a the layer above us, \fBmsrc\fP(8L):
+.TS
+r l.
+\fBP\fP	\fBmsrc\fP: trace the data collected from the \fImakefile\fP
+\fBS\fP	\fBmsrc\fP: trace the \fBm4\fP files built (\fIdistfile\fP and \fIscript\fP)
+.TE
+.PP
+All tools in this stack, that accept \fIflags\fP, also provide the usage option.
+The \fBmmsrc\fP command supports the same \fIflags\fP as \fBmsrc\fP.
+Any flags that look like letters \fBm4\fP might accept as \fIflags\fP are
+passed on, but only from the last value of \fIflags\fP specified
+on the command-line.
+.RE
+.TP
+\fB\-D\fP \fIname=value\fP
+Filter defines passed on to \fBm4\fP.
+This is likely used to pass a target value to all instances of \fBm4\fP.
+See \fBm4\fP for a complete description.
+Compare this to \fB\-Y\fP, which just impacts the host selection stream,
+or \fB\-Q\fP which just impacts the redo logic.
+.TP
+\fB\-e\fP \fIvar\fP=\fIdicer\fP
+All instances are passed on to \fBxapply\fP as presented.
+A strange side-effect of the way \fBxapply\fP is called (with \fB%+\fP as
+the \fIcmd\fP) is that the ordinal associations of
+the percent parameters is off
+by 1, so %2 is really what one might think should be %1.
+This is because the command-line \fB\-e\fP is done before the \fB%+\fP
+shifts the parameter once to the left.
+It is not so much a bug as an astonishing feature.
+.TP
+\fB\-E\fP \fIcompare\fP
+Select hosts based on macro values.
+Each host must meet the
+expressions given to participate in \fIguard\fP selection process.
+The comparison may represent a string or numeric comparison,
+either of which may be prefixed with an exclamation mark (\*(lq!\*(rq)
+to negate each host's selection:
+.RS
+.TP
+\fImacro\fP\fB=\fP\fIvalue\fP
+The macro must have the exact \fIvalue\fP.
+.TP
+\fImacro\fP\fB!\fP\fIvalue\fP
+The macro must \fBnot\fP have this \fIvalue\fP.
+.TP
+\fImacro\fP\fBrel-op\fP\fIexpression\fP
+.P
+In any of the above \fImacro\fP may be a hostname, \fBm4\fP macro
+name followed by parameters enclosed in parenthesis, or a number.
+The command-line parser do \fBnot\fP count m4 quotes, so you cannot
+quote a parenthesis.
+.TP
+\fIinteger\fP\fBrel-op\fP\fIexpression\fP
+The macro must be numerically related to the \fIexpression\fP in the
+way \fIrel-op\fP specifies (<, >, <=, >=, ==, !=).
+A fixed \fIinteger\fP left-hand-side may be presented, with an optional leading
+minus-sign \*(lq-\*(rq.
+The \fIexpression\fP may actually be any \fBm4\fP expression, usually
+based on data from the present host's macro attributes.
+.PP
+When you need a very complex selection use \fB\-Y\fP and/or \fB-j\fP to force
+an \fBm4\fP \fIinclude\fP directive into the selection stream to define
+a macro to make the expression easier to specify on the command line.
+.RE
+.TP
+\fB\-F\fP \fIliteral\fP
+Force more (fewer) parameters to be interpreted as literal text,
+rather than as filenames.
+This allows macro expanded text to be processed by the \fBxapply\fP
+dicer. An alternate use is to force \fIcontrol\fP to be read from a
+file (rather than literal text) with \fB\-F\fP 0, the default value
+of 1 generates the usage given in the synopsis.
+.sp
+A negative \fIliteral\fP counter forces parameters from the right
+end of the command-line to be taken as literal values.
+Assuming the \fIliteral\fP doesn't include all the arguments, the \fIcontrol\fP
+is taken as a file containing an \fBm4\fP marked-up script in that case.
+.TP
+\fB\-G\fP \fIguard\fP
+An expression to select hosts by name.
+The \fBm4\fP expression \fIguard\fP must reduce to the name of
+a host (or hosts, separated by white space) which should be selected.
+The default \fIguard\fP is the macro \fBHOST\fP.
+Note that a given host may select \fBhosts other that itself\fP,
+for example a client might select her IMAP server for some tasks.
+The selected hosts must be listed in some \fIconfig\fP or \fIzero-config\fP
+and must be
+allowed by \fB\-B\fP's inclusion specifications.
+(It is still \fIpoor form\fP to list hosts in a \fIzero-config\fP.)
+.sp
+Multiple guards are permitted, if not encouraged.
+Multiple selections of the same host do \fBnot\fP process the host again.
+.TP
+\fB\-h\fP
+Print a short help message.
+.TP
+\fB\-H\fP \fIhr\fP
+Passed on to \fBxclate\fP as given.
+.TP
+\fB\-g\fP
+Install a \fBgtfw\fP diversion around this instance, if none exist in
+the current environment.
+.TP
+\fB\-i\fP \fIinput\fP
+The \fBxapply\fP input selection option, when given.
+This is used in combination with \fB\-C \-\fP to give the tasks a useful
+\fIstdin\fP.
+.TP
+\fB\-I\fP \fIdirname\fP
+Include directory name passed to \fBm4\fP.  The special name double-dash
+(`--') is replaced with the first absolute path in the search list.
+.\" but not the prefix --/, sadly.
+.TP
+\fB\-j\fP \fIm4prep\fP
+Each specified file is included in the \fBm4\fP command line used to
+filter \fIfiles\fP after any \fB\-B\fP, \fB\-U\fP, or \fB\-I\fP options.
+Use this to include a common macro definition header in every file.
+Using this option to force other arbitrary options into
+the \fBm4\fP command-line is not a good idea, better to
+replace \fBm4\fP in a forced $PATH with a script that
+filters options then calls the real \fBm4\fP.
+.TP
+\fB\-J\fP \fItasks\fP
+Passed on the \fBxapply\fP for \fBptbw\fP to scale the total number
+of tasks started by all conspirative descendant \fBxapply\fP's.
+.TP
+\fB\-k\fP \fIkey\fP
+Change the name of the key macro from \fBHOST\fP to \fIkey\fP.
+This is really not generally recommended; it adds a configuration
+item bound to each configuration file which is hard to keep track of,
+and makes the default join operation impossible when they mismatch.
+On the other hand,
+it allows a reverse-map abstraction that can be worth the complexity.
+.TP
+\fB\-K\fP \fIfilter\fP
+This is the command that drives any \fIredo\fP logic, after all
+the tasks have finished and their status has been processed.
+When the redo logic is triggered the default value is
+\fB${PAGER:-more} HXMD_0\fP.
+See REDO below.
+.TP
+\fB\-L\fP \fIcap\fP
+Passed on to \fBxclate\fP as given.
+.TP
+\fB\-M\fP \fIprefix\fP
+Replace the macro prefix \fBHXMD_\fP with \fIprefix\fP, don't use this
+unless you are going to set it for \fBefmd\fP and \fBmsrc\fP as well.
+.TP
+\fB\-n\fP
+Passed on to \fBxapply\fP as given, however the output comes
+to \fIstderr\fP rather than \fIstdout\fP.  This is because the
+\fBxclate\fP filter maps \fBxapply\fP's stray output to \fIstdout\fP to the
+widow stream, which is by default \fIstderr\fP
+(see \fBxclate\fP's \fB\-W\fP option).
+.TP
+\fB\-N\fP \fIelse\fP
+Passed on the \fBxapply\fP to trap zero hosts matching the
+expressions provided.  The exit code from this command is
+not available to REDO logic (under \fB\-r\fP), since it
+doesn't represent any single \fIkey\fP in the configuration files.
+.TP
+\fB\-o\fP \fIattributes\fP
+Build a configuration file that represents the selected \fIattributes\fP,
+in the order selected.  The empty string is useful and valid list.
+The generated file includes the \fIattributes\fP listed as
+columns after the \fIkey\fP macro, all
+specifications are joined with a single tab between them.
+The generated file is only available after host selection,
+the file's name is given by the \fBm4\fP macro \fBHXMD_U_MERGED\fP.
+.sp
+A prefix of exclamation mark (`!') or hash (`#') on
+a \fIname=value\fP specification under \fB\-D\fP exempts
+the specification from the generated configuration file, but
+is not passed on to \fBm4\fP.
+.sp
+Specification of the \fIkey\fP macro in the \fIattributes\fP list is allowed,
+this moves that macro to another column (it used to duplicate it).
+.TP
+\fB\-O\fP \fIoutput\fP
+Passed on to \fBxclate\fP as given.
+.TP
+\fB\-P\fP\fIjobs\fP
+The number of tasks \fBxapply\fP runs in parallel.
+See \fB\-V\fP's output for the compile-time default.
+.TP
+\fB\-Q\fP \fIward\fP
+This option may be repeated to build a header block at the top
+of the \fIredo\fP logic \fBm4\fP stream.
+It is comparable to \fB\-Y\fP, but impacts the redo host selection
+rather than the original selection process.  It is likely used
+to set a \fIdivert\fP, define macros, or include a file to make
+\fIredo\fP processing easier.
+Many \fIwards\fP may be provided, the order of the options is
+preserved.
+.TP
+\fB\-r\fP \fIredo\fP
+This \fBm4\fP expression is a form something like a \fIguard\fP in that
+is it processed once for each selected host.
+It transforms the status, unique index, and various host attributes into
+a stanza given to \fIfilter\fP to remeditate any failed updates.
+In addition, rather than any processed files, the original
+command line \fIfiles\fP list is presented in the \fBHXMD_\fP\fIN\fP list.
+When any redo logic is triggered the default value is
+\fBHOST HXMD_STATUS HXMD_U\fP, with \fB\-k\fP and \fB\-M\fP taken into account.
+See REDO below.
+.TP
+\fB\-R\fP \fIreq\fP
+Passed on to \fBxapply\fP to request the allocation of
+\fIreq\fP elements from \fItags\fP for each worker task.
+.TP
+\fB\-s\fP
+Turn off slow-start, see SLOW START below.  The \fBxapply\fP
+option of the same name (\fB\-s\fP) is always presented to
+\fBxapply\fP unless \fB\-P\fP's \fIjobs\fP parameter is
+forced to 1, or either \fB\-H\fP or \fB\-T\fP are presented.
+.\" this is a bug, \-H and \-T don't work yet
+.TP
+\fB\-S\fP \fIshell\fP
+The \fBxapply\fP shell option, when presented.
+.TP
+\fB\-t\fP \fItags\fP
+Passed on to \fBxapply\fP, when presented.
+.TP
+\fB\-T\fP \fItitle\fP
+Passed on to \fBxclate\fP as given.
+.TP
+\fB\-U\fP \fIname\fP
+Tell \fBm4\fP to undefine the macro \fIname\fP.
+.TP
+\fB\-V\fP
+Show version only information.
+.TP
+\fB\-W\fP \fIwidow\fP
+Passed on to \fBxclate\fP as given.
+.TP
+\fB\-x\fP
+Passed on to \fBxapply\fP as given.
+.TP
+\fB\-X\fP \fIex-configs\fP
+Provided files are scanned as a \fIconfig\fP file would be, however
+no additional new hosts are accepted.  Any host specified in any
+\fIconfig\fP or \fIzero-config\fP is extended by any in-scope macro
+definition, but never created.  This is quite useful when operating
+on a subset of hosts from a larger political domain, sometimes
+\fB\-B\fP is not enough when you are not sure every host is defined
+in the "larger" configuration.  Such files never increment the
+counter used by \fB\-B\fP.
+.TP
+\fB\-Y\fP \fItop\fP
+The m4 expression \fItop\fP is inserted at the top of the host selection
+m4 input stream, the option may be repeated to install as many \fItop\fP
+directives as necessary.
+This is likely used to change the default diversion, include a file, or
+define a common function for all \fIguards\fP and \fIcompares\fP.
+.TP
+\fB\-Z\fP \fIzero-config\fP
+Zero configuration is not exactly correct for this option, but it is
+close.  The option sets default macro bindings from each of
+the \fIzero-config\fP files listed.  In effect each \fIzero-config\fP is
+read before
+each of the \fB\-C\fP configuration files, then after those \fIconfig\fP
+files are processed these values are treated as
+defaults for any unset macros, for every host defined in any file.
+The last value assigned from the list of \fIzero-config\fP files is
+the default, while the first explicit reference to a host locks in
+the macro values in-scope at that point in the processing.
+Any hosts defined within \fIzero-config\fP are treated as defined once
+(for \fB\-B\fP's count), which is not recommended, unless the
+file is also listed as a \fIex-config\fP under \fB\-X\fP.
+.sp
+If the name of the program is not \fB\*(PN\fP
+then that name with a \*(lq.cf\*(rq suffix is taken as the
+zero configuration file.  As a special case, when the program's name is
+either \*(lq-\*(rq or \*(lqstdin\*(rq then the zero configuration file
+is taken to be \fIstdin\fP.
+Any explicit use of \fB\-Z\fP suppresses this implicit use of the
+program's name.
+.TP
+\fB\-z\fP
+Remove the $\fBHXMD_PASS\fP environment variable's value after it is
+interpolated into the argument vector. (That is to say set it to the
+empty string.)  This might be considered a self-destruct switch, as
+it is often presented in that same environment variable.
+
+.SH "ENVIRONMENT"
+
+.TP
+\fBHXMD_PATH\fP
+This environment variable is a colon separated list of
+directories, these are searched to find \fIzero-config\fP files,
+\fIconfig\fP files and each of the \fIfiles\fP provided.
+.TP
+\fBPARALLEL\fP
+Use in exactly the same way as \fBxapply\fP, specifies the
+default value when \fB\-P\fP is presented with no adjacent integer value.
+This can lead to quadratic parallelism, when multiple copies of either
+program are nested without logic to reduce this value.
+.TP
+\fBTMPDIR\fP
+Used as the top-level directory for any scratch files (or directories)
+created.
+.TP
+\fBHXMD_SHELL\fP
+The shell which executes any \fIfilter\fP command, else use \fB\-S\fP
+or $SHELL.  When none of those are present try \fB/bin/sh\fP.
+.TP
+\fBHXMD_M4_DEBUG\fP
+Intersected with the character flags given to the \fB\-d\fP option
+to pass valid debug flags on to \fBm4\fP.
+This should contain all the \fIdebug\fP
+flags the local version of \fBm4\fP will accept.  This option also
+may set some debug/trace options for other subsystems.
+.\" HXMD_U_MERGED might better have been spelled HXMD_O_MERGED
+.TP
+\fBHXMD\fP, \fBHXMD_PASS\fP
+Either of these environment variables may be consulted for options.
+When \fBHXMD_PASS\fP is set and not empty it is read in preference to
+\fBHXMD\fP.  Otherwise \fBHXMD\fP is read.  In either case the proposed
+options are inserted before the command-line specification.
+
+
+.SH "M4 ENVIRONMENT"
+
+The \fIcontrol\fP command and each of the \fIfiles\fP presented
+are passed through \fBm4\fP with several macros defined to
+construct custom data for each host selected.
+.P
+These custom files are constructed in
+a subdirectory of \fB$TMPDIR\fP (default \fB/tmp/\fP) created
+by \fBmkdtemp\fP(3).
+Each generated file is named for the basename of
+the corresponding source file on the command line, and should have
+about the same modes as the source file (given the limits of the
+processes effective uid and gid).
+.P
+The \fBm4\fP macros are drawn from the command line options
+destined for \fBm4\fP, the \fIfiles\fP, and the macros defined
+for the target host, and any \fIm4prep\fP files included under \fB\-j\fP.
+.P
+A macro for each custom filename is formed with the prefix \*(lqHXMD_\*(rq
+and the number of the file (0 is the \fIcontrol\fP command, 1 is
+the first file, and so on).
+Additionally the macro \*(lqHXMD_C\*(rq contains
+the count of the number of \fIfiles\fP presented..
+.TP
+\fBHXMD_C\fP
+The count of the \fIfiles\fP given on the command line.
+.TP
+\fBHXMD_\fP\fIN\fP
+The name of the \fIN\fPth generated file, all filenames are
+available for all files (as they are known in advance).
+.TP
+\fBHXMD_B\fP
+The count of the \fIconfig\fP files which define this host.
+.P
+The built-in \fBm4\fP macro \fIm4exit\fP may be used to de-select
+any host, simply exit non-zero for any of the \fBm4\fP filters.
+.TP
+\fBHXMD_OPT_C\fP
+The accumulated list of all the configuration files provided, separated
+by colons.
+This combined with the \fBHOST\fP macro and the macro below should
+allow recursive calls to \fI\*(PN\fP.  These macros are defined only
+once in any \fBm4\fP stream, always before any user header lines
+provided to \fB\-Q\fP or \fB\-Y\fP.
+.TP
+\fBHXMD_OPT_Z\fP
+The accumulated list of all the zero configuration files consulted.
+This macro is not defined unless some zero configuration files were
+specified (or implied).
+.TP
+\fBHXMD_OPT_X\fP
+The accumulated list of all the extra configuration files consulted.
+This macro is not defined unless some \fIex-config\fP files were
+specified.
+.TP
+\fBHXMD_U_COUNT\fP
+The count of the number of unique hosts presently defined.
+This is provided for client metrics.  It is defined to be zero before
+any definition, then assumes the count of the hosts defined.
+.TP
+\fBHXMD_U_SELECTED\fP
+The count of the number of unique hosts presently selected.
+This is provided for use in any ``percent done'' metric.  It is undefined before
+any selection, then assumes the count of the hosts selected.
+.TP
+\fBHXMD_U_MERGED\fP
+The file generated by \fB\-o\fP.  This is a valid \fI\*(PN\fP configuration
+file and is often used to make recursive calls, or to chain to \fBmsrc\fP.
+Include any macros needed in \fB\-o\fP's
+white-space separated \fIattributes\fP list, pass the new file down under
+\fB\-C\fP or \fB\-X\fP.
+.TP
+\fBHXMD_PHASE\fP
+This macro indicates the destination of the current \fBm4\fP stream's output.
+It is set to "selection", a counting number, "filter", or "redo" as
+\fI\*(PN\fP processes the many instances of \fBm4\fP explained below.
+To avoid polution of the the macro name-space any file may consult this macro,
+especially those included under \fB\-j\fP.
+Avoid depending on this by number, that breaks when someone
+changes the command-specification in really unobvious ways.
+Under \fBmmsrc\fP the command stream is called the "cmd" phase.
+
+.SH "HOST SELECTION"
+
+An additional \fBm4\fP filter is created to select the hosts
+from the \fIconfig\fP files presented.
+The file begins with any \fItop\fP lines provided to
+\fB\-Y\fP, which are commonly used to
+set \fIdivert\fP levels, or \fIinclude\fP some
+macro definitions.
+.P
+For each host the \fB\-B\fP allows the macro attributes of the
+host are \fIpushdef\fP'd, then any \fB\-E\fP macro checks generated by
+\fB\-E\fP are applied, then
+any \fIguards\fP are applied.
+The macro attributes for the host are \fIpopdef\fP'd and
+the cycle is repeated for each additional host.
+.P
+Think of multiple \fIcompares\fP as being \*(lqand\*(rq'd
+while multiple \fIguards\fP are \*(lqor\*(rq'd.
+.P
+These selection expressions are all processed in a single
+execution of \fBm4\fP to allow diversions to order the hosts as
+needed.
+.P
+The results from that filter are read as a sequence of hosts
+to process.
+Each must match hosts form the \fIconfig\fP that are allowed by
+\fB\-B\fP, they are processed in the order they are presented.
+.P
+The built-in \fBm4\fP macro \fIm4exit\fP may be used to fail
+the entire selection process, with any non-zero exit code.
+
+.SH "XAPPLY ENVIRONMENT"
+
+The command line passed to \fBxclate\fP includes all the options
+specified for \fBxapply\fP and some forced options.
+.P
+The \fB\-m\fP option is forced on the \fBxclate\fP command to
+start a new managed environment, the \fB\-N\fP option is
+presented to direct notifications back to \fI\*(PN\fP.
+.P
+The \fB\-fzmu\fP options are forced on the xapply command run
+as the master process under the \fBxclate\fP to specify the
+input stream is \fP-print0\fP-like (see \fBfind\fP(1)) and to
+set the managed output switch.
+The \fP\-u\fP option provides the notification stream as
+a sequence of the task numbers
+finished, rather than some random value of \fBxapply\fP's %1.
+.P
+The parallel factor (\fB\-P\fP) defaults to 6 (which is good for dual
+processor hosts).
+The suggested value for aggressive abuse of an multiprocessor
+host is between 3 and 5 times the number of CPU threads.
+Remember that the tasks started are not all the work being done, as
+many \fBm4\fP processes may be run to filter \fIcontrol\fP
+commands and \fIfiles\fP even before the first task is launched.
+
+.SH "SLOW START"
+
+Large parallel factors specified for
+the \fBxapply\fP \fB\-P\fP option tend to
+create issues in programs like \fBssh-agent\fP and the X server.
+The slow-start logic in \fI\*(PN\fP ramps up the number of
+parallel tasks to avoid this "fork bomb" effect.  It
+does not limit the rate at which individual tasks complete,
+and are reused (all required tasks might complete before the parallel
+factor reaches \fIjobs\fP for quick \fIcontrol\fP commands).
+
+.P
+A series of \fBm4\fP processes filter \fIcontrol\fP and
+\fIfiles\fP to fill a \*(lqslot\*(rq for each host.
+When these were run with no delay between them \fI\*(PN\fP
+tended to drive the system load too high, a
+1/35 second sleep between initial slot fills helped a lot.
+This feature is always enabled, however \fI\*(PN\fP
+actually filters faster as completed tasks finish:
+terminating tasks refill their slot with no delay, and
+\fI\*(PN\fP fills about 2 slots ahead of the parallel factor.
+
+.P
+There is an invariant here that makes this process easier to use:
+slots are always filled sequentially, and the files
+are always constructed left to right.
+Factor in that the sequence order of the selected hosts is
+carried into slot processing, as is
+the command line order of \fIfiles\fP.
+Thus provisions may made to carry state generated by
+a previous host (or hosts) to any subsequent one(s).
+
+.P
+The \fB\-D\fP macro binding option is intended to document the use of
+this invariant.  Any name like \fBCURRENT_STATE\fP might be used to
+document the file built to hold any host-to-host state.
+At the file-to-file level a file named \fBempty\fP in \fBhxmd\fP's
+library is usually given as the first of \fIfiles\fP.
+Convention documents that "empty" file as a \fIstate-file\fP, which is
+reconstructed for each host, that is used to carry information
+from one file to another (usually with an \fBm4\fP \fIinclude\fP
+directive).  Once built the file is usually moved (appended) to
+a "safe" place for before processing of the current host finishes.
+
+.P
+These slot fill processes, when combined with the work performed by
+the \fIcontrol\fP command for each task, may
+still drive the system load quite high.
+To avoid overwhelming the system with tasks \fI\*(PN\fP starts the
+parallel factor at 1 then increases it by 1 about twice a second
+until the specified \fIjobs\fP are all enabled.
+This description is intentionally vague, as the math done has
+only limited precision, and is subject to change without notice.
+
+.P
+The \fB\-s\fP option removes this safety feature by starting all
+\fIjobs\fP as soon as they are ready.
+Use with care, \fBptbw\fP, or not at all.
+
+.SH "REPLACING M4"
+
+In the previous section we assume that all host-based markup is processed
+with \fBm4\fP.  It is sometimes quite cumbersome to use \fBm4\fP to build
+files for each host.  If you need more power you may construct a "cache
+directory" that produces output for each host with any processor you can
+drive from \fBmake\fP.
+
+.P
+Any of \fIfiles\fP included on the command-line which are actually
+directories \fBmust\fP contain a \fBmake\fP recipe file marked-up in
+\fBm4\fP markup called \*(lqCache.m4\*(rq.  This file is expanded with
+all the common attribute definitions, then used as a \fImakefile\fP
+to create the contents of the cached file.  The name of the processed
+recipe file is provided as the \fBm4\fP macro \fBHXMD_CACHE_RECIPE\fP.
+
+.P
+To drive the make process we need a target name.
+Starting with name basename of the directory, any leading dots are removed.
+Then everything after the right-most remaining dot (if any text exists there).
+The empty string is mapped to the name of the host being processed.
+This target is available as \fBHXMD_CACHE_TARGET\fP, and the path to
+the directory itself as
+\fBHXMD_CACHE_DIR\fP.  (Since \fBHXMD_CACHE_DIR\fP may be relative to
+the current working directory, it cannot be used as if it were absolute.)
+
+.P
+The make process must output the contents of the file (not build the file
+locally).  This allows \fI\*(PN\fP to collect the stream into a file
+it manages so it may be removed after processing.
+
+.P
+Thus a specification of "." (the current working directory) in \fIfiles\fP
+processes a local "Cache.m4" into a recipe file, then updates the name of the
+host.  Building a symbolic link to "." named ".all" uses the common
+target "all" for every host, of course the "Cache.m4" file might use
+\fBm4\fP markup to customize that target for each host.  This allows a
+common directory to provide a caching service for multiple uses.  No
+locking is required for a single instance of \fI\*(PN\fP as the processing
+here is done in sequence (as above).
+
+.SH REDO
+
+Under any combination of the \fB\-r\fP, \fB\-K\fP, or \fB\-Q\fP options
+we get a second chance to process each selected host.  This time we
+know the exit \fIstatus\fP from the command, see \fBexit\fP(3).
+.P
+In this mode \fBhxmd\fP passes \fBxclate\fP the \fB\-r\fP option,
+which enables status code recovery.  As tasks finish \fBhxmd\fP
+collects the status from \fBxclate\fP, and keeps a list of all
+those values.  After all the processes have exited 2 more \fBm4\fP
+process environments are constructed.
+.P
+The first begins with definitions to define \fBHXMD_\fP\fIN\fP to
+the original \fIfiles\fP parameters.
+This replaces the binding to the customized versions
+from \fBm4\fP under normal processing.
+The count of the files is bound to \fBHXMD_C\fP, as usual.
+The macro \fBHXMD_0\fP is bound to the name of the file we are building,
+which sounds odd, but makes recursive use of the file easier.
+These defines are \fBnot\fP subsequently removed or refreshed.
+Each of the \fIward\fP directives provided under \fB\-Q\fP are processed
+once.
+.P
+For each host selected, each the directives presented to \fIcontrol\fP are
+defined, after 2 additional macros: \fBHXMD_STATUS\fP and \fBHXMD_U\fP.
+The exit status is bound to \fBHXMD_STATUS\fP, and the value that \fB%u\fP
+had for the host's \fIcontrol\fP command is bound to \fBHXMD_U\fP.
+Each of the \fIredo\fP directives presented to \fB\-r\fP are processed.
+Then all those definitions are retracted, before the next host is
+processed.
+.P
+The output from that \fBm4\fP stream is saved in a temporary file (which will
+be removed immediately before \fBhxmd\fP exits).  The name of that file
+is bound to the macro \fBHXMD_0\fP for the next step.
+.P
+A script is formed by opening yet another \fBm4\fP process to
+convert the \fIfilter\fP directive into a shell command.  The steam
+includes the same original \fIfiles\fP and count bindings.
+None of the \fIward\fP directives or host specific definitions are included,
+as they should be reflected in the output in \fBHXMD_0\fP.
+.P
+If the \fIfilter\fP starts with a pipe (\fB|\fP) character,
+that character is removed and the file created in the previous step
+is open'd read-only as \fIstdin\fP for the new shell.
+Otherwise \fIstdin\fP will be left as-is,
+in which case it is expected that the shell command will
+used \fBHXMD_0\fP autonomously.
+.P
+The \fIstdout\fP of the \fIfilter\fP process is directed to the \fIstderr\fP
+of the original \fBhxmd\fP process.
+.P
+What action this shell program takes to close-the-loop on the update process
+is driven by the needs of the implementor.  Some queue an \fBat\fP(1)
+job to retry failed hosts, some send e-mail, or try a more
+aggressive intervention.  The exit status of \fBhxmd\fP is the
+exit status of this script.
+.P
+The status bound to \fBHXMD_STATUS\fP is not always the exit status
+of the \fIcontrol\fP command.  When any of the \fIfiles\fP are marked-up
+such that \fIm4exit\fP forces a non-zero exit, then the status for that
+host is 1000 plus the value specified.  If any \fBm4\fP process exits
+with a signal then the status value is 2000 plus the signal number.
+This allows a distinction between failed commands and failed preparation.
+
+.SH EXAMPLES
+.TP
+.nf
+\fI\*(PN\fP \-V
+.fi
+Output only the standard ksb-tool version information.
+.TP
+.nf
+\fI\*(PN\fP \-C site.cf \-n HOST
+.fi
+Given the HOST macro is the fully qualified domain name of each
+host, the output is a list of fully qualified domain names.
+.TP
+.nf
+\fI\*(PN\fP \-B FIXME "scp %1 HOST:/tmp/rx$$ && ssh HOST \-t \e$SHELL \-x /tmp/rx$$ FIXME \e&\e& rm /tmp/rx$$" myscript
+.fi
+Run the script \fBmyscript\fP for each host with \fBFIXME\fP defined, processed
+for that host, under $SHELL.
+Remove the remote script, after it is run with the expansion of
+\fBFIXME\fP as the parameter list.
+.TP
+.nf
+\fI\*(PN\fP \-B FIXME "scp HXMD_1 HOST:/tmp/rx$$ && ssh HOST \-t \e$SHELL \-x /tmp/rx$$ FIXME \e&\e& rm /tmp/rx$$" myscript
+.fi
+Same as the above, but use an \fBm4\fP macro, rather than the dicer, to find
+the name of the \fBmyscript\fP file after processing.  The preferred interface
+is site policy: heavy \fBxapply\fP use implies an obvious preference.
+.TP
+.nf
+\fI\*(PN\fP \-Cmy.cf \-F2 HX_CMD HOST data.m4
+.fi
+Place the value of "HOST" where \fBxapply\fP can see it as \fI%1\fP, and
+the file \fBdata.m4\fP filtered by \fBm4\fP as \fI%2\fP.  We assume HX_CMD
+is defined in \fBmy.cf\fP to put them to good use.
+.TP
+.nf
+\fI\*(PN\fP \-C my.cf \-F \-3 tfile HOST COLOR $$
+.fi
+Process \fBHOST\fP, \fBCOLOR\fP, and the process-id of the current
+shell thought \fBm4\fP as literal strings, process \fBtfile\fP
+as a file.  Then run the processed version of \fBtfile\fP with
+the three literal parameters bound to \fI$1\fP, \fI$2\fP, and \fI$3\fP.
+.TP
+.nf
+\fI\*(PN\fP \-C dmz.cf \-D IMON=`hostname` \-E HOST=IMON 'echo HOST'
+.fi
+Long way to find out that the local hostname is defined in the \fBdmz.cf\fP
+configuration file.
+.TP
+.nf
+\fI\*(PN\fP \-C dmz.cf \-Y "define(MATCH,\e`SUN5')dnl" \-E HOSTTYPE=MATCH 'echo HOST'
+.fi
+List all the hosts that have a HOSTTYPE of SUN5, the MATCH macro option
+might come from a different data-source than the guard.
+.TP
+.nf
+\fI\*(PN\fP \-P1 \-C dmz.cf \-E HOSTTYPE=SUN5 \-F3 'echo %[1.1] in %[1:$]' 'HOST' 'LOC'
+.fi
+Use \fI\*(PN\fP largely as a linear \fBxapply\fP to report on the location
+of each SUN5 host by short-name and its location after the last colon.
+.TP
+.nf
+\fI\*(PN\fP \-C black.cf \-C blue.cf \-B 2 'echo COLOR HOST' |sort
+.fi
+List all the hosts that are in both \fBblack.cf\fP and \fBblue.cf\fP
+sorted by color.  Note hosts with no COLOR macro show as the literal COLOR.
+.TP
+.nf
+\fI\*(PN\fP \-C black.cf \-C blue.cf \-B 1 'echo HOST'
+.fi
+List all the hosts that are in exactly one of \fBblack.cf\fP or \fBblue.cf\fP.
+.TP
+.nf
+\fI\*(PN\fP \-C black.cf \-X blue.cf 'echo COLOR HOST' |sort
+.fi
+List all the hosts that are in \fBblack.cf\fP with extra data from \fBblue.cf\fP.
+Hosts that are given only in \fBblue.cf\fP are not processed.
+.TP
+.nf
+\fI\*(PN\fP \-C black.cf \-C blue.cf \-E "WOUND=BRUISE" \-G RAISE 'echo HOST'
+.fi
+Compare two macros (WOUND and BRUISE) for each host to process only the
+hosts select by the RAISE macro.  Note that when RAISE has more
+than one host, they must be separated with white-space.
+.TP
+.nf
+\fI\*(PN\fP \-C all.cf \-E "1!expr(-index(SERVICE,deploy))" 'echo HOST'
+.fi
+List the hosts for which the macro \fISERVICE\fP contains the
+word "deploy".  Note that the \fBm4\fP macro \fIindex\fP returns
+-1 when the substring is not in the first argument, which we convert
+to a positive 1, then compare for inequality.
+.TP
+.nf
+\fI\*(PN\fP \-C all.cf \-E "-1!=index(SERVICE,deploy)" 'echo HOST'
+.fi
+The same request as above, given as a relational operation.
+.TP
+.nf
+\fI\*(PN\fP \-C black.cf \-C blue.cf \-G RAISE \-B 2 'echo HOST'
+.fi
+List the hosts that are RAISE'd by hosts in both configuration files,
+and themselves appear in both.
+.TP
+.nf
+\fI\*(PN\fP \-C black.cf \-C blue.cf \-G "ifelse(HXMD_B,2,\e`RAISE')" 'echo HOST'
+.fi
+List the hosts that are RAISE'd by hosts in both configuration files,
+which must appear in at least one file.
+.TP
+.nf
+\fI\*(PN\fP \-C black.cf \-C blue.cf \-B 2 'echo RAISE' |sort \-u
+.fi
+List the hosts that are RAISE'd by hosts in both configuration files,
+even if they don't appear in either configuration file.
+When \fBRAISE\fP might hold more than one hostname
+some additional filers might be applied.
+.\" viz.  |tr ' \et\er' '\en\en\en' |grep .
+.\" before the "|sort \-u"
+.TP
+.nf
+\fI\*(PN\fP \-C black.cf:blue.cf \-G RAISE \-o COLOR '[ %u \-eq 0 ] && cat HXMD_U_MERGED'
+.fi
+Better than the above, we capture the hosts selected by the \fBRAISE\fP
+attribute and remember their COLOR attribute in a well formatted configuration
+file (which is valid input for \fB\-C\fP or \fB\-X\fP, but not so good for
+\fB\-Z\fP).  Each of the hosts must appear in either \fBblack.cf\fP or
+\fBblue.cf\fP -- which makes the semantics quite different.  The expression
+on the front ensures we only get one copy, not one for each selected host.
+.TP
+.nf
+\fI\*(PN\fP \-D!CHOICE=lv426 \-C black.cf:blue.cf \-G RAISE \-o COLOR '[ %u \-eq 0 ] && cat HXMD_U_MERGED'
+.fi
+The same as above, but a local definition of "CHOICE" is available
+only to the \fBm4\fP started by this instance of \fI\*(PN\fP, not included
+as an active attribute in the \fBHXMD_U_MERGED\fP file.
+.TP
+.nf
+\fI\*(PN\fP -d M \-C grizzly.cf \-B !HOST ': HOST'
+.fi
+Just check the configuration file for proper format, since each
+host must at least have \fBHOST\fP defined the boolean filter never
+allows any execution of the shell comment.
+.TP
+.nf
+\fI\*(PN\fP \-C adams.cf \-B TEA \-B !TEA \-x 'destroy HOST'
+.fi
+Unfortunately hosts cannot hold both TEA and not TEA at the
+same time, this will never match a host.
+.TP
+.nf
+\fI\*(PN\fP \-C adams.cf \-G TEA \-x 'destroy HOST'
+.fi
+This typing error (changing the `b' to a `g') is usually harmless
+as the odds that the name of a tea is also the FQDN of a host are
+almost infinitely improbable.
+.TP
+.nf
+\fI\*(PN\fP \-Z common.cf \-C host.cl \-x 'PREEN HOST'
+.fi
+Apply some macro command (\fIPREEN\fP) to each host in the list \fBhost.cl\fP.
+The \fBcommon.cf\fP file defines the required macros for all hosts, as
+by convention the file \fIhost.cl\fP is just a list of hosts.
+.TP
+.nf
+\fI\*(PN\fP \-K '|sed \-e "/^0/d"' \-r "HXMD_STATUS HOST" \-C host.cl 'PREEN HOST'
+.fi
+Run the PREEN command for each host, and report the list of failed hosts,
+on \fIstderr\fP.  A better script might direct \fBsed\fP's output someplace
+safer, see the next example.
+.TP
+.nf
+\fI\*(PN\fP \-K 'sed \-e "/^0/d" <HXMD_0 |Mail \-s "preen failed" charon' \e
+	\-r "HXMD_STATUS HOST" \-C host.cl 'PREEN HOST'
+.fi
+About the same as above, but we mail the results to \fBbob\fP.  The
+message has 2 columns (the exit status and the host's name).
+.TP
+.nf
+\fI\*(PN\fP \-I $HOME/lib/hxmd \-Q "include(Format.m4)dnl" \e
+	\-K "include(ReQueue.m4)Minutes(HXMD_0,HXMD_C,15)" \e
+	\-r "FORMAT(HOST)" \-C host.cl 'PREEN HOST'
+.fi
+A more indirect way to specify a very complex configuration.
+.TP
+.nf
+gencmd |\fI\*(PN\fP \-Cmy.cf \-F0 \- data.m4
+.fi
+Assuming gencmd builds an m4 marked-up shell script we process
+it with macros from my.cf then run it with \fI$1\fP set to a processed
+version of data.m4.  I'll grant you this might make you think a lot about
+how we got to this level of abstraction (distraction?).
+
+
+
+.SH CONFIG
+
+The configuration file format is designed to make it easy to
+list hosts with common attribute macros.  A macro may be defined
+with an assignment:
+.RS
+MACRO=`value'
+.RE
+.sp
+The value may be given as an \fBm4\fP string (as above) or a C string:
+.RS
+MACRO="value"
+.RE
+.sp
+Or the macro may be undefined by setting the value to a period (`.')
+with no quotes around it, as:
+.RS
+MACRO=.
+.RE
+.P
+The format for a host declaration is defined by a header line.  The
+header line starts with a percent (`%') and lists the macros needed
+to complete a host definition, separated by spaces or tabs.
+For example to set the macro columns to "HOST", "IP", and "OWNER":
+.RS
+ %HOST  IP  OWNER
+.RE
+.P
+The declaration of a host is simply a line which provides the
+promised values separated by white space, in quotes or not:
+.RS
+.nf
+imp.npcguild.org	10.11.12.13	`KS Braunsdorf'
+.fi
+.RE
+.P
+By providing a literal period (`.') for a column the corresponding macro
+is left undefined.  By providing too few values the right-most unfulfilled
+macros are left unbound.  Extra values on the end of a declaration
+are always a fatal error.
+.P
+A column header may also be specified as a literal period (`.') to
+discard an entire column of data.  This is only used to allow
+a processor (other than \fI\*(PN\fP) to mask data from a file,
+as editing the header line is much less risky than filtering the
+(quoted and complex) data lines.
+.P
+The common hash (`#') comments are also allowed (to end of line).
+Blank lines are ignored (unlike crazy \fBdistrib\fP).
+.P
+When it is too difficult to use \fBm4\fP to generate a needed file or
+value directly from \fI\*(PN\fP one might use a shell command or \fBperl\fP
+program to prefabricate the data, while generating an additional
+configuration file.
+.RS
+.nf
+TDIRX=${TMPDIR:\-/tmp}/mine$$
+while ! mkdir $TDIRX ; do
+	TDIRX=$TDIRX,$((RANDOM%100))
+done
+xapply \-f "make-it %1 >$TDIRX/%u; echo %1 \e\e\e`$TDIRX/%u'" host.cl >host.cf
+ \fI...\fP
+\fI\*(PN\fP \-C host.cf ...
+ \fI...\fP
+rm \-r $TDIRX
+.fi
+.RE
+In effect this is what \fI\*(PN\fP is doing for you with \fBm4\fP for
+each of the \fIfiles\fP presented.  With the added feature that the
+files are removed after they are used, and only created slightly
+in advance of their use.
+
+.SH "DISTRIB COMPATIBILITY'
+
+Replication of an identical host definition has no effect on \fI\*(PN\fP.
+This is an important difference between the way \fBdistrib\fP and \fI\*(PN\fP
+treat their configuration files.  While \fI\*(PN\fP reads all the
+configuration files given \fBthen\fP processes the list of unique
+hosts, \fBdistrib\fP only processes hosts from the last \fIconfig\fP
+file presented and will process a given host (from that file) more than once.
+It is unclear that this is a bug in either program, but it creates
+confusion, none the less.
+.P
+A list of hosts is a valid configuration file for \fI\*(PN\fP.
+Putting a macro assignment at the top, \fBHASSRC="yes"\fP
+allows an intersection with a super-set configuration file.
+There is no way to do this under \fBdistrib\fP's rules.
+.P
+The \fBm4\fP quote style is not allowed in \fBdistrib\fP's \fIconfig\fP,
+before version 5.2.
+.P
+This is a table of approximate conversions from \fBdistrib\fP's
+options to \fI\*(PN\fP's:
+.RS
+.TS
+c c
+r l.
+Distrib option	\fI\*(PN\fP option
+\-C config.cf	\-C config
+\-C config.mcf	hxmd \-E HOST=`hostname` \-C local.cf \e
+	'hxmd \-C %1 cmd' config.mcf
+\-G guard	\-G guard, but result is a hostname, not yes or 0
+\-I	\fInow the default\fP
+not \-I	`\-E !HOST=`hostname` \-E !HOST="\e`localhost'"
+\-a	\-B HOST
+\-S	\-B HASSRC [\-X source.cf]
+\-m host	\-E HOST=host
+	\-G host
+	\-E SHORTHOST=host
+\-t type	\-E HOSTTYPE=type
+\-t type1,type2	\-G "ifelse(HOSTTYPE,\e`type1',\e`HOST')" \e
+	\-G "ifelse(HOSTTYPE,\e`type2',\e`HOST')"
+.TE
+.RE
+.P
+Another common question I get is "Can we match the SHORTHOST column
+(from \fBdistrib\fP) against a list in a file?"
+Configuration files join, under \fI\*(PN\fP, only on the \fIkey\fP column
+given by \fB\-k\fP.
+The intersection (disjunction) set is selected with \fB\-B\fP 2 (1).
+For more complex expressions a temporary file (or pipeline) may be
+constructed.
+.P
+For this example assume we have a list of short hostnames in
+\fB/tmp/ksb.cl\fP and a configuration in
+\fBnpc.cf\fP which is \fBdistrib\fP-compatible.
+To \fBaggravate\fP the intersection set of hosts I would run:
+.nf
+.RS
+\fI\*(PN\fP \-kSHORTHOST \-C/tmp/ksb.cl:npc.cf \-B2 'aggravate HOST'
+.RE
+.fi
+.P
+Note that this game is not limited to the SHORTHOST column, but
+it is hardly fair to use this as a logical-or operation on other
+fields: \fB\-k\fP HOSTOS is strongly discouraged.  In effect that
+requests the first (or a random) node for each HOSTOS listed.
+
+.SH BUGS
+
+The key values may not include white-space anymore.  For a while
+\fI\*(PN\fP allowed white-space in key value, but that became too
+confusing for most applications, and makes \fIguard\fP parameters
+harder to spell and quote.
+.P
+Because hostnames (the default key) are not case sensitive there should be
+a way to allow a case insensitive key comparisons in the selection process.
+I suggest that mapping all questionable hostnames to
+lower-case via \fBtr\fP(1), or the like, is just about as easy.
+.P
+Guard logic sometimes compares attribute macros which are not defined for
+every node.  In this case \fBm4\fP outputs errors on \fIstderr\fP about
+errors from \fBeval\fP or \fBexpr\fP.  It is not possible for \fI\*(PN\fP to
+completely check arbitrary expressions before giving them to \fBm4\fP.
+.P
+\fIXapply\fP is enough power for most applications, this program is
+a hard icon for naive users.
+.P
+It would be poor-form to install a program named \*(lqHX_CMD\*(rq.
+.\" .P
+.\" The name is easy to type, pick a acronym from host, herd, hurt, hurl;
+.\" xclate, xapply, execute, translate; machine, m4, more, madness, magic;
+.\" and rdist, distrib, defines, defiler, deliver, or destruction.
+.P
+The entire \fIconfig\fP stream must be read to complete the
+\fBm4\fP selection process.  This means sending the output of
+a long running pipeline to \*(lq\fI\*(PN\fP \-C \- ...\*(rq
+waits for the entire input pipeline to finish before it starts
+the \fBm4\fP selection filter, let alone any tasks.
+This should also be viewed as a feature.
+.P
+The heavy use of \fBm4\fP still shows "questionable judgment".
+.\" Note that by default the path to \fBm4\fP is not a full path.
+.P
+Failed requests leave junk under \fB$TMPDIR\fP, which is nifty for
+debugging, but needs to be purged once in a while.
+.P
+The code allows for multiple \fB\-Z\fP \fIzero-config\fP files
+specified as a colon (:) separated list.
+Using this is usually deemed \*(lqpoor form\*(rq, you usually
+really need multiple \fB\-X\fP files.
+.P
+Sometimes \fBm4\fP substitutes unintended macro names in
+the \fIcontrol\fP string (viz.  "include", "unix", "dumpdef", or
+any other other \fBm4\fP macros).
+Using shell single quotes (\fB'\fP) presents some difficulty as well.
+.\" Using \fBcsh\fP as a login shell is so 1980's.
+The author suggests the same tactics used for complex
+\fBxapply\fP \fIcmd\fP templates, viz.:
+.RS
++ surround \fIcontrol\fP in shell double quotes (")
+.sp
++ use \fBm4\fP quotes (`...') around any text that might include
+a common \fBm4\fP macro, only unquote macros you wish to expand
+.sp
++ use a backslash to protect backquote (`), quote ("), literal dollar sign ($),
+and backslash (\e) itself
+.sp
++ the \fBm4\fP facilities \fIdumpdef\fP and \fB\-t\fP are quite
+useful to explain odd results, in combination with \fB\-n\fP
+.sp
++ put long commands in a file, debug the file with \fBefmd\fP(8) or
+\fBdistrib\fP \fB\-E\fP,
+include it on the command line with \*(lqinclude(\fIpath\fP)dnl\*(rq,
+or specify "\fB\-F\fP 0".
+.sp
++ don't ever use \fBcsh\fP as your login shell
+.\" really, don't do that
+.\".sp
+.\" + don't play with matches, keep your powder dry, etc. --ksb
+
+.SH AUTHOR
+KS Braunsdorf
+.br
+NonPlayer Character Guild
+.br
+hxmd swirl rmSpam.ksb.npcguild.org
+
+.SH "SEE ALSO"
+sh(1), m4(1), find(1), csh(1), hxmd(5), efmd(8),
+xapply(1), xclate(1), ptbw(1), distrib(8), msrc(8), mmsrc(8), dicer(5)

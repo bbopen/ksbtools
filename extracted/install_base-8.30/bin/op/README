@@ -1,0 +1,53 @@
+# $Id: README,v 2.45 2010/03/18 20:53:53 ksb Exp $
+
+[You are going to need the msrc tools to build this. -- ksb]
+
+
+Once in a while you want a mortal login to be able to take superuser actions.
+Say mount a cdrom, or start/stop their own application that runs as under
+a pseudo-user account.  But you really don't want to give away a superuser
+shell, or even a shell as the application account.  That's where you need
+a program like this one.
+
+This program is different from:
+	original op  (from Tom Christiansen)
+	David Koblas's version of op
+	super
+	sudo
+	pfexec (from Sun)
+	and su or newgrp
+But I think it is more secure and more useful than those.  See op.man,
+op.html and refs.html for details about why I continue to support op.
+
+The biggest win is that an auditor can (believe they) understand the
+configuration file.  The simple structure and close proximity of all the
+factors that make up a rule helps a lot.  I'd rather explain this rule to
+an auditor than any sudoers rule:
+
+	mount	/sbin/mount -t cd9660 -o ro,nosuid,extatt /dev/cd0 /$1 ;
+		$1=^cdrom$
+		groups=^packers$,^wheel$
+		uid=root gid=operator
+
+My Customers like op better for the online usage help:
+	$ op -l
+	op mount cdrom
+	op unmount cdrom
+	$ op mount cdrom
+
+Op was originally developed at Convex by Tom Christiansen, and subsequently
+published in a USENEX LISA proceedings.  This version was developed entirely
+from the description that was published.  It has been extensively reworked
+by ksb to add many features and sanity checks (op -S).
+
+If you use the Koblas version of op you need only check for backslash quotes
+on $ in rules, and the use of his version of inline scripts.  Switching to
+my quoting rules ($$ -> $ from \$ -> $) is pretty easy, and my version of the
+in-line script is also easy.  One other thing is that the first DEFAULT rule
+in access.cf applies to any other file of rule, unless they include a DEFAULT
+rule.
+
+Report bugs to op at-no-spam-a-lot ksb dot npcguild dot org, please.
+
+--
+KS Braunsdorf, Mar 2010

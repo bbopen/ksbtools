@@ -1,0 +1,114 @@
+# $Id: TODO,v 8.6 2000/07/25 23:13:53 ksb Exp $
+
+I think all the major termios stuff is done.  The IRIX port is done.
+
+Hit list:
+---------
+
+ Virtual consoles should have an environment variable with the name of
+ the virtual console ("service") they are providing.  This would let the
+ program on the tty do some custom action per service.  (We could toss
+ in the whole entry from conserver.cf?)  Say "CONSOLE_SERVICE"?
+
+ The "sleep(3);" in group.c bugs me.  It is a lot of code to handle it
+ correctly.  We'd have to add a timeout struct to (struct consent), and
+ a pointer to the next one in the timeout queue.  We'd have to check in
+ the select call for a console in the timeout queue, use that timeout
+ value.  If select timed-out we must un-break the line and advance the
+ queue [check state!].
+
+ Inserts into the queue are the std subtract and shift right loop (like
+ Xinu's timeout queue).  I'm sure I could make the code work, but is it
+ better than a rare 3 second stall?
+
+ A way to start a virtual console "down" to let operations manually "up"
+ it after they take some action (load a tape, etc).  This is presently
+ done with a "Press ENTER to start..." shell prompt and a "read it"
+ command.  That's a hack.  The baud rate flags [xt][emops] could get [ud]
+ for "up" and "down" start options?
+
+ The ';' shift command should have a simpler form ',' to shift cyclicly.
+ This would be a Good Thing when you are doing the same thing to 100 hosts.
+ It would even be better if it could translate to the next group, if the
+ epass is the same (for sure).  But I don't see that as likely given the
+ firm wall between groups.
+
+ A command from the client to fstat(2) the log file to report the size and
+ *last time written* would give you an idea how long a line has been dead.
+ This would be handy for hosts that don't time-stamp, or do and you can't
+ believe it has been dead 2 years.
+
+Maybe ideas:
+------------
+
+Killer connections:
+ If you are the attached person on a console the command 'k' should
+ kill all the others on the console.  Maybe a two character operation.
+
+Just spys:
+ If you are the attached person on a console you should be able to
+ cancel the spy+ mode for all the others on this console.  Maybe 'j'.
+
+New peers:
+ Somehow we should be able to add more peers to the running server.
+ Maybe even new console lines.  Now we have 3 types of lines and we'd
+ have to HUP the group servers to tell them of the change?  Humm.
+
+Use some other authentication.
+ X.509 certs or something.  Maybe ssh's authentication protocol?
+ Someone contibute a general interface and I'll think about it, GSAPI.
+
+LDAP lookup for canonical line names.
+ Allow a console name to be specified as the FQDN for the host, or the
+ short name, or a nickname in some (LDAP?) database.  All done on the
+ *client* end except for the registration bit in the server as it adds
+ the lines.  The conserver program would get a command line options to
+ report lines up/down to an LDAP.
+
+
+Changes you need to know about (from the popular 5.21/6.0 versions):
+------------------------------
+
+Configuataion file format changes:
+ The format of the console configuration file (conserver.cf) has
+ changed from version 6.0 so that you can use `passwd -f conserver.cf'
+ to change passwords on console groups.  The trailing password field
+ is now the second field in the line.
+
+ To convert your old conserver.cf edit it (sed or awk could do it) to
+ move the last colunm to $2, or put in an empty column.  The empty
+ column uses root's password for access.
+
+Annex/network consoles:
+ In the configuration file you can put "!annex.my.com" in for a device
+ and "2000" in for a "baud" (kinda a hack) and make the console server
+ monitor a socket for data.  It really works.  It should do some minimal
+ telnet RFC stuff but I've not had time to research that (convert to
+ NetAscii at least).
+
+ Thanks to Bob Olson <olson@mcs.anl.gov> for doing a prototype a while back.
+
+Power controller support:
+ On the end of the console line definition you may include a power controller
+ specification.  Be very careful.
+
+
+Bad Ideas we've rejected:
+-------------------------
+
+Identd support:
+ It sez in the RFC not to use TAP or identd for authentication -- but
+ I think that a user@host pair implies that we trust the host to verify
+ the user.  If we allow `user@host' trust combinations in the auth list
+ then allow an escape on the cntl port to ident the caller we could
+ slide without a password.
+
+ The new `console -b' would use the escape to try an identd auth'd
+ connection.
+
+ Rejected: async ident protocol (see squid's engine) is a pain and not
+ worth it, becuse you can't trust it anyway.
+
+--
+"This may be a new sense of the word `robust' for you."
+kayessbee, Kevin Braunsdorf, ksb@sa.fedex.com

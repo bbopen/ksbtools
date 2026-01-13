@@ -1,0 +1,5 @@
+/* $Id: util_client.mi,v 8.9 2000/07/28 13:59:37 ksb Exp $
+ * meta C file for mkcmd's client socket conversion			(ksb)
+ */
+
+%static int %K<SockOpen>1v()%;

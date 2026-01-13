@@ -1,0 +1,107 @@
+.\" $Id: preend.man,v 3.1 1992/12/27 13:05:54 ksb Exp $
+.\" by MatthewBradburn and Kevin Braunsdorf
+.TH PREEND 8L LOCAL
+.SH NAME
+preend \- tomb preening daemon
+.SH SYNOPSIS
+\fBpreend\fP [\-\fB1Rdnp\fP] [\-\fBs\fP \fIminutes\fP] [\fItombs\fP]
+.sp
+\fBpreend\fP \-\fBh\fP
+.sp
+\fBpreend\fP \-\fBV\fP
+.SH DESCRIPTION
+.PP
+Files destroyed by the library calls in the entombing library, libtomb.a,
+are placed in a tomb subdirectory at the root of each file system.
+The preening daemon, \fIpreend\fP, removes old files from each of these tombs.
+.PP
+The policy used to age files is based on the percentage of the file system
+in use.
+If the file system in question is less
+than 90% full, files are left in the tomb for 24 hours, minus one second
+for each two bytes of the file.  If the file system is between 90 and 95% full,
+files last 6 hours, again adjusted for file size.  If the file system
+is between 95 and 100% full, files last 15 minutes.  If the file system
+is more than 100% full, all files are removed
+at about 5 minute intervals.
+.PP
+An exception is made for files named \*(lqa.out\*(rq or
+\*(lqcore\*(rq and file names beginning with a \*(lq#\*(rq or
+ending in \*(lq.o\*(rq or
+\*(lq~\*(rq, which are left in the tomb for at most \fIminutes\fP minutes.
+Some other files might be removed with such prejudice on a site by site
+basis (gmon.out would be another example).
+.SH OPTIONS
+.TP
+.BI \-1
+Just run one preen run, synchronously.
+.TP
+.BI \-d 
+Turn on debugging output.  \fIPreend\fP writes some of its actions to
+stdout during each run.
+.TP
+.B \-h
+Output a brief help message.
+.TP
+.B \-n
+Do not really take any actions.  Useful under \-\fBd\fP to see
+what \fIpreend\fP would do without messing up the tombs.
+.TP
+.B \-p
+Run one \fIpreend\fP process per file system.
+Since each daemon will \fIchdir\fP(2) into its tomb before it begins
+to preen, this will save many, many namei's in the kernel.
+Under DYNIX, and other symmetric multi-processor systems, \fIpreend\fP
+may take advantage of more than one CPU with this option to provide
+closer to optimal service.
+.TP
+.B \-R
+Remove empty crypts from the tombs.  This options should be used
+with care as it can race with running \fIentomb\fPs and \fIpreends\fP to cause
+strange error messages.  The superuser might remove empty tombs after
+removing many user accounts (at the end of a school term, or large
+project) this speeds \fIpreend\fPs normal operation slightly.
+.TP
+.BI \-s minutes
+Sleep \fIminutes\fP between file system checks
+(the default is 5 or 15 minutes).
+.TP
+.B \-V
+Show version information for \fIpreend\fP and which tombs are
+on the local machine.
+.TP
+.I tombs
+If any tombs are given, \fIpreend\fP preens only those tombs.
+This is the only way to force a local \fIpreend\fP to preen an
+NFS mounted tomb (it is assumed that the remote host will preen
+its own tombs).
+.SH EXAMPLES
+.TP
+preend \-dn1
+Show what actions \fIpreend\fP will take on the next pass through
+the tombs (if it were to run immediately).
+.TP
+preend \-p
+Start a daemon for each tomb on this machine (the normal start up
+at PUCC).
+.TP
+preend \-V
+Show the version of \fIpreend\fP and tombs on this machine.
+.TP
+preend /share/tomb
+Force preend to preen for the file system \fI/share\fP.
+If, for example, the file system is NFS mounted from
+another machine \fIpreend\fP doesn't start a daemon for this tomb by default.
+.SH BUGS
+.PP
+The policy for aging files should not be so hard coded.
+The threshold for each level of policy could be specified
+with command line option(s).
+.PP
+The \-\fBh\fP and \-\fBV\fP are not useful to anyone but the superuser.
+.SH AUTHORS
+Matthew Bradburn, Purdue University Computing Center
+.br
+Kevin Braunsdorf, Purdue University Computing Center
+.SH "SEE ALSO"
+unrm(1L), libtomb(3X), file_recover(7L), entomb(8L)

@@ -1,0 +1,17 @@
+# EFL source file (extended fortran language)				(ksb)
+# $Id: e,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	${efl-efl} %s %f >%P.f && %b %o %P.f && ${rm-rm} %P.f
+$Compile(*):	${efl-efl} -C %f >%P.f && %b %o -d%s %P.f && ${rm-rm} %P.f
+$Compile(*):	${efl-efl} -C %f >%P.f && %b %o %P.f && ${rm-rm} %P.f
+$Compile(*):	${efl-efl} %s %f >/tmp/%F.f && %b %o /tmp/%F.f && ${rm-rm} /tmp/%F.f
+$Compile(*):	${efl-efl} -C %f >/tmp/%F.f && %b %o -d%s /tmp/%F.f && ${rm-rm} /tmp/%F.f
+$Compile(*):	${efl-efl} -C %f >/tmp/%F.f && %b %o /tmp/%F.f && ${rm-rm} /tmp/%F.f
+
+$Clean(*):	${rm-rf} %s %P.f
+$Clean(*):	${rm-rf} -f %P.f
+
+$Efl(*):	${efl-efl} %s %f >%P.f
+$Efl(*):	${efl-efl} -C %f >%P.f
+
+$Info(*):	${echo-echo} "efl source"

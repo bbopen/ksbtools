@@ -1,0 +1,119 @@
+.\" $Id: Tee.man,v 2.1 1997/03/08 20:58:09 ksb Exp $
+.\" by Kevin Braunsdorf
+.TH TEE 1L LOCAL
+.SH NAME
+Tee \- advanced pipe fitting
+.SH SYNOPSIS
+.ds PN "Tee
+\fI\*(PN\fP [\-\fBa\fP\fBi\fP\fBv\fP] [\fB+\fP\fIspigots\fP] [\-\fBb\fP \fIblocksize\fP] [\fIfiles\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.sp
+.SH DESCRIPTION
+.PP
+When a stream needs to be diverted to more than one destination
+a simple redirection won't do.
+.B Tee
+duplicates a stream standard output as well as to one or more \fIfiles\fP.
+.PP
+The simple case allows the data passing through a pipe to be recorded
+in a log file:
+.sp
+	... | Tee \-a /var/log/myapp | ...
+.sp
+(This is not a replacement for the system logger, by the way.)
+.PP
+The \fIfiles\fP may be filenames or shell commands when prefixed by
+a pipe (|).
+The process style is intended for use with remote shell and dd
+to copy tapes and such.
+.PP
+A more advanced application might save the first and last lines of a sort
+output for later inspection:
+.sp
+	... | sort ... | Tee '|head -1 >first' '|tail -1 >last' | comm ...
+.sp
+
+.PP
+A third style mocks the shell redirection duplication form
+allowing Tee to leverage already open files.
+For example to duplicate stdout to stderr in a pipeline one would:
+.sp
+	... | sort ... | \fBTee '>&2'\fP | comm ...
+.sp
+
+.SH OPTIONS
+.TP
+\fB+\fP\fIspigots\fP
+Given enough destination \fIfiles\fP Tee must fork copies of itself
+to open all the requisite file descriptors.
+This integer specifies a lower limit than the system maximum to
+tune Tee's usage of file descriptors per process.
+.TP
+\fB\-a\fP
+Append to each \fIfile\fP in the list.
+.TP
+\fB\-b\fP \fIblocksize\fP
+Set the blocksize for the transfer.
+This only matters (for the most part) for transactions with device files
+or pipe fitting with dd(1).
+.TP
+\fB\-h\fP
+Print a help message.
+.TP
+\fB\-i\fP
+Ignore interrupts.
+.TP
+\fB\-v\fP
+Trace progress on stderr.
+A period (.) is output for each block fully transferred.
+A newline is output after each 70 blocks.
+In the case where more than one process is needed to
+honor all the destination \fIfiles\fP the last Tee in the
+pump will be the original process and the one to output all
+the trace information.
+.TP
+\fB\-V\fP
+Show version information.
+
+.SH EXAMPLES
+.TP
+dd if=/dev/rmt/0h bs=20b | Tee \-b 10240 /dev/rmt/1h >/dev/rmt/2h
+Copy the tar tape on the zero tape drive to both tape 1 and tape 2 in
+high density mode.
+Note that one destination tape is opened by Tee, the other is stdout.
+.TP
+finger | Tee '|wc -l'
+Output the finger table followed by the number of lines in that output.
+.TP
+Tee '|awk "BEGIN {sum=0;} {sum += \e$1;} END {print sum;}"' <numbers
+Output a list of numbers and their sum.
+.TP
+dd if=/dev/zero count=4096 bs=1k | Tee \-b 1024 F1 F2 F3 F4 F5 F6 F7 >F8
+Build 8 4Meg files of zeros.  This might make a good disk timing test.
+
+.SH BUGS
+It is marginally more clever to reach out with rsh -n to read a remote
+tape than it is to push from the source machine due to the network
+overhead.
+.PP
+Tee could handle the splitting of long \fIfiles\fP lists better:
+in the case where we have to build 5 processes we might split the
+load between the processes more evenly (rather then 4 fulls and the
+last one with 1 or 2 destinations).
+.PP
+Would double buffer code be a win here?
+
+.SH AUTHOR
+Kevin S Braunsdorf
+.br
+DSPD UNIX Support
+.br
+ksb@fedex.com
+
+.SH "SEE ALSO"
+sh(1), dd(1), wc(1), remsh or rsh, logger(1), awk(1)

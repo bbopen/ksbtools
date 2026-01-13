@@ -1,0 +1,8 @@
+/* $Id: util_saverpcent.mh,v 8.30 2000/11/01 15:36:48 ksb Exp $
+ */
+
+%#if %K-1v
+%extern struct rpcent *%K<util_saverpcent>1v(struct rpcent *, char *)%;
+#else
+%extern struct rpcent *%K<util_saverpcent>1v()%;
+#endif

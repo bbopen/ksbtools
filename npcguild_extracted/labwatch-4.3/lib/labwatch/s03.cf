@@ -1,0 +1,45 @@
+# $Compile(*): exec labwatch -n -w 860 -C %f
+# $Id: s03.cf,v 1.19 1999/08/04 22:05:33 root Exp $
+#
+# dscm
+arc1.dscm
+css-srv1.prod
+gateit01.prod
+gateit02.prod
+svr5.dscm
+# SAC
+svr6.dscm
+dial.dspd 192.189.186.27
+s01.sa
+s06.sa
+s07.sa
+g05.sa
+g06.sa
+g07.sa
+depot.dspd
+w01.sac
+w04.sac
+sparky.sac
+turon.sac
+# Susan's
+yoda.east
+y2k.sac
+# mail
+#gohan.sac
+#goku.sac
+# chuck
+#svr1.star
+# DPDS
+fortress.dpd
+%%status -- The morning status report
+   Report   Host      Load  Status
+@ %{@:r} %{@:h} %{@:l} %{@:x} %{@:f}
+%%motd -- the message of the day
+This is one way to track clients and servers.  The code is from:
+	ksb@sa.fedex.com
+The programs are labd, labc, labwatch, and labstat.  The configuration is in
+labwatch.cf (in /usr/local/lib or /root).
+
+	-- ksb
+%%version -- the version of this configuration file
+$Id: s03.cf,v 1.19 1999/08/04 22:05:33 root Exp $

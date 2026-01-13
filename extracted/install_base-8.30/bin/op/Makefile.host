@@ -1,0 +1,129 @@
+`# $Id: Makefile.host,v 2.49 2010/03/14 21:12:06 ksb Exp $
+# platform makefile for op, msrc 2008 version
+'dnl
+changequote(+,~)dnl
+GQ=`
+changequote(`,')dnl
+`
+SHELL=/bin/sh
+PROG=	op
+BIN=	${DESTDIR}/usr/local/bin
+DOC=	${DESTDIR}/usr/local/man
+# Where is the config file installed?
+LIB=	${DESTDIR}/usr/local/lib
+RUN_LIB=/usr/local/lib
+ACCESS_FILE=${RUN_LIB}/op/access.cf
+
+CC='ifelse(
+HOSTTYPE,`SUN5',`cc',
+HOSTTYPE,`HPUX9',`gcc',
+HOSTTYPE,`HPUX10',`gcc',
+HOSTTYPE,`HPUX11',`gcc',`cc')`
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE='ifelse(
+HOSTTYPE,`FREEBSD',`',`-I.')`
+DEBUG='ifelse(
+HOSTTYPE,`HPUX9',`',
+HOSTTYPE,`HPUX10',`',
+HOSTTYPE,`V386',`',`-g')`
+CDEFS= -DMULTI_CONFIG -D'HOSTTYPE` -DACCESS_FILE=\"${ACCESS_FILE}\" 'ifelse(
+HOSTTYPE,`LINUX',` -D_GNU_SOURCE',
+HOSTTYPE,`HPUX9',` -DVARARGS=0',
+HOSTTYPE,`HPUX10',` -DVARARGS')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+GEN= main.c main.h scandir.c lib.opts
+HDR= machine.h
+SRC=
+MAN= op.man
+DEP= ${SRC} ${GEN}
+OBJ= main.o 'ifelse(
+HOSTTYPE,`SUN5',`scandir.o ',`')`
+OTHER=	README TODO
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+
+all: ${PROG}
+
+lib.opts: main.o
+	nm main.o | sed -n -e "s/.*pam_authenticate.*/-lpam/p" >$@
+
+${PROG}:$P ${OBJ} lib.opts
+	${CC} ${CFLAGS} -o $@ ${OBJ}'ifelse(
+HOSTTYPE,`FREEBSD',` -lcrypt',
+HOSTTYPE,`NETBSD',` -lcrypt',
+HOSTTYPE,`SUN5',` -lsocket -lnsl',
+HOSTTYPE,`LINUX',` -lcrypt')` ${GQ}cat lib.opts${GQ}
+
+main.h: main.c
+
+main.c: op.m
+	mkcmd op.m'ifelse(
+HOSTTYPE,`FREEBSD',`',` util_fgetln.m')`
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -rf prog.[ch]
+
+scandir.c:
+	explode -s scandir.c
+
+# We need an empty access.cf to run -V, the lib source will update it	(ksb)
+${LIB}/op/access.cf:
+	install -c -o root -m 0400 /dev/null $@
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} a.out *.o core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${HDR} ${SRC} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${BIN}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all dirs ${LIB} ${LIB}/op ${LIB}/op/access.cf FRC
+	install -cs -m 4711 -o root ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${SRC} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${SRC}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC}
+	ctags -t ${HDR} ${SRC}
+
+${LIB} ${LIB}/op ${BIN}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+main.o: machine.h main.c main.h
+
+scandir.o: scandir.c machine.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

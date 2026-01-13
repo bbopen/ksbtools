@@ -1,0 +1,188 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML>
+<!-- $Id: hostlint.html,v 1.8 2012/07/11 17:20:44 ksb Exp $
+ -->
+<HEAD><TITLE>Checking up on your hosts with hostlint</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+
+<h1 id="known">To understand this document</h1>
+You need to have a working knowledge of <code class="sh">rsync</code>,
+and some scripting skills.  It helps a lot if you know what a
+configuration management signature for a host looks like.
+
+<p>
+In ksb's model of configuration management the most important idea is
+that every level pushes information to adjacent levels to feed-back
+relevant information.  This is how bugs get fixed, how site policy
+gets applied, how better code gets deployed.  In truth, the whole
+configuration management structure doesn't function without mechanisms to
+both send and receive feedback between structural elements.
+
+<p>
+<code class="sh">Hostlint</code> creates a report that reveals the
+difference between an ideal host and the host it is frisking.
+
+<h2 id="close">Close the loop with <code class="sh">hostlint</code></h2>
+All <code class="sh">hostlint</code> does is <code class="sh">rsync</code>
+a directory loaded with shell and <code class="sh">perl</code> scripts from
+a locally trusted service run by Operations to a temporary directory
+on the target host.
+Then it <code class="sh">cd</code>'s into the temporary directory to
+run a check script called <code class="sh">site</code>.
+<code class="sh">Site</code> reports issues with the
+instance's configuration signature in an easy to parse format.
+
+<p id="site">
+The <code class="sh">site</code> application's working parts are just as simple.
+It looks in current directory for scripts that end in
+<code class="markup">.hlc</code> (for "host lint check"), and runs each
+one, capturing the output from the list.  If the output from every
+check script is empty, then <code class="sh">site</code> outputs an all clear
+message, else it outputs the list of differences reported.
+Thus the output is never empty for any host.
+
+<p>
+The <code class="sh">site</code> script comes from a repository I call
+<A href="../hostlint-policy/"><code class="sh">hostlint-policy</code></A>.
+It is actually globally
+visible inside the production network, as any site policy should be.
+Knowing what is expected is how you meet expectations, right?
+
+<h2 id="use">How to use this application</h2>
+
+A mortal application login's <code class="path">crontab</code> runs
+<code class="sh">hostlint</code> at least once a week on every host.
+E-mailed output from that tasks is processed on a central reporting host to
+collate and prioritize the messages.  The Admins review the feedback report
+every Monday to prevent minor errors from becoming bigger issues.
+(The jobs are staggered across a 4 hour window, so the reports do
+not all come in at the same time, and we even-out the
+<code class="sh">rsync</code> service's load.)
+
+<p>
+When a new instance is created, after the process finishes the
+final reboot, it runs <code class="sh">hostlint</code> to report
+any out-of-date items the installation process has installed.  This is
+actually quite often the case in some minor way (version of a manual
+page or script).  This offers the admin a chance to update the build
+process, as well as fixing the instance just created.
+
+<p>
+Part of the triage list for a production issue is to run
+<code class="sh">hostlint</code>.  Some application could have been
+mistakenly removed, back-revisioned or upgraded.  This is a quick check
+that can be compared to the last e-mail report to see what may have
+changed.
+
+<h3 id="works">How that works</h3>
+But to understand how all that works
+to explain some of the modules we coded, and the support I've added to
+<strong>every</strong> program I've distributed.
+
+<dl>
+<dt id="version">The ubiquious <code class="opt">-V</code> option to local tools
+<dd>
+Every program that can accept a command-line option to output a
+version string has the <code class="opt">-V</code> switch.  This makes
+checking the versions of most local tools as easy as running them
+with that switch and parsing the first line of output.  In fact that
+is exactly what <code class="sh">versions.hlc</code> does.
+
+<dt id="ident">Use <code class="sh">ident</code> on local configurations and manual pages
+<dd>
+Since a manual page is not an executable we use <code class="sh">ident</code>
+to pull the <acronym title="revision control system">RCS</acronym>
+identification string out of the comments in each page.  If your site
+uses some other revision control, you'd have to use the apropos tool
+to extract the correct token's value.
+
+<dt id="release">Use <code class="sh">rpm</code> <code class="opt">-i</code>
+<dd>
+For any package manager we query for the release string of key packages.
+There is no reason that you couldn't look at every package, but that
+tends to inject a lot of noise into the signal.  Hardly anyone wants
+to track the version of <code class="sh">uniq</code>'s manual page.
+Changes at that level really don't need human attention, you'll pick
+up the new one when you build a replacement instance.
+
+<dt id="missing">Check for missing (lines in) a configuration files
+<dd>
+One that comes to mind is <code class="path">/etc/resolv.conf</code>.
+If this file is misconfigured your life gets harder really quickly.
+Checking the <code class="markup">options</code> and
+<code class="param">search</code> lines for sanity has saved me many
+hours of debugging.
+
+<dt id="firmware">Report versions of firmware, hardware inventory numbers, etc.
+<dd>
+Most vendors support a limited range of firmware releases.  If
+your machine is out of that range you might want to fix that.
+This is a site policy that is forced on you by the vendor, but
+you still need to manage it locally.
+
+<dt id="supers">Privileged checks
+<dd>
+Some files you may want to check are protected from mortal snooping
+(for example <code class="path">/var/log/security</code>).  In those
+cases you might us <code class="sh">op</code> to escalate a check
+command with an in-line script.  See
+<A href="../../bin/op/op.html"><code class="sh">op</code>'s HTML document</A>
+for details.
+
+<dt id="hash">Check hashes or checksums of critical applications
+<dd>
+If you are worried about unauthorized changes to production code
+you might even go that far.
+</dl>
+
+<p>
+In effect <code class="sh">hostlint</code> checks level 4 (running hosts)
+against level 5 (site policy) to assure that every host conforms.
+If you have site policy statements that do not impact the contents of any file,
+version of a product, release of a package, or existence of a login,
+group, netgroup or network route -- then you can't check it with
+<code class="sh">hostlint</code>.
+
+<h2 id="helps">How <code class="sh">hostlint</code> helps the Admin</h2>
+
+I'm pretty sure <code class="sh">hostlint</code> has saved me more effort
+than any other script I've installed.
+Since petef and I wrote <code class="sh">hostlint</code> to
+check the versions of every local tool it has found regressions and
+missing tools for me, which has saved me a lot of debugging.
+
+<p>
+Regressions happen when you restore a filesystem from backup media
+(with tapes, <code class="sh">sbp</code>, or even a copy from a host
+you thought was identical).  Or when you replace a mother board,
+network card, or other component with firmware or a tracked
+serial number.
+
+<p>
+Build processes get out-of-date when upstream packages change, or
+when peer groups update their site policies without telling you.
+
+<p>
+A list of local tools, packages, and expected configuration files makes
+an excellent outline for teaching new staff what they need to know.
+Adding new checks to the <code class="sh">hostlint</code> repository
+is a great warm-up to getting superuser access.
+
+<p>
+I've put injunctions in the accounting checks to forbid accounts for
+people that have left the organization.  The makes auditors very happy.
+
+<h2 id="summary">Summary</h2>
+
+If you need a mechanism to check the signature of a running host,
+then <code class="sh">hostlint</code> is the tool for you.  Most
+of the checks do not require superuser access, those that do might
+be given an <code class="sh">op</code> rule.
+<p>
+If you've not read it, then you should read about
+<code class="sh">netlint</code> in the
+<A href="../netlint/netlint.html">HTML document</A>.
+
+<hr><pre>
+$Id: hostlint.html,v 1.8 2012/07/11 17:20:44 ksb Exp $</pre></BODY></HTML>

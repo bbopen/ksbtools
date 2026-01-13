@@ -1,0 +1,18 @@
+# chain to gzip'd file							(ksb)
+# $Id: gzip,v 1.1 1996/12/24 22:39:10 kb207252 Exp $
+
+$*(*):		%!/1f8b/%#%04xw/ %. # wrong magic number
+
+$Display(*):	${gzcat-gzcat} %f | ${PAGER-${more-more}} %s
+$Display(*):	${gzcat-gzcat} %f | ${PAGER-${more-more}}
+
+$Info(*):	${echo-echo} "gzipped data"
+$Info(*):	${echo-echo} "gzipped `${gzcat-gzcat} %f >%P && %b %o -m%m -d%s %P && rm -f %P`"
+$Info(*):	${echo-echo} "gzipped `${gzcat-gzcat} %f >/tmp/Z$\$%F && %b %o -m%m -d%s /tmp/Z$\$%F && rm -f /tmp/Z$\$%F`"
+$Info(*):	${echo-echo} "gzipped `${gzcat-gzcat} %f >%P && %b %o -m%m %P && rm -f %P`"
+$Info(*):	${echo-echo} "gzipped `${gzcat-gzcat} %f >/tmp/Z$\$%F && %b %o -m%m /tmp/Z$\$%F && rm -f /tmp/Z$\$%F`"
+
+$*(*):		${gzcat-gzcat} %f >%P && %b %o -m%m -d%s %P && rm -f %P
+$*(*):		${gzcat-gzcat} %f >/tmp/Z$\$%F && %b %o -m%m -d%s /tmp/Z$\$%F && rm -f /tmp/Z$\$%F
+$*(*):		${gzcat-gzcat} %f >%P && %b %o -m%m %P && rm -f %P
+$*(*):		${gzcat-gzcat} %f >/tmp/Z$\$%F && %b %o -m%m /tmp/Z$\$%F && rm -f /tmp/Z$\$%F

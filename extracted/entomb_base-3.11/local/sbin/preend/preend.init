@@ -1,0 +1,22 @@
+#!/bin/sh
+# $Id: preend.init,v 3.2 2007/09/17 14:28:48 ksb Exp $
+# Solaris startup script for /etc/init.d/preend
+# suggested S/K level is rc2.d/S79preend and None (we take a TERM)
+# chkconfig: 2345 90 10
+# description: ksb's daemon to clean up entomb'd files
+
+
+case ${1-help} in
+start)
+	/usr/local/etc/preend -p
+	;;
+stop)
+	pkill -TERM -U root preend
+	;;
+help)
+	echo "`basename ${0}`: usage {start|stop|version}"
+	;;
+version)
+	echo '$Id: preend.init,v 3.2 2007/09/17 14:28:48 ksb Exp $'
+	;;
+esac

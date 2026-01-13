@@ -1,0 +1,16 @@
+# extract tar/ar files							(ksb)
+# $Id: tar,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+$Compile(*):	${%x-%x} %s %f
+$Compile(*):	${%x-%x} -xvf %f
+
+$Clean(*):	${rm-rm} -f %P
+$Clean(*):	${rm-rm} -rf %P
+
+$Run(*):	${%x-%x} %s %f
+$Run(*):	${%x-%x} -tvf %f
+
+$Display(*):	${%x-%x} %s %f
+$Display(*):	${%x-%x} -tvf %f
+
+$Info(*):	${echo-echo} "tar archive"

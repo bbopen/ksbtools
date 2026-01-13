@@ -1,0 +1,9 @@
+/* calendar(1) input							(ksb)
+ * $Id: calendar,v 5.0 1996/09/09 20:59:59 kb207252 Exp $
+ */
+
+$Info(*):	${echo-echo} 'calendar or pcal input file'
+
+$Check: ${pcal-pcal} -c -A -m <%f | ${PAGER-${more-more}}
+
+$Calendar(*): ${calendar-calendar} %f

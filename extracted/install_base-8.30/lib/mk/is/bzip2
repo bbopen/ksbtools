@@ -1,0 +1,14 @@
+# chain to bzip2'd file							(ksb)
+# $Id: bzip2,v 5.1 2008/10/26 16:48:25 ksb Exp $
+
+$*(*):		%!/BZh/%#3@0%cb/ %. # wrong magic number
+
+$Display(*):	${bzip2-bzip2} -d <%f | ${PAGER-${more-more}} %s
+$Display(*):	${bzip2-bzip2} -d <%f | ${PAGER-${more-more}}
+
+$Info(*):	${echo-echo} "bzip2 archive, block size of %[#1@3%cb]00k"
+
+$*(*):		${bzip2-bzip2} -d <%f >%P && %b %o -m%m -d%s %P && rm -f %P
+$*(*):		${bzip2-bzip2} -d <%f >/tmp/Z$\$%F && %b %o -m%m -d%s /tmp/Z$\$%F && rm -f /tmp/Z$\$%F
+$*(*):		${bzip2-bzip2} -d <%f >%P && %b %o -m%m %P && rm -f %P
+$*(*):		${bzip2-bzip2} -d <%f >/tmp/Z$\$%F && %b %o -m%m /tmp/Z$\$%F && rm -f /tmp/Z$\$%F

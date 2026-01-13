@@ -1,0 +1,91 @@
+# groobee
+# Electronic BibPack (pilot.fedex.com)
+ebp1.zmd
+ebp2.zmd
+ebptest1.zmd
+# GlobalTradeOne (gto.dmz.fedex.com)
+gto1.zmd 199.81.87.27
+gto2.zmd 199.81.87.28
+# Web API (wapi.fedex.com)
+wapi1.zmd
+wapi2.zmd
+wapi3.zmd
+ver1.zmd
+ver2.zmd
+fxentrust1.zmd
+fxentrust2.zmd
+ldap1.zmd
+ldap2.zmd
+comm1.zmd
+comm2.zmd
+# mail relays (smtp.{dmz,zmd}fedex.com)
+mx1.zmd
+mx2.zmd
+mx3.zmd
+mx4.zmd
+mx5.zmd
+mx6.zmd
+mx7.zmd
+mx8.zmd
+# Oasis (crc.fedex.com, smrc.fedex.com)
+crc1.zmd
+crc2.zmd
+crc3.zmd
+frcdb1.zmd
+frcdb2.zmd
+frcdbtest1.zmd
+# Customs clearance (RMS/DTS)
+cc1.zmd
+cc2.zmd
+cctest1.zmd
+%%status -- The CGI status report
+   Report   Host      Load  Status
+@ %{@:r} %{@:h} %{@:l} %{@:x} %{@:f}
+%%wapi -- Web API Hosts
+     wapi1.zmd %{wapi1.zmd:X} %{wapi1.zmd}
+     wapi2.zmd %{wapi2.zmd:X} %{wapi2.zmd}
+     wapi3.zmd %{wapi3.zmd:X} %{wapi3.zmd}
+fxentrust1.zmd %{fxentrust1.zmd:X} %{fxentrust1.zmd}
+fxentrust2.zmd %{fxentrust2.zmd:X} %{fxentrust2.zmd}
+     ldap1.zmd %{ldap1.zmd:X} %{ldap1.zmd}
+     ldap2.zmd %{ldap2.zmd:X} %{ldap2.zmd}
+     comm1.zmd %{comm1.zmd:X} %{comm1.zmd}
+     comm2.zmd %{comm2.zmd:X} %{comm2.zmd}
+      ver1.zmd %{ver1.zmd:X} %{ver1.zmd}
+      ver2.zmd %{ver2.zmd:X} %{ver2.zmd}
+%%mx -- Mail relays
+       mx1.zmd %{mx1.zmd:X} %{mx1.zmd}
+       mx2.zmd %{mx2.zmd:X} %{mx2.zmd}
+       mx3.sac %{mx3.sac:X} %{mx3.sac}
+       mx4.sac %{mx4.sac:X} %{mx4.sac}
+       mx5.sac %{mx5.sac:X} %{mx5.sac}
+       mx6.sac %{mx6.sac:X} %{mx6.sac}
+       mx7.sac %{mx7.sac:X} %{mx7.sac}
+       mx8.sac %{mx8.sac:X} %{mx8.sac}
+%%oasis -- Oasis
+      crc1.zmd %{crc1.zmd:X} %{crc1.zmd}
+      crc2.zmd %{crc2.zmd:X} %{crc2.zmd}
+      crc3.zmd %{crc3.zmd:X} %{crc3.zmd}
+    frcdb1.zmd %{frcdb1.zmd:X} %{frcdb1.zmd}
+    frcdb2.zmd %{frcdb2.zmd:X} %{frcdb2.zmd}
+frcdbtest1.zmd %{frcdbtest1.zmd:X} %{frcdbtest1.zmd}
+%%cc -- Customs Clearance
+       cc1.zmd %{cc1.zmd:X} %{cc1.zmd}
+       cc2.zmd %{cc2.zmd:X} %{cc2.zmd}
+   cctest1.zmd %{cctest1.zmd:X} %{cctest1.zmd}
+%%pilot -- Electronic BidPack
+      ebp1.zmd %{ebp1.zmd:X} %{ebp1.zmd}
+      ebp2.zmd %{ebp2.zmd:X} %{ebp2.zmd}
+  ebptest1.zmd %{ebptest1.zmd:X} %{ebptest1.zmd}
+%%gto -- EJB
+      gto1.zmd %{gto1.zmd:X} %{gto1.zmd}
+      gto2.zmd %{gto2.zmd:X} %{gto2.zmd}
+%%motd -- the message of the day
+This is one way to track clients and servers.  The code is from
+	ksb@sa.fedex.com
+The programs are labd, labc, labwatch, and labstat.  The configuration is in
+labwatch.cf (in /usr/local/lib or /root).
+
+	-- ksb
+%%version -- the version of this configuration file
+$Id: groobee.cf,v 1.18 2000/03/04 00:30:47 root Exp $

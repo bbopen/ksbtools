@@ -1,0 +1,16 @@
+# $Id: INSTALL,v 3.0 1997/10/25 19:45:22 ksb Exp $
+
+These depend on mkcmd in a big way.  You'll need the meta source stuff
+installed on you master source host to push them in any automated fassion.
+
+Just make to your test machines
+	make HOSTS=-m$TEST_BOX all
+
+Play with them in the source if you like and install them.  There are
+even manual pages.
+
+Xapply 3.X is much more useful than 2.X and I've fixed the N+1 process
+bug (which only I noticed).
+
+--
+ksb, Oct 1997 ksb@fedex.com

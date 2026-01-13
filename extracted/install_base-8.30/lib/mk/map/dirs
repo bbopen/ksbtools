@@ -1,0 +1,21 @@
+# map a directory name that we might recognize				(ksb)
+# $Id: dirs,v 5.3 2010/04/09 15:30:47 ksb Exp $
+
+%f	^/$		the root directory
+%G	^\\.$		current working directory (`pwd`)
+%G	^\\.\\.$	parent directory (`cd .. && pwd`)
+%G	^OLD$		an install backout cache
+%G	^RCS$		an RCS cache directory
+%G	^CVS$		a CVS cache directory
+%G	^SCCS$		SCCS directory
+%G	^bin$		an application directory
+%G	^dev$		root of device files
+%G	^etc$		an etcetera catch-all directory
+%G	^lib$		a library directory
+%G	^libexec$	programs for support tasks
+%G	^sbin$		superuser specific programs
+%G	^stand$		stand-alone mode programs
+%G	^usr$		multi-user mode programs
+%G	^var$		variable data
+%G	^opt$		optional application hierarchies
+.	.		directory

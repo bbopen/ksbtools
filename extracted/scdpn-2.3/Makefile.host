@@ -1,0 +1,101 @@
+`# $Id: Makefile.host,v 2.2 2010/12/06 17:58:21 ksb Exp $
+#
+#	master Makefile for scdpn
+
+PROG=	scdpn
+BIN=	${DESTDIR}/usr/local/sbin
+DOC=	${DESTDIR}/usr/local/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/include/local
+P=
+
+INCLUDE=
+DEBUG=
+CDEFS=  -D'HOSTTYPE` -DHOSTOS='HOSTOS` -I/usr/local/include
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+GENC=	main.c
+GENH=	main.h
+GEN=	${GENC} ${GENH}
+HDR=	machine.h pcap-hpux.h
+SRC=
+DEP=	${GENC} ${LINKC} ${SRC}
+OBJ=	main.o
+MAN=	scdpn.man
+OTHER=	README TODO scdpn.m
+SOURCE=	Makefile ITO.spec ${OTHER} ${MAN} ${HDR} ${SRC}
+CC=	gcc
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	'ifelse(HOSTTYPE,`HPUX11',`L=$$([ -f /usr/local/lib/hpux32/libpcap.a ] && echo /usr/local/lib/hpux32/libpcap.a || echo /usr/local/lib/libpcap.sl) ;\
+')dnl
+`	${CC} -o $@ ${CFLAGS} ${OBJ}'dnl
+ifelse(HOSTTYPE,`HPUX11',` $$L',
+` -L/usr/local/lib -lpcap')`'dnl
+ifelse(HOSTTYPE,SUN5,` -lsocket -lnsl')`
+
+main.h: main.c
+
+main.c: ${PROG}.m
+	mkcmd ${PROG}.m'ifelse(HOSTTYPE,`SUN5',` util_fgetln.m')`
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} ${LINK} *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} ${LINK} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${BIN} ${LIB}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all dirs FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${BIN} ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+I=/usr/local/include
+
+main.o: machine.h main.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

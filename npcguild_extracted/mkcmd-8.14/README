@@ -1,0 +1,22 @@
+# $Id: README,v 8.1 1997/10/27 11:30:43 ksb Exp $
+
+This is the source to mkcmd (make command) and explode (the MICE module
+unpacker).  You shall need mkcmd to compile almost anything I've written
+in the last 10 years.  Anything over version 8.5 should work for all
+products.
+
+
+Get "msrc0-0.5.tgz" first!
+--------------------------
+
+
+Before you build this you need to get "msrc0-0.5" or so and use it
+to start the "meta source" stuff on your hosts.   If you don't do that
+you will never get any of these nice toys to build.  For sure.
+
+Bugs:
+	The order of some of the arrays is not optimal for humans.
+
+--
+Kevin Braunsdorf, Oct 1997
+ksb@fedex.com, one of the Pundits

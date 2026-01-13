@@ -1,0 +1,1164 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Notes referenced from op's description</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+
+These are sections I removed from the main page because they didn't
+flow the way I wanted.  So they are now reference sections here.
+
+<h1 id="logs">Access logs</h1>
+
+<code class="sh">Op</code> uses <code class="libc">syslog</code>(3) to
+log every access attempt to <code class="markup">LOG_AUTH</code> and
+it always uses the name "op" (even when called by another name).
+<P>
+I direct this to the system console, not a local file or network service.
+Then I pick it up on the serial port and log it through my console
+server (see <A href="http://www.conserver.com/">conserver.com</A> for
+a more widely supported version than mine).  This prevents Bad Guys
+from covering their tracks by network attack or by deletion of the
+log files (since they are not on a host that is on the same network
+as the host they are attacking).
+<P>
+I then produce reports that show who is assuming which role and how
+often they do it.  This helps close-the-loop on broken applications,
+abuse of access, and some other political issues.
+<P>
+While this is pretty easy to setup, it is beyond the scope of this document.
+<P>
+Return to <A href="op.html#model">the main page</A>.
+
+<h1 id="details">Configuration file details</h1>
+
+<code class="sh">Op</code>'s configuration file syntax is designed to
+be overly simple.
+By keeping the syntax super simple we are trying to limit the
+chance of complex expressions leading to breaches in security policy.
+We want the <code class="sh">op</code> "firewall" to
+keep Bad Guys from gaining access they shouldn't have, while
+allowing Good Customers to work without useless constraints.
+<P>
+I looked at the usage of many other similar programs
+(<code class="sh"><A href="http://www.ucolick.org/~will/RUE/super/">super</A></code>,
+<code class="sh"><A href="http://www.sudo.ws/sudo/">sudo</A></code>,
+<code class="sh"><A href="http://developers.sun.com/developer/technicalArticles/opensolaris/pfexec.html?cid=e7510">pfexec</A></code>,
+other versions of <code class="sh"><A href="http://www.swapoff.org/browser/op">op</A></code>) to see what features
+they provided that this version of <code class="sh">op</code> lacked.
+After that review I added the in-line script feature, which I still
+believe is a <A href="#inline">mistake</A>.
+
+<h2 id="config">Lexical conventions</h2>
+
+Comments are the common octothorp
+(hash, <code class="markup">#</code>) to end-of-line, and are removed
+like most UNIX &trade; configuration files.
+The octothorp is <em>not</em> special when contained in
+a <code class="param">word</code>.
+
+<P>
+A <code class="param">word</code> is a sequence of non-white-space
+characters.   A <code class="param">mnemonic</code> is limited
+in that it must start in column 1, and that, in
+addition to white-space, it is also terminated by either a
+semicolon (<code class="markup">;</code>)
+or an ampersand (<code class="markup">&amp;</code>).
+All words are broken at white-space: there is no quote convention
+to protect white-space inside a <code class="param">word</code>.
+There is one other lexical construct: an in-line script.
+<P>
+An in-line script is only parsed as the next item immediately after
+a <code class="param">mnemonic</code>.  It groups shell code between
+curly braces to form a block of shell code.
+It begins with an open curly (<code class="markup">{</code>) as
+a <code class="param">word</code> and ends at the next line which starts with
+a close curly (<code class="markup">}</code>) as the first non-white-space
+character.  The delimiting curly braces are not included in the resulting
+text.
+
+<h2 id="bnf">The technical syntax</h2>
+
+<P>
+As a <acronym title="Backus-Naur Form">BNF</acronym>:
+<blockquote><pre>
+<code class="param">file</code> ::= <code class="param">rule</code> * ;
+</pre></blockquote>
+<blockquote><pre>
+<code class="param">rule</code> ::= <code class="markup">DEFAULT</code> <code class="param">option</code> *
+	| <code class="param">mnemonic</code> <code class="param">command</code> <code class="param">arg</code> * (<code class="markup">;</code> | <code class="markup">&amp;</code>)  <code class="param">option</code> * ;
+</pre></blockquote>
+<blockquote><pre>
+<code class="param">option</code> ::= <code class="param">word</code> ;
+</pre></blockquote>
+<blockquote><pre>
+<code class="param">arg</code> ::= <code class="param">word</code> ;
+</pre></blockquote>
+<blockquote><pre>
+<code class="param">command</code> ::= <code class="param">word</code>
+	| '{' ... '\n' white-space * '}'
+	;
+</pre></blockquote>
+
+<h2 id="terms">Meaning of these terms</h2>
+
+The configuration file reader doesn't assign much meaning to the
+<code class="param">arg</code> or <code class="param">option</code>
+words as they are read.  The semantic analysis is deferred until after
+all the files are input, up until that time all <code class="param">arg</code>,
+<code class="param">option</code>, and <code class="param">command</code>
+terms are just <code class="param">words</code>.
+
+<P>
+The special <code class="markup">DEFAULT</code> form omits the
+<code class="param">command</code> part from the rule stanza: this is
+because it only expresses default <code class="param">options</code>
+for subsequent rules (so it doesn't need any <code class="param">args</code>).
+
+<P>
+The semicolon (<code class="markup">;</code>) that terminates
+the <code class="param">arg</code> list may be expressed as
+an ampersand (<code class="markup">&amp;</code>) to force a
+<code class="markup">daemon</code> option into
+the <code class="param">option</code> list.  This shorthand
+is clearer in the rule-base when it is repeated for many commands.
+
+<P>
+In the normal command mode <code class="sh">op</code> examines each
+rule in turn looking for a literal string match for the requested
+<code class="param">mnemonic</code> against all those listed in the
+rule-base.  Only if one matches are any of
+the <code class="param">options</code> examined.  At that point
+only the <A href="op.html#number">$#</A> and <A href="op.html#param">$N</A>
+options are analyzed.
+<P>
+Only when the command requested has the correct number of parameters
+and matches the command-line arguments are any
+<code class="markup">DEFAULT</code> options merged into the rule.
+All subsequent authorization and command construction only
+looks at that single rule.  For all intents the rest of the
+rule-base is forgotten.
+
+<P>
+When a sanity check (under <code class="opt">-S</code>),
+list (under <code class="opt">-l</code>) or other report
+(under <code class="opt">-r</code>, or <code class="opt">-w</code>)
+request is processed each rule has its DEFAULT merged before it
+is processed.  This could produce insane results as and
+default <code class="markup">$#</code> would be applied to
+liberally: use <code class="opt">-S</code> to catch this (and
+many other botches).
+
+<P>
+Return to <A href="op.html#bnfback">the main page</A>.
+
+<h1 id="showme">A primitive display tool</h1>
+
+Here is a shell script that (under Linux) outputs lots of
+useful stuff about a processes environment and attributes,
+I called it "<A href="showme.sh">showme.sh</A>":
+<!-- :r !MK= mk -smDoc showme.sh
+ -->
+<blockquote class="file"><pre><code >#!/bin/sh
+# $<!-- -->Id: showme.sh,v 2.29 2008/12/31 20:51:12 ksb Exp $
+# $Doc: sed -e 's/&amp;/A''MPamp;/g' -e 's/&lt;/\\&amp;lt;/g' -e 's/&gt;/\\&amp;gt;/g' &lt;%f| sed -e 's/[A][M][P]/\\&amp;/g'
+(
+if [ $# -eq 0 ] ; then
+	echo "Process #$$ was executed as \"$0\", with no arguments"
+else
+	echo "Process #$$ was executed as \"$0\", with arguments of"
+	for A
+	do
+		echo "$A" |sed -e 's/\([\\"$`]\)/\\\1/g' -e 's/^/  "/;s/$/"/'
+	done
+fi
+echo " as login" `id -rnu`", effective" `id -nu`" [uid" \
+	`id -ru`", "`id -u`"]"
+echo " with group" `id -rng`", effective" `id -ng`" [gid" \
+	`id -rg`", "`id -g`"]"
+echo " supplementary groups:" `id -nG` "[`id -G`]"
+echo ' $PWD='`pwd`
+echo ' umask '`umask`
+renice 0 $$ 2&gt;&amp;1 |sed -e 's/old/nice/' -e 's/,.*//'
+env
+) |${PAGER:-more}
+exit 0
+</code></pre></blockquote>
+
+<P>
+Return to <A href="op.html#impact">the main page</A>.
+
+<h1 id="jacketpl">Example jacket code</h1>
+
+<A href="op.html#external">Helmet</A> processes take their
+"check parameters" from forced
+environment variables then output an exit status to
+<code class="sh">op</code> to deny or allow an escalation.
+<A href="op.html#jacket">Jacket</A> processes take much the same arguments, but may
+persist while the escalated access is running.  The template
+code in this section may be adapted to serve as either a
+jacker or a helmet.
+
+<P>
+The example jacket parses the command-line options, offers
+<code class="opt">-h</code>, and <code class="opt">-V</code> as
+all good user interfaces should, and has comments in spots where
+you should edit to make your checks.
+Copy the <A href="jacket.pl">jacket.pl</A> file to a working file,
+edit it and search for each check-point to add your checks.
+
+<dl>
+<dt><code class="markup">/CHECKS AND REPARATIONS</code>
+<dd>
+This is where a helmet should check the access requested against
+site policy to either accept (exit 0) or reject (exit non-zero)
+the requested access.
+<dd>
+A jacket process may make the same checks, but should report
+a failure on <code class="param">stdout</code>, before any
+exit  (as all the check above did).
+<dt><code class="markup">/CAPTURE START DATA</code>
+<dd>
+A helmet has already <code class="libc">exit</code>'d.
+<dd>
+A jacket process may record a start-time, or the size of a log file,
+or any other relevant data it will need in the next step.
+<dt><code class="markup">/CLEANUP</code>
+<dd>
+The process requested has finished, <code class="markup">$status</code>
+holds the <code class="libc">exit</code> code, while
+<code class="markup">$?</code> holds the raw <code class="libc">wait</code>
+status.  Log anything you need to log, cleanup anything as needed.
+<P>
+If you need to exit non-zero because the access failed
+this would be the place.
+<dt>At the end of the file.
+<dd>
+Check your code out well, and change my revision control tag
+(<code class="markup">$<!-- -->Id: ...</code>) to your local flavor.
+Feel free to leave a credit in for the template, if you like.
+<P>
+Check it into your local revision control system and install it
+as local policy demands.
+</dl>
+
+Here is the code, since some browsers don't like to show the perl script:
+<!-- :r !MK= mk -smDoc jacket.pl
+     I know the rcsid gets hosed in this copy, that is not important.
+  -->
+<blockquote class="file"><pre><code >#!/usr/bin/perl -T
+# An example perl jacket/helmet script (parses the options for you).	(ksb)
+# Note that this code will most be run under the taint rules, see perlsec(1).
+# KS Braunsdorf, at the NPCGuild.org
+# $Doc: sed -e 's/&amp;/A''MPamp;/g' -e 's/&lt;/\\&amp;lt;/g' -e 's/&gt;/\\&amp;gt;/g' &lt;%f| sed -e 's/[A][M][P]/\\&amp;/g'
+
+use lib  '/usr/local/lib/sac/perl'.join('.', unpack('c*', $^V)),
+	'/usr/local/lib/sac';
+use Getopt::Std;
+use strict;
+
+my($hisPath) = $ENV{'PATH'};
+$ENV{'PATH'} = '/usr/bin:/bin:/usr/local/bin:/usr/local/sbin:/sbin';
+my($progname, %opts, $usage);
+$progname = $0;
+$progname =~ s/.*\///;
+getopts("VhP:u:g:f:R:C:", \%opts);
+$usage = "$progname: usage [-P pid] [-u user] [-g group] [-f file] [-R root] -C config -- mnemonic program euid:egid cred_type:cred";
+
+if ($opts{'V'}) {
+	print "$progname: ", '$Id: refs.html,v 2.68 2010/07/28 22:46:39 ksb Exp $', "\n";
+	exit 0;
+}
+if ($opts{'h'}) {
+	print "$usage\n",
+		"C config   which op configuration file sourced the rule\n",
+		"f file     the file specification given to op, as an absolute path\n",
+		"g group    the group specification given to op\n",
+		"h          standard help output\n",
+		"P pid      the process-id of the jacketed process (only as a jacket)\n",
+		"R root     the directory we chrooted under\n",
+		"u user     the user specification given to op\n",
+		"V          standard version output\n",
+		"mnemonic   the requested mnemonic\n",
+		"program    the program mapped from the mnemonic\n",
+		"euid:egid  the computed effective uid and gid\n",
+		"cred_type  the credential type that granted access (groups, users, or netgroups)\n",
+		"cred       the matching group, login, or netgroup\n";
+	exit 0;
+}
+
+my($MNEMONIC, $PROGRAM);
+shift @ARGV if ('--' eq $ARGV[0]);
+if (scalar(@ARGV) != 4) {
+	print STDERR "$progname: exactly 4 positional parameters required\n";
+	print "64\n" if $opts{'P'};
+	exit 64;
+}
+if ($ARGV[0] !~ m|^([-/\@\w.]+)$|o) {
+	print STDERR "$progname: mnemonic is zero width, or spelled badly\n";
+	print "64\n" if $opts{'P'};
+	exit 64;
+}
+$MNEMONIC = $1;
+if ($ARGV[1] !~ m|^([-/\@\w.]+)$|o) {
+	print STDERR "$progname: program specification looks bogus\n";
+	print "64\n" if $opts{'P'};
+	exit 64;
+}
+$PROGRAM = $1;
+if ($ARGV[2] !~ m/^([^:]*):([^:]*)$/o) {
+	print STDERR "$progname: euid:egid $ARGV[2] missing colon\n";
+	print "65\n" if $opts{'P'};
+	exit 65;
+}
+my($EUID, $EGID) = ($1, $2);
+if ($ARGV[3] !~ m/^([^:]*):([^:]*)$/o) {
+	print STDERR "$progname: cred_type:cred $ARGV[3] missing colon\n";
+	print "76\n" if $opts{'P'};
+	exit 76;
+}
+my($CRED_TYPE, $CRED) = ($1, $2);
+
+# Now $MNEMONIC is mnemonic, $PROGRAM is program, also $EUID, $EGID,
+# $CRED_TYPE, $CRED are set -- so make your checks now.
+#
+# There are 5 actions you can take, and leading white-space is ignored:
+# 1) As above you can output an exit code to the process:
+#	print "120\n";
+# 2) You can set an environment variable [be sure to backslash the dollar]:
+#	print "\$FOO=bar\n"
+#    The same line without a value adds the client's $FOO (as presented):
+#	print "\$FOO\n";
+# 3) You can remove any environment variable:
+#	print "-FOO\n";
+# 4) You can send a comment which op will output only if -DDEBUG was set
+#    when op was built [to help you, Mrs. Admin]:
+#	print "# debug comment\n";
+# 5) Use op to signal your displeasure with words, making op prefix your
+#    comment with "op: jacket: " ("op: helmet: "):
+#	print "Permission lost!\n";
+#    (This suggests an exit code of EX_PROTOCOL.)
+#
+# Put your checks and payload here.  Output any commands to the co-process,
+# be sure to send a non-zero exit code if you want to stop the access!
+# CHECKS AND REPARATIONS
+#e.g. check LDAP, kerberos, RADIUS, or time-of-day limits here.
+
+# If we are a helmet you can just exit, if you exit non-zero op will view that
+# as a failure to complete the access check, so it won't allow the access.
+exit 0 unless $opts{'P'};
+
+# We must be a jacket, and the requested access is not yet running.
+# You could set a timer here, or capture the start/stop times etc.
+# CAPTURE START DATA
+#e.g. call time or set an interval timer
+#e.g. block signals
+
+# Let the new process continue by closing stdout, if the last exitcode
+# you wrote to stdout was non-zero op won't run the command, I promise.
+open STDOUT, "&gt;/dev/null";
+
+# We can wait for the process to exit, we are in perl because the shell
+# (ksh,sh) can't get the exit code from a process it didn't start.
+my($kid, $status);
+$kid = waitpid $opts{'P'}, 0;
+$status = $? &gt;&gt; 8;
+
+# Do any cleanup you want to do here, after that the jacket's task is complete.
+# Mail a report, syslog something special, restart a process you stopped
+# before the rule ran, what ever you need.  On a failure you should exit
+# with a non-zero code here.
+# CLEANUP
+#e.g.: print STDERR "$kid exited with $status\n";
+#e.g.: use Sys::Syslog; ... log something clever
+
+# This is the exit code that goes back to the client, since this jacket
+# became the op process (as all jackets do).
+exit 0;
+</code></pre></blockquote>
+
+<P>
+We could drop uid to a vanilla login (like <code class="markup">nobody</code>)
+as soon as we don't need special permissions.  That would be a good idea,
+if you can manage it.  There is a fine line here, you don't really want
+to drop to the original login's uid, because then they can mess with
+your process and the point of a jacket is that the client can't
+<code class="libc">ptrace</code>(2) you.
+
+<P>
+This is also a sane way to get a PAM session close, as in the normal
+<code class="sh">op</code> process flow we <code class="libc">execve</code>
+the escalated program, so <code class="sh">op</code> not around to
+call <code class="libc">pam_close_session</code>(3).
+
+<P>
+Return to <A href="op.html#jackback">the main page</A>.
+
+<h1 id="paper">Tom's paper reference</h1>
+
+<pre>
+%A Tom Christiansen
+%T Op: A Flexible Tool for Restricted Superuser Access
+%P 89-94
+%I USENIX
+%B Large Installation Systems Administration III Workshop Proceedings
+%D September 7-8, 1989
+%C Austin, TX
+%W Convex Computer Corporation
+</pre>
+
+<h1 id="inline">In-line scripts are a botch</h1>
+
+There was a lot of demand for the in-line script feature.
+I don't use in-line scripts.  I have the master source
+system to push only the scripts I need to only the hosts that
+need them.
+
+<P>
+For the reasons below I try not to put in-line scripts in any
+access rule-base.
+
+<dl>
+<dt>It radiates information
+<dd>
+If you call a script from a protected directory
+(viz. <code class="path">/usr/local/libexec/op</code>) then
+the Bad Guy can't see the text of the script to aid her in
+subornation of the code.  If you put the code in-line it shows
+up in <code class="sh">ps</code> output while running.
+<dt>Revision control of the script is bound to the rule-base
+<dd>
+I use very strict revision control for all my local tools.  Each
+program outputs a version string under <code class="opt">-V</code>
+and each non-program file holds a revision tag in comments at
+the top of the files.  By putting code without
+the <code class="opt">-V</code> hook in the configuration file
+I am overloading the revision tag in that file to denote
+both the revision of the rule-base and the revision of the code.
+<dt>Confusion of lexical convention
+<dd>
+By putting shell (<code class="sh">sh</code>,
+<code class="sh">bash</code>, <code class="sh">ksh</code>,
+<code class="sh">csh</code>, or <code class="sh">perl</code>) in
+the configuration file we confuse the quoting rules with
+<code class="sh">op</code>'s lack of quotes.  I see a larger
+number of misspelled rules when in-line scripts are included.
+<dt>Owner of access verses owner of action
+<dd>
+At a large site the Information Security review of the
+access configuration becomes far more complex and tedious as
+we must review the <em>code</em> of each in-line script for
+each change to the access policy.  When we separately
+review the access policy (with one group) and the code
+used to grant the access (with application security) we
+get better feedback on both aspects.
+<P>
+This issue is not as clear at a small site where
+the <code class="sh">op</code> policy is coded by
+the same administrator that would code any in-line script.
+<dt>It is not compatible with how other version of <code class="sh">op</code>
+do the same thing
+<dd>
+I didn't like the use of backslashes or single quotes in the other
+versions of <code class="sh">op</code>, so I used curly braces.  My bad.
+</dl>
+
+<P>
+Finally it is easy to make the rule-base work without them:
+here is an example from another version of <code class="sh">op</code>:
+<!-- I would seriously consider marking this up in the curly format
+ when there is only one way to do the inline scripting, this becomes less
+ and less relevant in its current form -->
+<blockquote class="file"><pre><code >umount	...
+	case $1 in
+	cdrom) /sbin/umount /mnt/cdrom ;;
+	dvd) /sbin/umount /mnt/dvd ;;
+	burner) /sbin/umount /mnt/burner ;;
+	*) echo "op: you do not have permission to unmount \'$1\'" ;;
+	esac
+</code></pre></blockquote>
+
+<P>
+In this version of <code class="sh">op</code> I would use an RE match
+on <code class="markup">$1</code>:
+<blockquote class="file"><pre><code >umount	/sbin/umount /mnt/$1 ;
+	$1=^(cdrom|dvd|burner)$
+	uid=root gid=operator
+</code></pre></blockquote>
+<P>
+Or if I need to limit this to different Customer populations I
+might use two netgroups:
+<blockquote class="file"><pre><code >umount	/sbin/umount /mnt/$1 ;
+	$1=^(cdrom|dvd)$
+	netgroups=readers
+	uid=root gid=operator
+
+umount	/sbin/umount /mnt/$1 ;
+	$1=^(burner)$
+	netgroups=writers
+	uid=root gid=operator
+</code></pre></blockquote>
+
+<P>
+This also gives the Customer a better usage message under
+<code class="opt">-l</code> and <code class="opt">-r</code> because
+it shows the Customer only what they can do, and with a shell-like
+usage format:
+<blockquote class="file"><pre><code >$  op -l
+op umount cdrom|dvd
+...
+</code></pre></blockquote>
+
+<P>
+Return to <A href="op.html#inline_back">the main page</A>.
+
+<h1 id="tips">Tips to build a better rule-base</h1>
+
+The configuration of escalation rules is very important to the
+security of the host: one bad rule might give away superuser access to
+everyone on a host.  An out-of-date rule (allowing someone
+access that should no longer have it) is bad enough, but it gets
+worse when a recycled login name (viz. "jsmith") grants a role to
+the <em>new</em> Ms. Smith that was intended for the previous
+Mr. Smith.
+
+<P>
+Start with the assumption that the rule-base is distributed based on
+the "type" of host that needs the rules, don't assume that the same
+files are installed on every host, or that the whole rule-base must
+be defined in a single file.
+This allows you to use the same mnemonic name on more than one
+class of server to do that same thing for different Customers.
+And it allows you to reuse whole files when you need them.
+
+<P>
+To allow Customers to have different roles used group membership.
+Leverage your accounting system to add/remove logins from groups:
+remove all the login names from the rule-base.
+
+<P>
+When that doesn't work fall back to netgroups (really).  I know
+netgroups is old-school, but it solves several issues:
+<dl>
+<dt>You can run out of groups
+<dd>
+A login can only really be in 8 or 16 groups (depending on the
+version of the OS).  A login can be in any number of netgroups.
+<dt>Changing the rule-base my be harder than changing roles
+<dd>
+In some cases local policy may restrict changes to the rule-base
+more tightly than changes to accounting (<code class="path">/etc/group</code>,
+<code class="path">/etc/netgroup</code>, and <code class="path">/etc/passwd</code>
+are usually viewed as under the control of the local Admin, while the
+escalation rule-base may be under InfoSec.
+<dt>Roles may change based on the "level" of the host
+<dd>
+On non-production hosts some staff may be able to start/stop an
+application for testing that the should not be able to in production.
+But allowing their accounts in production may aid in trouble shooting
+production issues.  Allow access via a netgroup, then limit the
+netgroups file in production a lot more -- with the same rule-base.
+<dt>Login name in rule-bases are just plain evil
+<dd>
+Don't blame anyone else when someone's role changed, but their access didn't.
+</dl>
+
+<P>
+Group on-demand tasks by facility (like application name) and
+verb (like "start", "stop", "kill") then code matching rules to
+take the correct action with the lowest privilege process that
+can get the task done.  Don't accept any parameters
+that you don't really need.
+
+<P>
+Don't run anything as the superuser unless you must.  Find a mortal
+login to run each facility.
+
+<P>
+For tasks you really must run as root be more picky about who can
+access the rule, and much more picky about parameters.
+
+<P>
+Never ask for a password unless the rule cannot possibly be used
+in automation.  I use <code class="sh">op</code> to start and stop
+processes as each host boots -- if those rules ask for a password
+you can't do that.
+
+<P>
+You may choose to put in-line scripts in your local policy,
+but I think it's a <em>better</em> practice to use regular expression
+matches against <code class="markup">$1</code>
+to pick the correct command within <code class="sh">op</code>
+itself.  See <A href="#inline">in-line above</A> and note that
+I almost never do that.  <!-- OK, I never do that. -->
+
+<h2 id="clear_rule">Tips to make each rule more clear</h2>
+
+<P>
+<code class="sh">Op</code> forces you to start each new escalation
+rule in column 1.  After that the format is largely up to you.
+I try to phrase rules by this style guild:
+<dl>
+<dt>Keep the <code class="param">args</code> all on the first line.
+<dd>
+This means the maintainer of the rule-base can see all the
+matching argument lists with <code class="sh">grep</code>:
+<blockquote class="file"><pre><code >grep '^target-rule' *.cf
+</code></pre></blockquote>
+<dt>Match all the parameters first <code class="param">options</code> list (via <code class="markup">$*</code>,
+<code class="markup">$</code><code class="param">N</code>).
+<dd>
+This allows the reader to see which rule may (may not) trap a
+specific request quickly.  And it helps make all the rules easier
+to read.
+<dt>Be explicit with the regular expression match for any parameter needed specifically.
+<dd>
+Give <code class="sh">op</code> <code class="opt">-l</code> the
+information it needs to output a great usage message by matching
+whole words when you can:
+<blockquote class="file"><pre><code >	<em class="error">$1=^-[abc]$</em>
+</code></pre></blockquote>
+is shorter for you to type, but represents the parameter as "$1", while
+<blockquote class="file"><pre><code >	$1=^(-a|-b|-c)$
+</code></pre></blockquote>
+represents the parameter as "-a|-b|-c".
+Later you might want to add another rule with the same
+<code class="param">mnemonic</code> and another set of
+values for <code class="markup">$1</code>.
+<dt>Customers are confused by parameters that are ignored so use <code class="markup">$#</code> with any <code class="markup">$*</code>.
+<dd>
+This is easy to do with <code class="sh">op</code> so
+I always put <code class="markup">$#</code> in or
+<code class="markup">!</code><code class="param">N</code> to limit the
+number of command line parameters.
+<dt>Add negative patterns to stop Bad Guys (via <code class="markup">!*</code> and
+<code class="markup">!</code><code class="param">N</code>)
+<dd>
+For example adding <code class="path">../</code> to path parameters is
+not what we want.  You can thwart their attempts with an
+explicit rejection:
+<blockquote class="file"><pre><code >run	/opt/safe/bin/$1 ;
+	!1=^\.\./,/\.\./
+	...
+</code></pre></blockquote>
+<dt>Next add credentials <code class="markup">groups</code>,
+<code class="markup">netgroups</code>, and
+<code class="markup">users</code> options
+<dd>
+That is the order <code class="sh">op</code> matches the rule, and
+it helps explain to the reader why her request is being rejected.
+The only <code class="markup">users</code> specification I like is "anyone":
+<blockquote class="file"><pre><code >	users=^.*$
+</code></pre></blockquote>
+Using <code class="markup">groups</code> is always way better (even for
+the superuser, include a group for that in your accounting system).
+Use <code class="markup">netgroups</code>,
+<code class="markup">pam</code> or
+a <code class="markup">helmet</code> specification before you fall into
+the trap of listing login names in your configuration.
+<dt>Then any <code class="markup">helmet</code>, <code class="markup">jacket</code>, <code class="markup">pam</code>, or <code class="markup">password</code> options
+<dd>
+These are also limits on who can take the role, so they should be
+explained before the process modifications.
+If any of these require information passed via an environment
+specification you should put that specification above it, or on the same
+line (as if it were an option).
+<blockquote class="file"><pre><code >	helmet=/usr/local/libexec/op/timebox $TIME_SPEC=0100-0459
+</code></pre></blockquote>
+<dt>Add the most important limits and modifications (viz. <code class="markup">uid</code>, <code class="markup">gid</code>)
+<dd>
+If the point of the rule is to change the <code class="markup">nice</code>
+value of the process then that should come first in this section.
+We are trying to explain to the reader why
+we are using <code class="sh">op</code> to grant special access,
+so be clear about what is important and what is a "by the way".
+For example setting an environment variable might be either,
+by putting it at the top of the list you are
+telling those-that-cleanup-after-you what you were thinking.
+<dt>Be explicit with session settings
+<dd>
+Adding <code class="markup">initgroups</code> or
+<acronym title="Pluggable Authentication Modules">PAM</acronym>
+<code class="markup">session</code> and <code class="markup">cleanup</code>,
+to make a more complete
+environment, should be explicit in the rule (I never put those in a global
+<code class="markup">DEFAULT</code> stanza.
+<p>
+The <code class="markup">cleanup</code> setting is never used by
+<code class="sh">sudo</code>, very few PAM modules need it (pam_ssh.so
+really wants it).  It costs an extra process to hold the session open
+as the super user, then close it after the escalated process exits.
+<dt>Put common stuff in a local <code class="markup">DEFAULT</code> at the top of each file
+<dd>
+After you have a file with all the rules for a project you might
+refactor the common parts into a default stanza at the top of the file.
+Put a comment on the rule that explains why we have our own default list.
+You should then put a comment at the end that reminds the reader of
+the default list at the top like:
+<blockquote class="file"><pre><code ># All rules using defaults from line 3.
+</code></pre></blockquote>
+If an auditor gets to that comment and it is not true then, like Lucy,
+you've got some `splaining to do.
+<dt>Remind the reader about any imported <code class="markup">DEFAULT</code>
+<dd>
+Be careful with <code class="markup">DEFAULT</code> in
+<code class="path">access.cf</code>, since that one covers all the other
+files (without one).
+I'd put a comment to remind readers of that fact above that rules, as well as
+at the top of any file that really wants to use the defaults from
+<code class="path">access.cf</code>.
+</dl>
+
+<h2 id="markup">Use another level of markup if you need it</h2>
+
+Every rule-base file
+needs to be revision controlled, yet still allow for detailed
+customization based on the context presented by the target node.
+And the markup for that file must be clear enough to an auditor
+that it can pass a real review.
+<P>
+For example on some hosts the Apache program might be installed in another
+location (viz. /opt/apache-<code class="param">version</code>).
+The native configuration file doesn't have an easy way to mark that up, but
+<A href="/cgi-bin/manpage.cgi?m4"><code class="sh">m4</code>(1)</A> sure
+does.
+<P>
+I use <A href="/cgi-bin/manpage.cgi?msrc"><code class="sh">msrc</code>(8)</A>
+(see <A href="../../sbin/msrc/msrc.html">the HTML document</A>) to
+send my rule-base out to each host.  Each host only gets the rules
+it needs, and each rule may be marked-up to change parts of the
+specification on that host, or type of host.
+For example here is an abstraction of the rules to start or stop
+the npcguild webserver:
+<blockquote class="file"><pre><code >`# $Revision information...
+DEFAULT
+
+'include(class.m4)dnl
+define(`local_PRIVGROUP',`ifelse(IS_TEST(HOST),yes,``^wiz$,'',``'')')dnl
+`web	/opt/npcguild/sbin/web $1 ;
+	$1=^(configtest|start|stop|restart)$
+	users=^flame$,^root$
+	groups='local_PRIVGROUP`^wheel$
+	uid=httpd gid=proxy
+'dnl
+</code></pre></blockquote>
+One tip here: put any <code class="sh">m4</code>
+<code class="markup">ifelse</code> markup above
+the rule that uses it (as above).
+Any sanity processor may be taught to ignore "local_PRIVGROUP" and
+the <code class="sh">m4</code> quotes, it it is harder to ignore the
+arbitrary expressions in the <code class="markup">ifelse</code> logic.
+The alternative is to process every rule-base file though
+<code class="sh">hxmd</code> for every node that might receive it.
+
+<P id="same_files">
+Such markup allows the same source file
+(aka <code class="path">web.cf.host</code>) to be sent to
+both test and production hosts, but end up with additional
+<code class="markup">groups</code> on the test hosts.
+Likewise I might tune any other aspect of the rule with similar
+markup.
+
+<P id="excuse">
+The use of a heavy duty configuration management structure,
+like <code class="sh">msrc</code>, in place of a kludge
+(viz. replicating the same file to every host) makes a world of
+difference when you manage more than 10 machines, or more
+than 2 applications per host.
+
+<P>
+Without reguard for how complex the <em class="error">management</em> of
+moving the contents to each host is, if you are just moving the same
+file to every host -- you are not solving the problem.
+
+
+<h1 id="sudo">Why use op when we have ...?</h1>
+
+I believe the short answer is "complexity".
+
+<P>To understand what a <code class="sh">sudo</code> or
+<code class="sh">super</code> rule does you must know everything
+about the context of the invocation: the IP address of the host, the
+contents of (seemingly unrelated) environment variables and the whole
+of the <code class="path">sudoers</code>
+(or <code class="path">super.tab</code>) file.
+
+<P>
+Keeping lists of allowed login names in a file is asking for
+trouble: it will always be out of date and updates will be
+painful.  This is caused by the whole-sale lack of certainty in
+the use of each definition.  This is also why I almost always
+use <em>group membership</em> as the key to access in my rule-base:
+my accounting system lets me add (delete) groups from my
+Customer's logins pretty much at will.  If your accounting
+system is lacking you should invest some time in getting a better one,
+not fight tactical issues forever.
+
+<P>
+Contrast this to <code class="sh">op</code>'s stanza definitions.
+Most of what you need to know to explain a rule is expressed in a
+short stanza all in the same place in the file.  To eliminate any
+impact from a <code class="markup">DEFAULT</code> stanza just add
+a one above the rule:
+<blockquote class="file"><pre><code >DEFAULT
+
+clean-rule	...
+</code></pre></blockquote>
+We know for certain that the "clean-rule" is not modified by any
+taint from the <code class="markup">DEFAULT</code> in
+<code class="path">access.cf</code> or above it in the current file.
+
+<P>
+There is no limit to the unexpected impact a "simple" change might
+have in <code class="path">sudoers</code>.  Using the escalation
+configuration to change the rules based on the host it is installed
+on is a <A href="#excuse">poor excuse for configuration management</A> -- if you want
+to machines to share all the same files, then you really want one
+bigger machine, buy one.  The larger machine is cheaper than the
+first security issue caused by the lack of control over
+your escalation policy.
+
+<P>
+It is far more secure to to configure exactly the rules needed on
+each and every host: not the same superset on all hosts.
+
+<P>
+Then use <code class="sh">op</code>'s <code class="opt">-S</code> option
+to sanity check each host for missing programs, directories, or nonsensical
+rules.
+You should be sanity checking your <code class="path">access.cf</code>
+and/or your <code class="path">sudoers</code> files.  And you should be
+doing it on each host periodically.
+
+<h1 id="compat">Compatibility</h1>
+
+<code class="sh">Op</code> version 2.x is as compatible with version
+1.x as I can make it.  I believe any existing version 1 configuration
+will do exactly the same thing under my version, if you rename the
+file to <code class="path">access.cf</code> from what ever else it
+was named.
+<P>
+The path to <code class="sh">op</code> and the configuration directory
+are now under <code class="path">/usr/local</code> because local
+convention requires it.  There is no good reason you could not
+recompile the program to live under some other location, override
+<code class="make">RUN_LIB</code> in the build process.
+<P>
+The older parser tried to
+use the universal escape (backslash, <code class="markup">\</code>)
+to quote dollar and comma with limited  success.  Now we use a
+double-comma, and a double-dollar to quote those characters.  We don't
+make backslash special except after
+a dollar (e.g. <code class="markup">$\t</code>).
+The use of open curly (<code class="markup">{</code>) and close curly
+(<code class="markup">}</code>) to quote an in-line script is not
+identical to recent branches of <code class="sh">op</code>, but I
+believe it is clear, and avoids any use of backslash inside the script.
+(It is always safe to put a semicolon before a leading close curly in a shell
+script or <code class="sh">perl</code> program.)
+
+<P>
+In the following sections I point out how to convert from other
+escalation programs to <code class="sh">op</code>.
+
+<h2 id="from_super">Moving from <code class="sh">super</code> to <code class="sh">op</code></h2>
+
+<code class="sh">Super</code> filters the environment with some
+hard coded rules (for <code class="env">TERM</code>,
+<code class="env">LINES</code>, and some others.
+The <code class="markup">DEFAULT</code> stanza below should make
+some of that less a problem:
+<blockquote class="file"><pre><code >DEFAULT	# super compat mode
+	environment=^LINES=[0-9]+$,^COLUMNS=[0-9]+$,TERM=[-/:+._a-zA-Z0-9]+$
+	$IFS=$\s$\t$\n
+	$USER=$t $LOGNAME=$t $HOME=$H
+	$ORIG_USER=$l $ORIG_LOGNAME=$l $ORIG_HOME=$h
+	$ORG_SHELL=${SHELL}
+	$PATH=/bin:/usr/bin
+	$SUPERCMD=$0
+</code></pre></blockquote>
+
+<P>
+There is no way to emulate <code class="sh">super</code>'s shebang
+<code class="markup">#!</code> magic with <code class="sh">op</code>.
+Just use "op script" and let the rule set the program path.
+This is more secure in the long run.
+
+<h2 id="from_sudo">Moving from <code class="sh">sudo</code> to <code class="sh">op</code></h2>
+
+First, I think you'll find the conversion of the rule-base much easier than
+you might first believe.
+The <code class="path">sudoers</code> files I've helped convert
+tend to range from wildly insecure to limitless, allowing unlimited
+system access to nearly every user (usually inadvertently).
+<P>
+First stop using "sudo ..." as a prefix for "just run this as root" and
+start using other mortal (application) logins, and limited commands.
+Then see <A href="#tips">the configuration tips</A> above.
+<P>
+To set an environment that looks like <code class="sh">sudo</code>'s:
+<blockquote class="file"><pre><code >DEFAULT	# look more like sudo
+	$USER=$t $HOME=$H
+	$SUDO_COMMAND=$_ $SUDO_USER=$l $SUDO_UID=$L $SUDO_GID=$R
+	# PS1=${SUDO_PS1}
+</code></pre></blockquote>
+
+<P>
+If you want more command-line compatibility you can look for the
+<code class="sh">sudop</code> command that tries to make
+<code class="sh">op</code> look more like <code class="sh">sudo</code>.
+
+<h2 id="from_pfexec">Moving from <code class="sh">pfexec</code> to <code class="sh">op</code></h2>
+
+Just get off the drugs!  If you've been putting stuff in
+<code class="path">/etc/user_attr</code> on you hosts you are in
+a hell all of your own making.
+
+<P>
+The whole <code class="libc">getuserattr</code>(3) manual page
+stinks of <acronym title="you ain't never going to need it">YANGNI</acronym>
+code (like the many "reserved for future use" fields in the structures).
+If I want to keep a list of who can do what in a file, I'll
+use <code class="sh">op</code>'s configuration and skip all the
+extra cheese in a generic <em class="error">feature</em> thats looking for
+a problem to solve.
+
+<P>
+With <code class="sh">pfexec</code> it is way too easy to give away
+more access than you thought you were.
+And you always have to manage roles by login name, which is
+the hardest way to manage escalation rules.
+
+<P>
+Build <code class="sh">op</code> rules for the roles people really
+need and skip the generic functions that give away the show.
+
+<h2 id="from_su2">Moving from <code class="sh">su2</code> to <code class="sh">op</code></h2>
+
+The rule to emulate a "~www/.su2rc", is a fine example:
+<blockquote class="file"><pre><code >www	MAGIC_SHELL ;
+	uid=www initgroups=www
+	groups=</code><code class="param">your-list-here</code>
+</pre></blockquote>
+
+<P>
+I agree that it is useful for a user to shift to a shared login for
+some tasks: but I'd rather not make it easy for Customers to
+Trojan each other without a setuid-bit on the created file.
+
+<h2>Alphabetical list of expander macros</h2>
+
+<dl>
+<dt><code class="markup">$A</code>
+<dd>
+The gid list for the client process.
+<!-- <dt><code class="markup">$B</code> -->
+<dt><code class="markup">$C</code>
+<dd>
+The configuration directory, in other words the directory containing
+the <code class="path">access.cf</code> file.
+The <code class="sh">dirname</code> of <code class="markup">$c</code>.
+<dt><code class="markup">$D</code>
+<dd>
+An open read-only file descriptor on the directory part of
+<code class="param">file</code>.
+<dt><code class="markup">$E</code>
+<dd>
+If <code class="sh">op</code> has a setuid bit on it, this is the
+uid that owns the file.
+<dt><code class="markup">$F</code>
+<dd>
+A read-write file descriptor for <code class="param">file</code>.
+This is represented an a small integer for shell file duplication, as
+in <code>1>&amp;%F</code>.
+<dt><code class="markup">$G</code>
+<dd>
+The group-id (gid) for the <code class="param">group</code>
+specified on the command-line.
+<dt><code class="markup">$H</code>
+<dd>
+The home directory of the target login.
+<dt><code class="markup">$I</code>
+<dd>
+The target uid for any <code class="libc">initgroups</code>(3) call
+from the rule.
+<!-- <dt><code class="markup">$J</code> -->
+<!-- <dt><code class="markup">$K</code> -->
+<dt><code class="markup">$L</code>
+<dd>
+The client login's uid.
+<!-- <dt><code class="markup">$M</code> -->
+<dt><code class="markup">$N</code>
+<dd>
+The new gid list given to <code class="libc">setgroups</code>(2).
+<dt><code class="markup">$O</code>
+<dd>
+The target real gid.
+<dt><code class="markup">$P</code>
+<dd>
+The uid of any PAM session.
+<!-- <dt><code class="markup">$Q</code> -->
+<dt><code class="markup">$R</code>
+<dd>
+The clients real gid.
+<dt><code class="markup">$S</code>
+<dd>
+The trusted path to the shell, viz. <code class="path">/bin/sh</code>.
+Which maybe overridden by an environment  specification of
+$<code class="env">SHELL</code>.
+<dt><code class="markup">$T</code>
+<dd>
+The target uid.
+<dt><code class="markup">$U</code>
+<dd>
+The uid of the <code class="param">login</code> provided to
+<code class="opt">-u</code>.  When this is requested the command
+specification <em>must</em> include that option.
+<!-- <dt><code class="markup">$V</code> -->
+<dt><code class="markup">$W</code>
+<dd>
+The line number of the configuration entry that defined the access rule.
+<!-- <dt><code class="markup">$X</code> -->
+<!-- <dt><code class="markup">$Y</code> -->
+<!-- <dt><code class="markup">$Z</code> -->
+<dt><code class="markup">$a</code>
+<dd>
+The group list for the client process.
+<!-- <dt><code class="markup">$b</code> -->
+<dt><code class="markup">$c</code>
+<dd>
+The path to the default configuration file, also output under
+<code class="opt">-V</code>.  Usually "/usr/local/lib/op/access.cf".
+<dt><code class="markup">$d</code>
+<dd>
+An open read-only file descriptor on the directory part of
+<code class="param">file</code> specified under <code class="opt">-f</code>.
+<dt><code class="markup">$e</code>
+<dd>
+The login name of the effective uid <code class="sh">op</code> is
+setuid to, usually "root".
+<dt><code class="markup">$f</code>
+<dd>
+The <code class="param">file</code> specified on the command line.
+<dt><code class="markup">$g</code>
+<dd>
+The group name specified by <code class="param">group</code> on
+the command-line.
+<dt><code class="markup">$h</code>
+<dd>
+The home directory of the client login.
+<dt><code class="markup">$i</code>
+<dd>
+The target login for any <code class="libc">initgroups</code>(3) call
+from the rule.
+<!-- <dt><code class="markup">$j</code> -->
+<!-- <dt><code class="markup">$k</code> -->
+<dt><code class="markup">$l</code>
+<dd>
+The client login name. This is taken from $LOGNAME or $USER if either
+maps to the real uid.  Otherwise the first successful reverse lookup of
+the real uid is taken.
+<!-- <dt><code class="markup">$m</code> -->
+<dt><code class="markup">$n</code>
+<dd>
+The new group list given to <code class="libc">setgroups</code>(2).
+<dt><code class="markup">$o</code>
+<dd>
+The target real group name.
+<dt><code class="markup">$p</code>
+<dd>
+The login name of any PAM session.
+<!-- <dt><code class="markup">$q</code> -->
+<dt><code class="markup">$r</code>
+<dd>
+The clients real group name.
+<dt><code class="markup">$s</code>
+<dd>
+The <code class="param">script</code> body specified for the current
+rule.  (When the first parameter is a curly-brace form.)
+<dt><code class="markup">$t</code>
+<dd>
+The target login name.
+<dt><code class="markup">$u</code>
+<dd>
+The <code class="param">login</code> provided to
+<code class="opt">-u</code> by name.  When this is requested the command
+specification <em>must</em> include that option.  If the specification
+is a uid (that is a number) it must resolve to a valid login.
+<!-- <dt><code class="markup">$v</code> -->
+<dt><code class="markup">$w</code>
+<dd>
+The name of the configuration file that defined the access rule.
+<!-- <dt><code class="markup">$x</code> -->
+<!-- <dt><code class="markup">$y</code> -->
+
+<dt><code class="markup">$~</code>
+<dd>
+The home directory of the effective uid <code class="sh">op</code> was
+executed under (usually root's home directory).  <code class="sh">Op</code>
+may be installed setuid to another user (usually by a different name):
+in this case it acts as a less powerful application service, but still
+retains much of its effectiveness.
+<dt><code class="markup">${</code><code class="env">ENV</code><code class="markup">}</code>
+<dd>
+The value of the environment variable <code class="param">ENV</code>
+as it was presented in the original environment.
+<dt><code class="markup">$</code><code class="param">number</code>
+<dd>
+The positional parameter specified. Not that <code class="markup">$0</code>
+is the mnemonic name selected.
+<dt><code class="markup">$#</code>
+<dd>
+The count of the arguments provided.
+<dt><code class="markup">$$</code>
+<dd>
+A single literal dollar sign ($).
+<dt><code class="markup">$.</code>
+<dd>
+Put in a word break.  This is not usually needed from the context
+of a configuration file (as white-space is more clear), but may be
+used by automation that is generating a rule-base.
+<dt><code class="markup">$*</code>
+<dd>
+Expand to the positional parameters as a single catenated word.
+This is useful when a rule wants to group the separate words
+given to it into a log message (for example).
+<dt><code class="markup">$@</code>
+<dd>
+Expand to the positional parameters with word breaks preserved.
+This is useful when a rule wants to pass the parameters it was
+provided on to the next command as-given.
+<dt><code class="markup">$!</code>
+<dt><code class="markup">$&amp;</code>
+<dd>
+These internal expanders may change without notice, so don't apply them.
+FYI <code class="markup">$!</code> is the same as
+<code class="markup">$@</code>, but skips the first word in the parameter
+list.
+Also <code class="markup">$&amp;</code> is the same as
+<code class="markup">$*</code>, but skips the first word in the parameter
+list as well.
+
+<dt><code class="markup">$\</code><code class="param">escape</code>
+<dd>
+Allow any <code class="sh">tr</code>(1) backslash notation to
+specify a special character.  The letter 's' is also allowed for
+a space character.
+
+<dt><code class="markup">$|</code>
+<dd>
+The empty string: useful to remove the special "end of parameter list"
+meaning from either an ampersand or semicolon.
+
+<dt><code class="markup">$_</code>
+<dd>
+The target script or shell (under <code class="markup">MAGIC_SHELL</code>).
+This may <em>not</em> be used to define itself, of course.  This is
+handy to allow a environment variable to pass the target program path on
+to a helmet or jacket.
+</dl>
+
+
+<HR>
+<pre>$Id: refs.html,v 2.68 2010/07/28 22:46:39 ksb Exp $
+</pre>
+</BODY></HTML>

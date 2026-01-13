@@ -1,0 +1,14 @@
+# an interface builder script						(ksb)
+# $Id: nib,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+# XXX magic number check?
+
+$Compile(*):	${make-make} DEBUG=${cc_debug--O} %s
+$Compile(*):	${make-make} DEBUG=${cc_debug--O}
+
+$Clean(*):	${make-make} clean
+
+$Display(*):	${open-open} %s %f
+$Display(*):	${open-open} %f
+
+$Info(*):	${echo-echo} "NeXT interface builder file"

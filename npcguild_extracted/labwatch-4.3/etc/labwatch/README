@@ -1,0 +1,40 @@
+# $Id: README,v 3.3 1996/12/23 22:37:31 kb207252 Exp $
+
+This part of the labd/labwatch/labstat system provides the central server
+and the operator interface.  When this application is run on a terminal
+(or on an xterm) in forground (see -n) it provides running commentary on
+the operation of the clients monitored.  Running the server from an xterm
+or other transient shell can lead to service interruptions and limits
+access to the operator interface to one person.  It is usually best to run
+the server from the console server, which allows multiple people to access
+the operator interface and keeps the server up 24h.
+
+The can be linked to console server by putting this application on a
+vitrual console with:
+
+# conserver config file (conserver.cf)
+#
+# list of consoles we serve
+# name : [passwd] : tty[@host] : baud[parity] : device : group
+# our local console
+labwatch::|exec /root/labwatch.boot@console.cc.purdue.edu:9600p:/usr/adm/consoles/labwatch:0
+
+And then using a script like:
+
+#!/bin/sh
+# labwatch.boot
+# since the pty that the console server gives us is not in NEW tty mode
+# we have to set that, then exec the labwatch program.
+# while we are about it we remove the SIG_IGN for INT
+stty erase '^H' new crt
+trap "" 2
+exec /usr/local/etc/labwatch -C /root/labwatch.cf -n
+
+Or, if you're an mk user, you can put a target in your labwatch.cf that
+knows how to start labwatch for that particular configuration file and
+then use mk to start the server:
+
+# inside labwatch.cf...
+# $Compile(*): exec /usr/local/etc/labwatch -C %f -n -w 860
+
+ksb & bj

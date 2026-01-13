@@ -1,0 +1,12 @@
+# the Run target will run the file, or build an run it			(ksb)
+# $Id: run,v 5.0 1996/09/09 21:08:18 kb207252 Exp $
+
+$Run(*):	%b %o -mCompile -d%s %f && %P
+$Run(*):	%b %o -mCompile %f && %P %s
+$Run(*):	%b %o -mCompile %f && %P
+$Run(*):	%f %s
+$Run(*):	%f
+$Run(*):	%P %s
+$Run(*):	%P
+$Run(*):	sh %f %s
+$Run(*):	sh %f

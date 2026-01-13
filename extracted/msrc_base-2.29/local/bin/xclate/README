@@ -1,0 +1,64 @@
+# $Id: README,v 2.2 2009/08/14 17:25:36 ksb Exp $
+
+The xclate wrapper works with xapply (-m) to collate output from
+many child processes into a coherent stream.  It might be used by
+other applications to do similar things.
+
+We build a unix domain socket to send/recv access rights to a set of
+numbered file descriptors.  We produce all the output from a descriptor
+(until it is closed) before we start any output from the next.  We'll
+buffer 64k of output from each client before we stop reading stuff
+from him (which makes him block on the pipe).
+
+
+Interaction with xapply
+
+When xapply is given the -m option, it execve's xclate in master mode
+forcing the same command line {xclate -m -- "$@"... (char *)0}.
+It looks for the xclate envronment variable $xcl_link or $xcl_d when
+re-exec'd to prevent repeating this trick ad-infinitum.
+
+Complex I/O redirection
+
+A quick example in a single window:
+	./xclate -m  xapply -P8 "(echo %1
+		sleep \$((RANDOM%%4))
+		date +\"%1a %%c\"
+		sleep \$((RANDOM%%4))
+		date +\"%1b %%c\"
+		)| ./xclate %u" 1 2 3 4 5 6 7 8 9 10
+
+Even more complex redirection, input, output pwd, and tty (the works).
+
+In a screen, start a shell in screen 1 and run
+   cd /tmp
+   xclate -m -N/dev/tty -Ar :
+Which will output the name of the new diversions control socket,
+something like "/tmp/xcl3kxKOF/1".
+
+In screen 2 start a shell and run (replace xcl3kxKOF with your path):
+   cd /
+   xclate -u  /tmp/xcl3kxKOF/1  -IEDY -Q shell /bin/sh -c \
+      'stty cbreak -echo; /bin/ksh -i -o vi; R=$?; stty -cbreak echo; exit $R'
+
+In screen 1 you should get a shell prompt from the shell you just
+started in screen 2.  That shell should act pretty normal for you.
+And it will be in the directory you started in in screen 1, not
+screen 2's current working directory of /.  Feel free to explore
+that shell.  Be warned the job control might not work.
+ 
+To exit type:
+   exit 23
+
+the shell should exit, the the xclate on screen 1 in master mode should
+tell you:
+   23,shell
+and exit itself (-Q in the client asked for that) returning you to the
+shell that was wating for the master process.
+While in screen 1 the client xclate exits 0 (since it did connect to the
+master and run the process requested).
+
+This is the basis for sapply, sshw and wrapw's workings.
+
+--
+ksb, Aug 2009

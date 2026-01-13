@@ -1,0 +1,4 @@
+/* $Id: nonopt.mi,v 8.30 2000/11/01 15:36:48 ksb Exp $
+ * We provide the progname, but no option parser.
+ */
+%extern char *%b%;

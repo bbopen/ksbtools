@@ -1,0 +1,6 @@
+# a compacted file							(ksb)
+# $Id: C,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+$*(*):		%=/1fff/%#%04xw/%g%~/is/compact
+
+# otherwise a C++ source (see dot/C or dot/cc)

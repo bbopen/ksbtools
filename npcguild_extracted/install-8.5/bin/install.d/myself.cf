@@ -1,0 +1,6 @@
+# $Id: myself.cf,v 8.2 2000/02/20 16:36:01 ksb Exp $
+# This configuration file is used *just* to install install, itself	(ksb)
+# (you gotta start someplace).
+
+install		-rwxr-xr-x	*	*	?
+OLD		dr?x??????/2000	*	*	-

@@ -1,0 +1,4 @@
+/* time conversions							(ksb)
+ * $Id: util_time.mi,v 8.4 1999/06/14 14:37:48 ksb Exp $
+ */
+%extern long %K<Atotm>1ev(/*a, tz*/)%;

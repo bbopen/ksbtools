@@ -1,0 +1,94 @@
+`#	Makefile for ptyd connect routines (openpty, closepty)		(ksb)
+# $Id
+#
+
+SHELL=/bin/sh
+HEADER=	${DESTDIR}/usr/local/include
+LIB= ${DESTDIR}/usr/local/lib
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/local/include
+P=
+
+INCLUDE= 
+DEBUG=	-O
+CDEFS=	-D'HOSTTYPE`'ifelse(
+HOSTTYPE,`FREEBSD',` -DHAVE_STRERROR=1 -DNEED_DELAY_HACK=1',
+HOSTTYPE,`NETBSD',` -DHAVE_STRERROR=1 -DNEED_DELAY_HACK=1')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+AR=	'ifelse(HOSTTYPE,`NETBSD',`/usr/ucb/ar',`ar')`
+LD=	'ifelse(HOSTTYPE,`NETBSD',`/usr/ucb/ld',`ld')`
+LDFLAGS= 'ifelse(HOSTTYPE,`IBMR2',`-X')`
+HDR=	openpty.h ptyd.h machine.h
+SRC=	openpty.c forkpty.c common.i
+GEN=
+OBJ=	openpty.o forkpty.o
+MAN=	openpty.man
+DEP=	${SRC}
+OTHER=
+SOURCE=	Makefile ${HDR} ${SRC} ${MAN} ${OTHER}
+
+
+.c.o:
+	${CC} -p -DPROF ${CFLAGS} -c $*.c && \
+	${LD} ${LDFLAGS} -r $*.o -o profiled/$*.o && \
+	${CC}    -UPROF ${CFLAGS} -c $*.c && \
+	${LD} -x -r $*.o -o $*.O && mv $*.O $*.o
+
+all:	profiled libpty.a libpty_p.a
+
+libpty.a: libpty_p.a
+	${AR} cru libpty.a ${OBJ}
+
+libpty_p.a:$P ${OBJ}
+	cd profiled && ${AR} cru ../libpty_p.a ${OBJ}
+
+profiled:
+	mkdir profiled
+
+clean: FRC
+	rm -rf profiled
+	rm -f Makefile.bak *.a *.[os] ${LIB} core a.out errs tags
+
+depend: ${HDR} ${SRC} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${HEADER} ${LIB}
+
+install: all dirs
+	install -c -v -m 644 openpty.h ${HEADER}/openpty.h
+	install -c -v -m 644 libpty.a ${LIB}/libpty.a
+	install -c -v -m 644 libpty_p.a ${LIB}/libpty_p.a
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${HEADER} ${LIB}:
+	install -d -r $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+openpty.o: common.i ptyd.h openpty.c openpty.h
+
+forkpty.o: forkpty.c openpty.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

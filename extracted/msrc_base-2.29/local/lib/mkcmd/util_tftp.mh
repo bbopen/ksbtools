@@ -1,0 +1,5 @@
+/* $Id: util_tftp.mh,v 8.16 1999/06/14 14:44:18 ksb Exp $
+ * No exported interface for general use				(ksb)
+ * Use "tftp_client.m" and/or "tftp_server.m" and/or "util_unity.m"
+ * We provide packet level interfaces to tftp for protocol drivers.
+ */

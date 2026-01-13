@@ -1,0 +1,514 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head>
+<title>op lib: configuring site specific privilege escalation rules</title>
+<link rel="stylesheet" type="text/css" href="https://carrera.databits.net/~ksb/msrc/css/code.css" />
+</head><body>
+<h2 id="top">Specific means every instance may be unique</h2>
+Pushing an identical configuration to every one of your site's host might
+be fine for <code class="path">/etc/pam.d</code> or
+<code class="path">/usr/share/dict/words</code>, but it is not okay for
+the configuration of privilege escalation rules.
+
+<h1 id="known">To understand this document</h1>
+
+This document assumes that you've been a UNIX&trade; systems administrator for
+long enough to know that you shouldn't just login as <code class="user">root</code> for
+your daily work.  After you got burned by a superuser mistake you
+went to typing <code class="sh">sudo</code> or <code class="sh">super</code>
+in front of commands you wanted to run privileged.
+
+<P>
+But giving <strong>non-administrators</strong> access to
+<code class="sh">sudo</code> is too much -- you know they are going to
+destroy something.
+So you've tried to limit the damage with harder and
+more detailed limits with <code class="sh">sudo</code> and eventually had to
+give up.
+Either you've ended up doing more work yourself, or
+you've given pretty much unlimited access to people that really don't need it.
+
+<P>
+If that fits you, then you are ready to move up to <code class="sh">op</code>.
+But to move up you need to learn how to get a better policy, not just
+a sharper tool.
+In this document I'm going to
+present the implementation details of getting the correct configuration for
+each rule to every host for every login and service you deploy.
+
+<p>
+See the <code class="sh">op</code> <A href="/~ksb/cgi-bin/manpage.cgi?op&amp;1l">manual page</A>, and
+the <href="bin/op/op.html">HTML documents</A> for details about
+<code class="sh">op</code> itself.  I'm not going to cover too much of
+that material (again) here.  Later in this document I'm going to
+spend some time showing how to do this under the master source
+structure I use for all such tasks, if you've never heard of
+<code class="sh">msrc</code> or <code class="sh">xapply</code> before
+you're going to have to <href="sbin/msrc/msrc.html">read about it</A>
+before you get down to <A href="#makeItSo">Make it so</A>.
+
+<p>
+The <code class="sh">op</code> rule-base is treated like a level 3
+package more than a level 2 product.  That is to say that the scripts
+and rules are always pushed together.
+
+<H1 id="trust">Trusted individuals and trusted applications</H1>
+
+Login credentials are assigned to an individual based on the fields from
+some files in the <code class="path">/etc</code> directory:
+<code class="path">password</code>,
+<code class="path">group</code>, and maybe <code class="path">project</code>
+or <code class="path">login.conf</code> at login.
+Without a <code class="libc">setuid</code> (or <code class="libc">setgid</code>) bit set on an executable it
+is unlikely that a process can modify credentials (that is gain additional
+groups, change real or effective user identifiers, or change
+their project identifier).
+
+<P>
+That doesn't mean a process can't get services: lots of UNIX services
+don't require any special access.  This is largely because the UNIX
+file permission structure is really quite complete for mundane tasks.
+Programs like <code class="sh">ls</code>, and even <code class="sh">ps</code>
+don't have any access beyond requesting user's access.
+
+<h2 id="people">Individuals get accounts</h2>
+
+Systems administrators grant some logins more privilege than others.
+The basic separation is "those with accounts on my hosts" and
+"the others without accounts".  For the purpose of this document
+we'll be addressing the individuals with accounts on the hosts
+run by the local administrators.
+
+<P>
+It is usually a violation of local policy for a person to
+give the credentials to another: we don't want an unclear audit
+trail of who made changes, or who can read Customer records.
+<!-- If it is not a violation of local policy to share accounts then
+	I'm afraid I can't help you. -->
+
+<H2 id="setuid">Trusted applications get <code class="libc">setuid</code> bits</H2>
+
+Like individuals are trusted with accounts, some applications are
+trusted with special access.
+Programs with the <code class="libc">setuid</code> bit in
+their permission bits trigger <code class="libc">execve</code> to
+escalate the effective user (or group) identifier (see
+<A href="/~ksb/cgi-bin/manpage.cgi?execve&amp;2">the <code class="libc">execve</code> manual page</A>).
+Good examples of such a programs are <code class="sh">atq</code> and
+<code class="sh">netstat</code>:
+<blockquote class="file"><pre>$ ls -als /usr/bin/atq /usr/bin/netstat
+ 22 -r-sr-xr-x  4 root  wheel  21228  Feb 15 17:05 /usr/bin/atq
+132 -r-xr-sr-x  1 root  kmem   133528 Feb 15 17:04 /usr/bin/netstat</pre></blockquote>
+A listing via <code class="sh">ls</code> displays the letter 's' rather
+than an 'x' for the execute permission to show that
+the program <strong>assumes</strong> the privileges of
+the owner (group) of the file as it executes.
+But, like our login credentials,, we don't want escalated programs to
+give away their special powers for other uses.
+
+<P>
+While the kernel doesn't know the purpose of the escalation,
+we draw a distinction between two main classes of
+escalated programs: gate keepers and shell services.
+
+<P>
+Gate keepers offer structured access to some system resource: for example
+the line printer services, job scheduling, trusted network
+services, or kernel statistics are all protected by
+<code class="libc">setuid</code> and/or <code class="libc">setgid</code>
+programs.
+To achieve the gate keeper function a programmed task is run on
+behalf of the individual, then the process <code class="libc">exit</code>'s
+with a code to report success or failure.
+This structured approach keeps gate keeper functions relatively
+simple and usually quite secure.
+These programs are gate keepers because they don't offer any
+interaction other than by
+the single request made on the command line.
+
+<P>
+A shell service like <code class="sh">su</code>
+(or <code class="sh">ssh</code>) offers an interactive shell with
+escalated (or different) credentials from those of the
+invoking process.  Usually a shell service requires some
+additional factor (a password, key-pair, or token) to
+grant escalated access because the shell access allows such a
+wide-ranging set of actions.
+Shell services are hard to secure, even with the restricted
+option (viz. <code class="opt">-r</code>) of <code class="sh">ksh</code>, see the section
+on this in the <A href="/~ksb/cgi-bin/manpage.cgi?ksh&amp;1"><code class="sh">ksh</code> manual page</A>.
+
+
+<h2 id="types">Which type of escalation do you want to give most of your Customers?</h2>
+
+I would try to make every escalated action a single request made
+on the command line.  I don't want my Customers to type long commands
+that might be spelled badly, and I don't want them to use an
+escalated interactive shell thinking it was just a plain shell.
+
+<P>
+This is from 25 years of my own experience: if you read this far and
+think your current structure works you can stop here.  Thanks for
+your time.
+
+<P>
+If you want to simplify the Customer interface, make it more secure
+and much easier for you to manage keep reading.
+
+<H1 id="structure">The structure of <code class="sh">op</code>'s escalation rules</H1>
+
+We are going to avoid all the snake pits I've already fallen into by
+using some general rules for the installed rule-base.
+Then we are going to break the source to the rule-base up into
+sections that help use keep it up-to-date.
+Then we'll talk about closing-the-loop on the rule-base to
+make sure it is always sane.
+
+<h2 id="general">General rules</h2>
+
+These might be obvious to you, but read them anyway.  It can't hurt to
+review <strong>why</strong> we do things the way we do.
+
+<h3 id="noshare">Don't share the rule-base between hosts</h3>
+
+Never export the <code class="sh">op</code> rule-base via
+<acronym title="network file system">NFS</acronym> mounts.
+We don't want everyone to read the rule-base (to know what rules to
+try to break) and we don't really want hosts to use a rule-base from
+another host.
+
+<h3 id="split">Split groups of escalation rules out of <code class="path">access.cf</code></h3>
+
+There is a balance between putting each
+escalation rule in its own file and putting them all in one or two
+files: but if you put all your rules in <code class="path">access.cf</code> you
+are going to be sad.
+In fact you'll be sad until you find the right balance, and
+we aim to make that balance easier for you to find.
+
+<P>
+Putting too many unrelated rules in the base configuration file leads to
+a never ending deployment cycle, which might include a re-review of
+every rule in the updated file.
+
+<h3 id="topic">Keep escalation rules for a single topic in the same file</h3>
+
+Location of the rule implies some ownership and audit trail.  Rules
+from the same file are (more than likely) from the same revision of
+the rule-base, so the <code class="markup">stop</code> rule likely knows how to
+the end all the tasks the <code class="markup">start</code>
+rule set in motion.
+
+<P>
+Similarly all the rules required to run a given service are all
+present if any are: that's a great invariant I use, all the time.
+
+<h3 id="keyword">Name rules with the most significant word first</h3>
+
+To the Customer there is little difference in typing:
+<blockquote class="file"><pre>$ op apache start
+</pre></blockquote>
+and
+<blockquote class="file"><pre>$ <em class="error">op start apache</em>
+</pre></blockquote>
+but these is a world of difference if I want to encode them in the
+same rule.
+<code class="sh">Op</code> keys on the first word, which it calls
+the <code class="param">mnemonic</code>.  If we get Customers used
+to using the verb as the mnemonic the rule-base gets crazy.
+
+<P>
+If we get Customers used to using the project, facility, or target
+login as the mnemonic then we can factor common rules out with help
+from <code class="sh">op</code>.  And the on-line rule listing looks
+a lot more structured to everyone.
+
+<P>
+Later we can add the port number on the end and our Customers might
+be able to remember the order: I wanted to access "apache", I
+want to "start" it on port "8443".  If I don't always go from
+the topic to the verb to the details then they might have to
+try all the combinations to figure it out.  So they won't even try --
+they will just page you to start it for them.
+
+<P>
+This is one of the main issues with <code class="sh">sudo</code>,
+when you just add it to the beginning of a long command.
+
+<h2 id="factor">Types of topics we might use to factor rules out of the pool</h2>
+
+Here are five main divisions we shall use to
+break the local configuration into topical files.
+These divisions are meant to
+allow fine-grained control of which rules end up on each target host.
+If a set of rules always move together, then they should be in
+the same file.
+
+<P>
+Any given configuration might have more than one of most of
+each of these types of files.  The split is based on the need
+to send some rules in isolation.  That is to say that we are not
+looking for a reason to put every rule in its own file, but
+we are also not afraid to do that when warranted.
+
+<dl>
+<dt><A href="#hosttype">OS or host-type based</A> rules
+<dd>
+These rules are sent to the host based on the base operating system.
+These contain rules that allow access to features of the OS for
+administrators and other special groups.
+<P>
+Common examples of this are Solaris zone rules, FreeBSD jails, and
+Linux firewall access.  Since a given host only runs 1
+<acronym title="operating system">OS</acronym> at a time there
+is usually only one of this type of file on each target host.
+
+<dt><A href="#class">class or cluster based</A> rules
+<dd>
+These rules are sent to a host based on the <em>build class</em>
+of the node.  These rules provide services for the application
+groups that support that class of server.
+<P>
+Common examples of this are rules to start/stop/test applications we know
+must be installed on the cluster.
+
+<dt><A href="#service">service or role bases</A> rules
+<dd>
+These are sent to a host based on the active (or installed)
+applications defined in a <code class="attr">SERVICE</code>
+attribute (in some <code class="sh">hxmd</code> configuration file).
+<P>
+Commonly these are controlled by the <code class="sh">op</code>'s
+<code class="sh">msrc</code> configuration management
+control directory by consulting an authoritative control file.
+<dt><A href="#remote">remote policy</A> rules
+<dd>
+These are sent to every remote host, but only installed if a
+<code class="param">guard</code> marked command allows it.
+<P>
+Commonly these are based on the existence of a login, application directory,
+or both.
+After an application is installed a follow-up <code class="sh">msrc</code>
+spell updates the <code class="sh">op</code> rule-base.
+The separation is because one happens as
+a mortal login, the other needs to be run as the superuser.
+See the <A href="remote/remote.html">remote HTML document</A>, and
+<href="bin/mk/mk.html">HTML document for <code class="sh">mk</code></A>
+which is used to process the guarding marked lines.
+<dt><A href="#libexec">support scripts</A> to support complex rules
+<dd>
+These shell scripts are sent to all machines, but might only
+be installed if some active <code class="sh">op</code> uses them.
+(Even in a comment line.)
+<P>
+These are largely run by automation to cleanup after the production
+system.  The <code class="sh">crontab</code> line might indirect
+through the script with <code class="sh">mk</code> to extract the
+correct escalation spell and invocation.
+</DL>
+
+<h1 id="makeItSo">Making it so</h1>
+
+Since I use <code class="sh">msrc</code> to do this I'm going to assume
+that you can read control recipe files and have some idea of how those
+work.  If you don't you need to read (at least) the master source
+<href="sbin/msrc/qstart.html">quick start HTML document</A>
+and maybe more on that whole tool-chain.  But you can muddle though
+this without that frame of reference, as you like.
+
+<P>
+I'm going to construct a master source configuration directory to
+manage each type of configuration file, based on the topics above.
+I'll include a hypertext link to the actual recipe file in
+each section, but abstract it a little in the examples to make them
+easier to read.
+
+<h2 id="toplevel">Pushing the top-level (package)</h2>
+
+At the top-level we need to apply the
+<href="sbin/msrc/msrc.html#descendex">recursion control recipe</A>
+pattern to push the five topic directories to the target host, then
+let <code class="sh">msrc</code> run the control command on each
+target instance.  On the target host the spell we've constructed
+completes the update the driver requested.
+
+<P>
+In <code class="path">Msrc.hxmd</code>
+(the <A href="Msrc.hxmd"><code class="sh">hxmd</code> options file</A>) we
+record the <code class="attr">HOSTTYPE</code> and
+<code class="attr">HOSTOS</code> attributes of each requested target,
+so that the recursive applications <code class="sh">msrc</code> have
+access to them.  We force a special configuration file into the
+configuration data <code class="path">op.cf</code>
+(<A href="op.cf">see the file</A>) which contains macros which are used
+in the platform recipe file.
+By including the <code class="path">class.m4</code>
+(under <code class="opt">-j</code>)
+we allow the use of the class facility in any markup under us.
+Then we force <code class="attr">PRE_CMD</code> to hook in the recursion
+spell in the control recipe.
+
+<P>
+In <code class="path">Makefile</code>
+(the <A href="Makefile">control recipe file</A>)
+we offer a <code class="markup">remote_descend</code> target that
+visits the other directories in turn, this is hooked into
+<code class="attr">PRE_CMD</code> so that we call-back to the
+control recipe to do the recursion step just before we run the
+requested <code class="param">utility</code>.  By spelling it in
+the hook as <code class="markup">${3}_descend</code> we'll hit
+either "remote_descend" or "local_descend" (which has not been
+coded yet and fails).
+
+<P>
+In <code class="path">Makefile.host</code>
+(the <A href="Makefile.host">platform recipe file</A>) we just install
+the files we find in <code class="path">libexec</code>, and the
+services listed in the host's <code class="attr">SERVICE</code>
+attribute.  Each service is mapped to a file under the
+<code class="path">service</code> directory.  There is also a
+spell to build <code class="path">access.cf</code> with
+<code class="sh">sed</code> (which we'll talk about below).
+
+<P>
+All the standard payload <code class="sh">make</code> targets are supported in
+<code class="path">Makefile.host</code>, and the extra
+<code class="markup">sane</code> target to check the proposed
+configuration with <code class="sh">op</code> <code class="opt">-Sn</code>.
+
+<P>
+If the <code class="param">utility</code> requested triggers
+the <code class="markup">install</code> recipe then any older
+versions of the configuration files are moved into OLD (via
+<code class="sh">install</code>), then each collected
+configuration file and support script are installed.
+This assures that no out-dated rule files are left in-place.
+
+<h2 id="grouping">How we implement more than one grouping of configuration files</h2>
+
+For each grouping we have some structure around processing and installing
+the parts of the rule-base that are destine for a given host.
+
+<P>
+Once we collect the parts (sent by the <code class="sh">msrc</code>
+structure in this directory) we install the ones selected for the host:
+that is to say we might send some files that are never installed,
+but those don't hurt anything.
+
+<P>
+In the paragraphs below I describe how we send the files that
+make up each topic.
+
+<h3 id="hosttype">From host's platform type</h3>
+
+In this case there can be only 1 platform type for each host.
+So we used this as lever to pick an <code class="path">access.cf</code>.
+That file encodes the <code class="markup">DEFAULT</code> section that
+every other file uses, and that might (might not) have some platform dependent
+parts in it.  If it does this is a good way to pick one.
+
+<P>
+We stage that file as <code class="path">hosttype/access.cf</code>, then
+let the top-level platform recipe create the final one.  That hook
+allows some last-minute custom configurations made on each host, given
+markup in <code class="path">Makefile.host</code> to pick the correct
+recipe.
+
+<h3 id="class">From the build class of the host</h3>
+
+Very much like the logic to pick <code class="path">access.cf</code>,
+but in this case we build <code class="path">class/class.cf</code>.
+The top-level platform recipe doesn't (presently) filter this file,
+but it could with some extra markup.
+
+<h3 id="service">From a list of desired services</h3>
+
+Here is some greater power.  Each host has an attribute named
+"<code class="attr">SERVICE</code>" which is a space-separated list
+of the services we need to support on the host.  This attribute
+can sometimes be set for whole groups of hosts, and sometimes is
+set per-host in the configuration file.
+
+<P>
+In either case we extract the list of services from that macro with
+this <code class="sh">m4</code> markup:
+<blockquote class="file"><pre>ifdef(`SERVICE',`SERVTOCF(translit(SERVICE,` ',`,')))</pre></blockquote>
+
+<P>
+The <code class="attr">SERVTOCF</code> function maps a list of
+services to the files under the <code class="path">service</code> directory:
+<blockquote class="file"><pre>define(SERVTOCF,`ifelse($1,`',`',`service/$1.cf' `SERVTOCF(shift($@))')')dnl</pre></blockquote>
+
+<p>
+For a list of services "apache tcpmux radius" that produces
+"service/apache.cf service/tcmpux.cf service/radius.cf".  We used the
+<code class="markup">translit</code> to build a list to
+<code class="markup">shift</code>, the empty list produces nothing,
+lists with at least 1 element produce that element as a path followed
+by the service list of the rest of the elements.  That makes
+<code class="sh">m4</code> a lot like LISP.
+
+<P>
+With that mapping taken care of we are good to go as long as every
+service we need has a file that describes the rules.  If we don't
+then <code class="sh">make</code> will tell us it doesn't know how
+to build it, or <code class="sh">install</code> will choke on the
+missing file.
+
+<h3 id="remote">From run-time decisions made on the host</h3>
+
+In the last section we installed the rules for a service with
+<strong>no evidence</strong> that the service was installed or
+running on the target host.
+Sometimes we need the rule to start the service, or worse to
+install the service itself -- that's why we must believe the
+attribute macro in the configuration files.
+
+<P id="param">
+In this case we don't <strong>just</strong> believe the configuration file:
+we check for some condition at run-time.  There is a whole
+<A href="remote/remote.html">HTML document on just that topic</A>,
+so I won't repeat it all here.
+
+
+<h2 id="libexec">Follow-up scripts to support the rules above</h2>
+
+While <code class="sh">op</code> allows in-line scripts, it is not
+great form to embed lots of logic in the rule-base.  It is much better
+to install a script with the right permissions in a standard place
+where we can keep track of them, audit them separately, and reuse
+them.  See <href="bin/op/refs.html#inline">some notes</A> on that.
+
+<P>
+In this version of the install script we install every support
+script on every machine: we really don't need to do that.
+We <em>should</em> look for the full path to each script in the recently
+installed rule-base, if it doesn't exist we can never call it so
+we shouldn't install it.  See the
+<A href="libexec/libexec.html">HTML notes about coding and installation</A> of
+these scripts.
+
+<P>
+This would force some rules to include a comment with the path to
+any libexec script they call through a variable or
+via $<code class="env">PATH</code>.  Then again they mustn't
+trust the Customer's path, and shouldn't be doing anything too
+clever in the rule-base.
+We'd also have to to install any script called from another, which
+is why I didn't write a spell to try it.
+(I believe an <code class="sh">oue</code> instance to filter those
+installed and some clever <code class="sh">sed</code> would get it all
+in a few passes, even.)
+
+<p>
+This will be upgraded to a better structure in the next release.
+
+<h1 id="also">See also</h1>
+
+The <code class="sh">op</code> <A href="/~ksb/cgi-bin/manpage.cgi?op&amp;1l">manual page</A>, and the
+<code class="sh">op</code> <href="bin/op/op.html">HTML document</A>.
+The <code class="sh">hxmd</code> <href="sbin/hxmd/hxmd.html">HTML document</A>, and the <code class="sh">hxmd</code>
+<A href="/~ksb/cgi-bin/manpage.cgi?hxmd&amp;8l">manual page</A>.
+<hr><pre>
+
+$Id: service.html,v 1.15 2013/05/18 21:42:06 ksb Exp $ by <a rel="author" href="https://profiles.google.com/101982188326956345150">ksb</a>.</pre><script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"0b68f1a49c894aa1a76d2dc1135097bb","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body></html>

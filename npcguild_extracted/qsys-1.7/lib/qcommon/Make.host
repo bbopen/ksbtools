@@ -1,0 +1,24 @@
+`#	$Id: Make.host,v 1.6 2000/06/20 14:07:47 ksb Exp $
+#
+#	this directory should never be installed/updated
+#
+
+SHELL=/bin/sh
+OTHER=	README config-info.sh common.h qfuncs.i qsys.m qpaths.sh qsys.man
+SOURCE= Makefile ${OTHER}
+
+all calls deinstall depend distrib install lint mkcat print tags: FRC
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs lint.out tags
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

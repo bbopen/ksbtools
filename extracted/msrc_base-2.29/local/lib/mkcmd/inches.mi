@@ -1,0 +1,27 @@
+/* $Id: inches.mi,v 8.20 1998/11/29 01:17:36 ksb Exp $
+ * post mult inches
+ */
+#define PMI_BOLT	{    'b', "bolt",	     1440UL, (char *)0	}
+#define PMI_CABLE	{    'c', "cable",	     8640UL, (char *)0	}
+#define PMI_CHAIN	{    'c', "chain",	      792UL, (char *)0	}
+#define PMI_FATHOM	{    'f', "fathom",	       72UL, (char *)0	}
+#define PMI_FOOT	{    'f', "foot",	       12UL, "feet"	}
+#define PMI_FURLONG	{    'f', "furlong",	     7920UL, (char *)0	}
+#define PMI_HAND	{    'h', "hand",	        4UL, (char *)0	}
+#define PMI_INCH	{ '\000', "inch",		1UL, "inches"	}
+#define PMI_MILE	{    'm', "mile",	    63360UL, (char *)0	}
+#define PMI_PALM	{    'p', "palm",	        3UL, (char *)0	}
+#define PMI_QUARTER	{    'q', "quarter",	        9UL, (char *)0	}
+#define PMI_ROD		{    'r', "rod",	      198UL, (char *)0	}
+#define PMI_ROPE	{    'r', "rope",	      240UL, (char *)0	}
+#define PMI_SKEIN	{    's', "skein",	     4320UL, (char *)0	}
+#define PMI_SPAN	{    's', "span",	        9UL, (char *)0	}
+#define PMI_SPINDLE	{    'S', "spindle",	   518400UL, (char *)0	}
+#define PMI_YARD	{    'y', "yard",	       36UL, (char *)0	}
+
+static POST_MULT aPMInches[] = {
+	PMI_INCH, PMI_PALM, PMI_HAND, PMI_QUARTER,
+	PMI_FOOT, PMI_YARD, PMI_FATHOM, PMI_ROD, PMI_ROPE, PMI_CHAIN,
+	PMI_BOLT, PMI_SKEIN, PMI_FURLONG, PMI_CABLE, PMI_MILE,
+	PMI_SPINDLE, PMI_SPAN
+};

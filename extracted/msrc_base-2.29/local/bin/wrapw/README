@@ -1,0 +1,33 @@
+# $Id: README,v 1.3 2010/03/03 16:44:05 ksb Exp $
+
+See the wrapper.html in this directory.
+
+Basically this program builds a single unix domain socket to tunnel or
+transport all the current wrappers through (under -m), and builds an
+environment (as a client) to instance that environment for others.  Used
+with a forwarder for the unix domain socket this becomes a very potent
+(cross host, cross user, cross platform) data-flow.
+
+
+See the mkcmd code "divconnect.mc" (under /usr/local/lib/mkcmd/util, or in
+the source in ../../lib/mkcmd/util_divconnect.mc) where we trap a missing
+socket, then try to connect to the socket's path without the final
+component to allow a single socket to provide mutiple diversions.
+
+To make this happen a wrapper sets
+	any_link=1
+	any_1=/tmp/div00000/real/m1
+with the file "/tmp/div00000/real" as the socket, then we can't open the
+"m1" file (because the socket is not a directory) so we connect to the
+"real" socket and send "m1" as the name of the service we need to chat with.
+The socket sends back access rights to the service we really should be
+talking to, we close the control socket, then just talk on the new socket
+all the same.
+
+This is what makes "gtfw" and "sshw" all work.  If you are reading this from
+"msrc_base" then it won't make you happy yet, since the more advanced
+wrappers are not included in that package: you've got to walk before you can
+run.  But run we shall, and soon.
+
+--
+ksb, Feb 2010

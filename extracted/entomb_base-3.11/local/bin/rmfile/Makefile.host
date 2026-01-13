@@ -1,0 +1,88 @@
+`#	$Id: Makefile.host,v 2.6 2006/01/27 04:11:00 jad Exp $
+#
+#	Makefile for rmfile
+#
+SHELL=/bin/sh
+PROG=	rmfile
+BIN=	${DESTDIR}/usr/local/bin
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/'ifelse(HOSTTYPE,`SUN5',`local/`include'',``include'/local')`
+
+INCLUDE=
+DEBUG=	-O
+CDEFS=  -D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=
+SRC=
+GENh=	main.h
+GENc=	main.c
+EXP=	scandir.c
+GEN=	${GENc} ${GENh} ${EXP}
+DEP=	${SRC} ${GENc}
+OBJ=	main.o'ifelse(
+HOSTTYPE,`SUN5',` scandir.o')`
+OTHER=	rmfile.m
+MAN=	rmfile.man
+SOURCE=	Makefile ${HDR} ${SRC} ${OTHER} ${MAN}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}: ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}
+
+${EXP}:
+	explode -s $@
+
+main.h: main.c
+
+main.c: rmfile.m
+	mkcmd rmfile.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -rf prog.[ch]
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} main.[ch] prog.[ch] *.o a.out core errs tags
+
+depend: ${HDR} ${SRC} ${GEN} FRC
+	maketd -ba ${CDEFS} ${INCLUDE} ${DEP}
+
+install: all FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -hnx ${CDEFS} ${INCLUDE} ${DEP}
+ 
+mkcat:	${MAN} FRC
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+main.o: main.c
+
+scandir.o: scandir.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

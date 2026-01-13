@@ -1,0 +1,98 @@
+`# $Id: Make.host,v 3.8 2000/07/31 14:14:28 ksb Exp $
+#
+#	Makefile for preend
+#	By Matthew Bradburn, PUCC Unix Group
+#
+
+SHELL=/bin/sh
+PROG= preend
+BIN= ${DESTDIR}/usr/local/etc
+MKCMD= /usr/local/bin/mkcmd
+
+I=/usr/include
+S=/usr/include/sys
+T=../../lib/libtomb
+
+INCLUDE= -I$T
+CDEFS= -D'HOSTTYPE`
+DEBUG= -O
+CFLAGS= ${CDEFS} ${DEBUG} ${INCLUDE}
+
+GENh=	'ifelse(MKCMD,`no',`',`main.h ')` fslist.h 
+GENc=	'ifelse(MKCMD,`no',`',`main.c ')` fslist.c
+GEN=	${GENc} ${GENh}
+HDR=	preentomb.h'ifelse(MKCMD,`no',` main.h')`
+SRC=	preend.c preentomb.c 'ifelse(MKCMD,`no',` main.c')`
+OBJ=	preend.o preentomb.o fslist.o main.o
+MAN=	preend.man
+SOURCE= Makefile preend.m preend.sh preend.init ${HDR} ${SRC} ${MAN}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o ${PROG} ${CFLAGS} ${OBJ}
+
+fslist.c fslist.h:
+	ln -s ../../lib/entomb/$@ $@
+
+'ifelse(MKCMD,`no',`',
+`main.h: main.c
+
+main.c: preend.m
+	${MKCMD} preend.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+')`
+clean: FRC
+	rm -f ${PROG} ${GEN} *.o Makefile.bak core errs tags
+
+depend: ${SRC} ${HDR} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${SRC} ${GENc}
+
+dirs: ${BIN}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG}
+
+install: dirs all
+	install -c -s -m 740 ${PROG} ${BIN}/${PROG}
+
+mkcat: ${MAN} FRC
+	mkcat ${MAN}
+
+lint:	${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${SRC} ${GENc}
+
+print:  ${SOURCE}
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean FRC
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR}
+	ctags -t ${SRC} ${HDR}
+
+/ ${BIN}:
+	install -d $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+preend.o: fslist.h main.h preend.c preentomb.h $T/libtomb.h
+
+preentomb.o: main.h preentomb.c preentomb.h
+
+fslist.o: fslist.c fslist.h $T/libtomb.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

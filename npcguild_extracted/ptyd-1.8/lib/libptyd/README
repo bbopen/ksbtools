@@ -1,0 +1,17 @@
+# $Id: README,v 1.1 1997/11/29 17:25:34 ksb Exp $
+
+I think this is a fine way to get pseudo ttys.  I coded it way back
+in early Oct 1989.  Originally people were picking it up and I
+thought it might work.  The BSD boys said "pseudo ttys were a botch
+and we are going to rip them out".  So I quit pushing it.
+
+Right.
+
+It is 1997 and we use more pseudos than ever.  Time to dust this
+off and get more people to use it.  Xterm still had #if's for it
+last time I looked.
+
+Thanks to Mike Rowen for some of the work in this.
+
+--
+ksb, Decl 1998

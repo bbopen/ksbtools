@@ -1,0 +1,60 @@
+<HTML>
+<HEAD><TITLE>Get indentd information</TITLE></HEAD>
+<BODY>
+Family: id
+<BR>
+Authors: Luke Mewburn , modified by Kevin S Braunsdorf
+<BR>
+Mail: lm@rmit.edu.au, ksb@sa.fedex.com
+<BR>
+Version: 5.1
+<BR>
+Bugs: Can block forever.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+<ACRONYM TITLE="request for comments">RFC</ACRONYM> 1413
+describes how to find out which login <EM>might</EM> own a TCP/IP connection
+(since 931 has been obsoleted).  This is mostly
+useful for audit logs because it might be encoded or abstracted in some
+way
+
+<P>
+Your application should <STRONG>not</STRONG> depend on this routine
+as the only source of authentication (the login name found might not
+be a plain-text login name).
+
+<H1>Configuration</H1>
+
+A C Preprocessor macro is the only tuning one might do (for testing).
+
+<DL>
+<DT>IDENT_PORT
+<DD>
+The default TAP port, usually 113.
+</DL>
+
+<H1>Provides</H1>
+
+A single call to get the ident return value.
+<DL>
+<DT>
+int ident_client(struct sockaddr_in peeraddr, struct sockaddr_in ouraddr, char pcIdent[1024])
+<DD>
+Uses the two <CODE>socaddr_in</CODE>'s to request a TAP, returns the
+TAP data in the 1k buffer provided.
+<DT>main
+<DD>
+A simple reflector test driver that listens on port 7098 for telnet connections.
+It TAPs them and outputs the incoming login name.
+</DL>
+
+<H1>To Do List</H1>
+
+Because this can block (forever) it should be async, or take a timeout value.
+Maybe set as a global variable?  Not added to the parameter list, for sure.
+
+</BODY>
+</HTML>

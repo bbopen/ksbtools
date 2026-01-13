@@ -1,0 +1,119 @@
+`# Copyright 1992 Purdue Research Foundation, West Lafayette, Indiana
+# 47907.  All rights reserved.
+#
+# This software is not subject to any license of the American Telephone
+# and Telegraph Company or the Regents of the University of California.
+#
+# Permission is granted to anyone to use this software for any purpose on
+# any computer system, and to alter it and redistribute it freely, subject
+# to the following restrictions:
+#
+# 1. Neither the authors nor Purdue University are responsible for any
+#    consequences of the use of this software.
+#
+# 2. The origin of this software must not be misrepresented, either by
+#    explicit claim or by omission.  Credit to the authors and Purdue
+#    University must appear in documentation and sources.
+#
+# 3. Altered versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 4. This notice may not be removed or altered.
+#
+# Makefile for labstat
+#
+# $Id: Make.host,v 4.6 2000/06/20 14:09:43 ksb Exp $
+#
+
+SHELL=/bin/sh
+BIN=	${DESTDIR}/usr/local/bin
+PROG=	labstat
+
+#L=../libopt
+L=/usr/include/local
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE= -I$L
+DEBUG=	'ifelse(HOSTTYPE,`IBMR2',`-g',`-O')`
+CDEFS=	-D'HOSTTYPE ifelse(
+HOSTTYPE,`HPUX9',`-DDEF_MASTER=\"s03.sa.fedex.com\"',
+`-DDEF_MASTER=\"trixie.sac.fedex.com\"')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+CC= 'ifelse(
+HOSTTYPE,`ETA10',`cc',
+HOSTTYPE,`NEXT2',`cc',
+HOSTTYPE,`IRIX5',`cc',
+HOSTTYPE,`IBMR2',`bsdcc',
+HOSTTYPE,`EPIX',`cc -systype bsd43',
+HOSTTYPE,`VAX8800',`cc',`gcc -fwritable-strings')`
+
+HDR=	'ifelse(MKCMD,`no',`main.h ')`labstat.h
+SRC=	'ifelse(MKCMD,`no',`main.c ')`'ifelse(HOSTTYPE,`S81',` strtol.c')`
+GENC=	'ifelse(MKCMD,`no',`',`main.c ')`
+GENH=	'ifelse(MKCMD,`no',`',`main.h ')`
+GEN=	${GENC} ${GENH}
+DEP=	${SRC} ${GENC}
+OBJ=	main.o'ifelse(HOSTTYPE,`S81',` strtol.o')`
+MAN=	labstat.man
+OTHER=	labstat.m oldopts.m
+SOURCE=	Makefile ${MAN} ${HDR} ${SRC} ${OTHER}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} ${DEBUG} -o $@ ${OBJ}'ifelse(
+HOSTTYPE,`SUN5',` -lsocket -lnsl',
+HOSTTYPE,`ETA10',` -lsocket')`
+
+main.h: main.c
+
+main.c: labstat.m
+	mkcmd std_help.m std_version.m labstat.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} *.o a.out core errs tags
+
+depend: ${HDR} ${SRC} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+main.o: labstat.h main.c main.h
+
+'dnl

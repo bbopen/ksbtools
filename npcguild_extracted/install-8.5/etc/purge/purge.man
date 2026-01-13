@@ -1,0 +1,79 @@
+.\" $Id: purge.man,v 8.0 1996/03/13 15:35:02 kb207252 Dist $
+.\" by Kevin Braunsdorf
+.TH PURGE 8L LOCAL
+.SH NAME
+purge \- remove outdated backup copies of installed programs
+.SH SYNOPSIS
+\fB/usr/local/etc/purge\fP [\-\fBASVhnv\fP] [\-\fBd\fP \fIdays\fP] [\-\fBu\fP \fIuser\fP] [\fIdirs\fP]
+.SH DESCRIPTION
+.PP
+\fIPurge\fP removes backup files that are more than \fIdays\fP old from
+OLD directories created by \fIinstall\fP(1L).  \fIPurge\fP locates the
+OLD directories by recursively descending \fIdirs\fP selecting directories
+named \*(lqOLD\*(rq that the invoker owns.
+.PP
+\fIPurge\fP does not remove backup files with multiple hard links if it
+cannot find all the links.
+This is an indication that a product was installed without
+regard for multiple names (\fIinstall\fP warns the installer in
+such cases, but the error message may have been inadvertently ignored).
+\fIPurge\fP directs the maintainer to run \fIinstck\fP(1L)
+to correct any such problems.
+.SH OPTIONS
+.TP
+.BI \-A
+Allow OLD directories owned by any user to be searched for out of date backup files.
+.TP
+.BI \-d days
+Days to keep backup files (default 14).
+.TP
+.BI \-h 
+Print a help message.
+.TP
+.BI \-n 
+Do not really execute commands, output what would be done (see \-\fBv\fP).
+.TP
+.BI \-S 
+Run as if we are the superuser.
+In combination with \-\fBn\fP this allows a system administrator to
+see what \fIpurge\fP would do when run as root.
+.TP
+.BI \-u user
+OLD directories may (also) be owned by this user.
+.TP
+.BI \-v 
+Be verbose by showing approximate actions as shell commands.
+.TP
+.BI \-V 
+Show version information.
+.SH EXAMPLES
+.TP
+purge -v -d7 $HOME/bin
+Remove any backup files from my bin which are older than one week.
+.TP
+purge -Sn /bin/OLD
+Show which files purge would remove from /bin's OLD directory.
+.TP
+purge -u news -u uucp -u adm -u lp /
+When run as root, purge all system OLD directories on this machine.
+.TP
+purge -V
+Output \fIpurge\fP's version information, eg.:
+.sp 1
+.nf
+purge: $\&Id: purge.c,v 2.0 90/06/24 21:28:27 ksb Exp $
+purge: default superuser login name: root
+purge: backup directory name: OLD
+purge: valid backup directory owner: root
+.fi
+.SH BUGS
+.PP
+\fIPurge\fP does not cross mount points.
+.PP
+This version of \fIpurge\fP is slightly incompatible with the shell script.
+.SH AUTHOR
+David L Stevens, Purdue UNIX Group, dls@cc.purdue.edu
+.br
+Kevin Braunsdorf, Purdue UNIX Group, ksb@cc.purdue.edu
+.SH "SEE ALSO"
+install(1L), instck(1L), rm(1), sh(1)

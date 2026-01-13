@@ -1,0 +1,13 @@
+# $Id: TODO,v 5.2 2009/05/19 14:43:22 ksb Exp $
+
+None.
+
+Well, we can always add more templates.  I have all I need, maybe
+some Java ones?
+
+And we should add files:
+	tnsnames.ora	Oracle data [details]
+	listener.ora 	Oracle data [details]
+
+--
+ksb, Ks Braunsdorf, May 2009

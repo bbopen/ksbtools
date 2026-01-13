@@ -1,0 +1,378 @@
+.\" $Id: mmsrc.man,v 1.24 2010/08/12 16:40:23 ksb Exp $
+.\" by KS Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: groff -tbl -Tascii -man %f | ${PAGER:-less}
+.\" $Display(*): groff -tbl -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man8/mmsrc.8
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt][18]/mmsrc.8*
+.TH MMSRC 8 LOCAL
+.SH NAME
+mmsrc \- mini msrc, master source tools boot-strap program
+.SH SYNOPSIS
+.ds PN "mmsrc
+\fI\*(PN\fP [\-\fBz\fP] [\-\fBd\fP\~\fIflags\fP] [\-\fBf\fP\~\fImakefile\fP] [\-\fBm\fP\~\fIprereq\fP[\fB:\fP\fIpostreq\fP]] [\-\fBu\fP\~\fIlogin\fP] [\-\fBy\fP\~\fIyoke\fP] [\fIhxmd-opts\fP] [\fIutility\fP]
+.br
+\fI\*(PN\fP \fB\-b\fP [\-\fBz\fP] [\-\fBd\fP\~\fIflags\fP] [\-\fBf\fP\~\fImakefile\fP] [\-\fBm\fP\~\fIprereq\fP] [\-\fBy\fP\~\fIyoke\fP] [\fImacro\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+.P
+.SH COMPLETE
+\fI\*(PN\fP [\-\fBz\fP] [\-\fBB\fP\~\fImacros\fP] [\-\fBC\fP\~\fIconfigs\fP] [\fB\-D\fP\~\fIname[=value]\fP] [\-\fBd\fP\~\fIflags\fP] [\-\fBE\fP\~\fIcompares\fP] [\-\fBf\fP\~\fImakefile\fP] [\-\fBG\fP\~\fIguard\fP] [\fB\-I\fP\~\fIdirname\fP] [\-\fBj\fP\~\fIm4prep\fP] [\-\fBk\fP\~\fIkey\fP] [\-\fBm\fP\~\fIprereq\fP] [\fB\-U\fP\~\fIname\fP] [\-\fBX\fP\~\fIex-configs\fP] [\-\fBy\fP\~\fIyoke\fP] [\-\fBY\fP\~\fItop\fP] [\-\fBZ\fP\~\fIzero-config\fP] [\fIutility\fP]
+
+.SH DESCRIPTION
+
+All of ksb's tools come packaged in a way that allows them to be
+distributed to many hosts to be compiled in platform specific
+ways.  This is pretty cool when you have a heterogenous mix of
+hundreds of hosts.  Sadly the tools depend on themselves to
+setup the environment to get them built.  So you need a way to
+fake that environment to boot-strap a local installation.
+When you have to get ksb's tools started at a new
+site you need this program.
+.P
+This program fakes being the entire master source tool chain:
+\fImsrc\fP, \fIhxmd\fP, et cetera.  It only
+fakes this well enough to build a master source product locally on
+a single host.
+You'll also need it to build \fImkcmd\fP, \fIexplode\fP and the like to
+get all the others compiled.
+.P
+Since \fI\*(PN\fP is often used before the local administrator has
+configured any site specific \fIhxmd\fP configuration data files, \fI\*(PN\fP
+accepts a simple \fB\-DHOST=\fP\fIname\fP command-line option to
+specify the target host as well as additional \fB\-D\fP options to
+provide required attributes (viz. \fBHOSTTYPE\fP, \fBHOSTOS\fP, \fBSHORTHOST\fP,
+or the like).
+.P
+To be as compatible with \fImsrc\fP as possible and to
+allow for easier upgrades, \fI\*(PN\fP also reads
+the same configuration files (under \fB\-C\fP, \fB\-X\fP, and \fB\-Z\fP)
+as \fIhxmd\fP.
+Any program name (in \fBargv[0]\fP) other than \*(lq\*(PN\*(rq is taken as
+a request for a zero configuration file with the extension \*(lq.cf\*(rq added
+to the end.  All of the \fIhxmd\fP host selection logic
+(under \fB\-E\fP, \fB\-G\fP, \fB\-B\fP, \fB\-j\fP, and \fB\-Y\fP)
+is supported to select the target host from these files.
+(By \fIhxmd-opts\fP we mean only those \fIhxmd\fP options specified in
+this paragraph.)
+.P
+The same cache directory mapping is allowed as under \fBhxmd\fP when
+a directory is an element of the \fBMAP\fP specification.
+.P
+In the absence of a specific host definition \fI\*(PN\fP looks for
+the local hostname, or \*(lqlocalhost\*(rq with the local domain suffix added in
+any provided \fIconfigs\fP.  When no match is selected from
+either of those names, the first host from the \fIhxmd\fP configuration
+data is selected.
+.P
+As in \fImsrc\fP, the current directory should contain a \fImake\fP
+recipe file with some distinguished macros set.  See \fImsrc\fP(8) for
+the details of the macros expected.
+Like \fImsrc\fP the value of \fBINTO\fP may be overridden on the
+command-line to force the local platform source cache to be in a
+specific local directory (specify \fB\-y INTO=\fP\fIpath\fP).
+.P
+The actual compilation or installation of a tool is always done
+from a shadow copy of the master source (called a \*(lqplatform\*(rq copy).
+These platform directories are usually cached on each remote host,
+but for \fI\*(PN\fP's use they need to be kept on the local machine.
+The \fImake\fP macro \fBINTO\fP selects the path to the local cached
+copy, unless it points to the current working directory, which is a
+fatal error.
+.P
+To create the cached copy \fI\*(PN\fP \fImkdir\fP's the selected
+\fBINTO\fP, then any directories specified in \fBSUBDIR\fP, updates
+and file from \fBSEND\fP that are not exactly the same, updates and files
+from \fBMAP\fP that are not exactly the same.  Each mapped file is
+processed through \fIm4\fP exactly as \fIhxmd\fP would; be warned
+that some of the attribute macros expected might not be defined unless
+they were forced on the command-line (or provided in a configuration file).
+As in \fBmsrc\fP options presented in the files listed in
+the \fBmake\fP macro \fBHXINCLUDE\fP
+are added to the command-line, unless \fB\-z\fP is presented.
+.P
+After the platform cache directory is updated any temporary files are removed.
+Then \fI\*(PN\fP changes directory to the
+platform cache, then exec's the specified \fIutility\fP.
+The default \fIutility\fP is \fImake\fP.  The special \fIutility\fP
+name \*(lq:\*(rq causes \fI\*(PN\fP to exit after constructing the
+platform cache.
+.P
+To allow the same command-line \fIutility\fP to be quoted the
+same way for both programs the execution of \fIutility\fP is done via
+an invocation of \fB$SHELL\fP \fB\-c\fP.
+That means \fB$SHELL\fP should be a Bourne shell compatible shell.
+This is the best emulation I could think of for \fBmsrc\fP's use of
+a remote shell to run its \fIutility\fP.
+.P
+The same \fBINCLUDE_CMD\fP, \fBINIT_CMD\fP, \fBPRE_CMD\fP, and \fBPOST_CMD\fP
+attribute macros are expanded in the usual places (see msrc(8)).
+Specify the option \*(lq\fB\-d SPRX\fP\*(rq to see the whole process.
+The shell parameters (\fB${1}\fP, \fB${2}\fP... \fB${5}\fP) hold
+the same values as they would under "local" mode in \fBmsrc\fP, except
+for \fB${1}\fP which holds the same value as \fB${5}\fP (the value of
+the \fBmake\fP macro "INTO").
+
+.P
+On the target host of an \fBmsrc\fP build \fImmsrc\fP may act as
+a \*(lqsecond stage\*(rq processor in the platform source directory.
+In this case it is used to incorporate local \fIhxmd\fP configuration data
+(macro attributes) into the delivered structure.
+Any secondarily mapped files should be protected from the
+outer \fImsrc\fP by explicitly listing their names in
+the \fBSEND\fP \fBmake\fP macro, rather than in the \fBMAP\fP macro.
+
+.SH OPTIONS
+If the program is called as \fImmsrc\fP then no options are forced.
+See \fIhxmd\fP for detailed option descriptions.
+.TP
+\fB\-b\fP \fI...\fP \fImacros\fP
+This replaces the FreeBSD version of \fBmake\fP's \fB\-V\fP option.
+The specified \fBmake\fP recipe file is inspected for
+the defintion of each \fImacro\fP, which must be a list of
+white-space separated words.
+The words are output to \fIstdout\fP 1 per line.
+This actually runs \fBmake\fP with the synthetic target "__msync", or
+one specified with \fB\-m\fP\~\fIprereq\fP (below).
+To avoid interactions with any update actions specificy a
+\fIprereq\fP target that has no prerequisite dependencies,
+I use the force target which canonically has none (viz. \fB\-m FRC\fP).
+.TP
+\fB\-B\fP \fImacros\fP
+Boolean check as in \fIhxmd\fP.
+.TP
+\fB\-C\fP \fIconfigs\fP
+Files of hosts and attribute macros, colon separated.
+.TP
+\fB\-d\fP \fIflags\fP
+Debug flags we pass on to \fIm4\fP.  Some uppercase flags are
+processed by \fImmsrc\fP to help debug configuration issues.
+Use the \fIflag\fP question-mark (\*(lq?\*(rq) for
+a list of supported values and their meanings.  As in \fIhxmd\fP
+only the last (right-most) value is passed on the \fIm4\fP.
+.TP
+\fB\-D\fP \fIname[=value]\fP
+Pass a macro definition on to \fIm4\fP.
+The macro \fBHOST\fP is inspected specially.
+.TP
+\fB\-E\fP \fIcompares\fP
+Macro value must satisfy given relation to select hosts, see \fIhxmd\fP.
+.TP
+\fB\-f\fP \fImakefile\fP
+Search this makefile for the same macros \fImsrc\fP requires:
+INTO, MODE, SUBDIR, IGNORE, SEND, MAP, and HXINCLUDE.  Picking a default value
+is done exactly as \fImsrc\fP would, see \fImsrc\fP(8).
+.TP
+\fB\-G\fP \fIguard\fP
+Expressions to select hosts by name, or order selected hosts.
+See \fIhxmd\fP for details.
+.TP
+\fB\-h\fP
+Print a brief help message.
+.TP
+\fB\-I\fP \fIdirname\fP
+Passed on to \fIm4\fP to add an include directory name.  When the
+\fIdirname\fP is the double-dash token (\-\-) it is replaced with
+the first full path from the search list, as \fIhxmd\fP does.
+.TP
+\fB\-m\fP \fIprereq\fP[\fB:\fP\fIpostreq\fP]
+Specify the generated make target name to gather source files.
+This target runs before any files are copied to \fBINTO\fP.  The default
+is \*(lq__msrc\*(rq (double-underbar msrc), as it is under \fImsrc\fP.
+The target is appended to a copy of the \fImakefile\fP, sometimes called
+the "hook" in the HTML documentation.
+.sp
+A \fIpostreq\fP specification triggers a \fBmake\fP update after
+the process is complete to put away any gathered resources.
+This action is not taken under \fB\-b\fP since it is assumed that
+the calling program is going to use the files gathered.
+.TP
+\fB\-j\fP \fIm4prep\fP
+Each of the \fIm4prep\fP files are presented to \fBm4\fP in the
+command line specification before each processed file, as in
+\fBhxmd\fP.  Also the same file is included in the host selection
+processing of gaurds.
+.TP
+\fB\-k\fP \fIkey\fP
+Change the merge macro name from "HOST" to \fIkey\fP, as in \fIhxmd\fP.
+.\" do not ever do that --ksb
+.TP
+\fB\-u\fP \fIlogin\fP
+Passes the specified \fIlogin\fP on to \fBm4\fP in the macro
+ENTRY_LOGIN.  This is just for better command-line compatibility with
+\fBmsrc\fP.
+.TP
+\fB\-U\fP \fIname\fP
+Passed on to \fIm4\fP, to remove a macro definition.
+.TP
+\fB\-V\fP
+Show only version information.
+.TP
+\fB\-X\fP \fIex-configs\fP
+Add attribute macro data to defined hosts, colon separated.
+.TP
+\fB\-y\fP \fIyoke\fP
+As in \fBmsrc\fP this option passes a command-line word on to the \fBmake\fP
+instance that plunders the \fImakefile\fP.  This is largely
+used to tune the recipe file's macro definitions to override
+\fBINTO\fP or even \fBMODE\fP.
+For recursive recipes when either \fBmsrc\fP or \fBmmsrc\fP
+might be used to drive a \fImakefile\fP, a macro may be needed to
+select which to call.
+This option must then be used to pass the present value of
+that macro on to the next level.
+The usual name for that macro is "MSRC", the default value, while
+site specific, is usually "msrc".
+.TP
+\fB\-Y\fP \fItop\fP
+M4 commands included at the top of the guard processing, before
+\fIguard\fP is processed for each host.
+.TP
+\fB\-z\fP
+Do not interpolate the options specified in the file listed in
+the \fBmake\fP macro \fBHXINCLUDE\fP into our command-line.
+Not every option to \fBhxmd\fP is allowed to \fI\*(PN\fP,
+so sometimes suppressing the value in the \fImakefile\fP is a good idea.
+Alternately try using \fB\-y\fP to change \fBHXINCLUDE\fP.
+.TP
+\fB\-Z\fP \fIzero-config\fP
+Configuration file(s) to set default attribute macro values.
+
+.SH COMPATIBILITY
+
+These options are consumed for better command-line compatibity
+with \fBmsrc\fP.
+.TP
+\fB\-l\fP
+This option expands to "-y MODE=local" in an attempt to override
+any recipe definiton which sets MODE to remote.
+.TP
+\fB\-P\fP\fIjobs\fP
+Consumed and ignored.
+.TP
+\fB\-s\fP
+As there is no slow-start logic in \fI\*(PN\fP this is ignored completely,
+see \fBhxmd\fP.
+
+
+.SH ENVIRONMENT
+
+This program doesn't consult the environment as much as \fBmsrc\fP,
+but it does source a local definition files (ENTRY_DEFS) if the
+attribute macro is defined for the selected host.
+Usually the inherited build environment is adequate because we
+are driven from a local shell (not from an remote shell).
+.P
+The environment variables \fBHOME\fP, \fBSHELL\fP, \fBTMPDIR\fP, and
+\fBPATH\fP are consulted for their traditional purposes.
+As well as \fBHXMD_PATH\fP, which is used as \fIhxmd\fP does to
+set an explicit search list for command-line files.
+
+.SH EXAMPLES
+.TP
+.nf
+\fI\*(PN\fP \fP\-V\fP
+.fi
+The standard version information for \fI\*(PN\fP is extended to include
+the specific versions of the modules extracted from the programs it
+emulates: these have 2 spaces before the version string.
+.TP
+.nf
+\fI\*(PN\fP \-Clocal.cf \-B MSRC  :
+.fi
+Construct a platform cache for the (only) host in \fBlocal.cf\fP which
+has the macro \*(lqMSRC\*(rq defined.
+If this host's name has that macro defined
+it will be selected in preference to any others.  Note that no \fIutility\fP
+is actually executed due to the colon (\*(lq:\*(rq) specification.
+.TP
+.nf
+\fI\*(PN\fP \-Clocal.cf \-B MSRC  ls \-last | less
+.fi
+Same as above, but run ls(1) to display the created platform cache.
+.TP
+.nf
+\fI\*(PN\fP \fP\-DHOST=lv426\fP \-DHOSTTYPE=SUN5  make all install clean
+.fi
+Build this program for
+the host \fBlv426\fP with the platform type \*(lqSUN5\*(rq,
+install the program and cleanup after that.
+.\" assuming the makefile does what we'd expect with those targets
+.TP
+.nf
+\fI\*(PN\fP \fB\-DHOST=nostromo\fP \-DHOSTTYPE=LINUX  ${SHELL} \-i
+.fi
+Configure the platform cache for \fBnostromo\fP, then start a shell
+in the updated directory.  I usually set \fB$PS1\fP for that command.
+.TP
+.nf
+\fI\*(PN\fP \-Cadm.cf \-y INTO=/tmp/boot.mmsrc  make all
+.fi
+While searching the \fImakefile\fP for macros build the target \fBsource\fP
+to synchronize the local copy. Then configure a platform cache for
+the local hostname (attributes from \fBadm.cf\fP) in
+the local directory \fB/tmp/boot.mmsrc\fP, and run \fImake\fP with
+the \fItarget\fP \*(lqall\*(rq.
+.TP
+.nf
+\fI\*(PN\fP \fB\-d '?'\fP
+.fi
+Display any on-line help for the \fIdebug\fP flags.
+.TP
+.nf
+\fI\*(PN\fP \-\- make all
+.fi
+Depend on the \fBmake\fP(1) macro \fBHXINCLUDE\fP to specify the configuration
+data for host selection and macro definition.  The macro might be set
+to a file containing any of
+the above example selection options, e.g \*(lq\-Clocal.cf \-B MSRC\*(rq.
+It is \fIpoor form\fP to put options to \fBxapply\fP, \fBxclate\fP, or
+\fBptbw\fP in this macro as they won't work under \fI\*(PN\fP, but might
+under \fBmsrc\fP (as a side-effect of how they are read).
+.TP
+.nf
+\fI\*(PN\fP \-b INTO
+.fi
+Output the value of the make macro \fBINTO\fP.  This is used by
+\fBmsync\fP(8) from the revision control tool-chain.  In fact that is why
+the default \fIprereq\fP token under \fB\-b\fP is double-underbar msync.
+
+.SH BUGS
+If you count the fact that you need such a program in the
+first place, then you've found one.
+.P
+Files with only mode changes are not \fIchmod\fP'd in the platform cache.
+To fix this just remove the platform cache (or the impacted files) and
+push again.  It didn't seem worth the cost of building a dependency link
+to \fBrsync\fP(1), or to implementing it in shell.
+.P
+When the local hostname isn't listed in the \fIhxmd\fP configuration files
+the use of the first host matched might be a bug: use an explicit \fB\-D\fP to
+pick the one you meant.  On the other hand it might be a bug that
+\fIhxmd\fP won't honor the \fB\-D\fP of \fBHOST\fP to pick a host
+by name.
+.P
+This program doesn't emulate \fIxapply\fP or any related wrappers at all.
+Use of percent escapes is not supported in the \fIutility\fP command-line.
+Also the \fB\-z\fP option is a bit of a kludge.
+.P
+There is no ideal way to cleanup the cached platform directory.  Just
+remove the whole tree when you are done.  Or try something like:
+.RS
+.nf
+\fI\*(PN\fP \fI...\fP sh \-c "eval cd / \e\e; rm \-r \e`pwd\e`"
+.fi
+.RE
+
+.SH AUTHOR
+KS Braunsdorf
+.br
+NonPlayer Character Guild
+.br
+mmsrc at no-SPAM here ksb.npcguild.org
+
+.SH "SEE ALSO"
+sh(1), hxmd(8), msrc(8), m4(1), execve(2), environ(8), cp(1), msync(8), efmd(8)

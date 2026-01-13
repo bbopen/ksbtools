@@ -1,0 +1,44 @@
+# $Id: access.cf,v 8.23 2010/04/06 18:24:05 ksb Exp $
+# Default op(1) rules for Linux Hosts in Production
+#
+# $Install: ${install:-/usr/local/bin/install} -c -m 400 %f /usr/local/lib/op/access.cf
+#
+# op(1) rules for any external host.  Set any defaults you want to apply to
+# every configuration file in a default stanza in access.cf, other default
+# stanzas override for the single file.
+#DEFAULT	umask=027
+
+# Most people can use the -r, -w or -l options to op, but help is traditional.
+# Output a table of all mnemonics from the local raw configuration files. If
+# you do NOT want this replace it with a message to stderr, and exit 69.
+help	{
+		cd $0 || exit 65
+		echo "op mnemonic    UNIX command"
+		echo "===========    ============"
+		sed -n -e "s/#.*//" \
+			-e "/^DEFAULT/d" \
+			-e "s/^\\([^ 	][^ 	]*\\)[ 	]*\\(.*\\)[&;].*/\\1#\\2/p" \
+			-e "/^\\([^ 	][^ 	]*\\)[ 	]*{.*/{" \
+				-e "s//\\1#{script}/" \
+				-e "h" \
+				-e ": loop" \
+				-e "N" \
+				-e "s/.*\\n[ 	]*//" \
+				-e "/^[^}]/b loop" \
+				-e H \
+				-e x \
+				-e "s/\\n}[ 	]*\\(.*\)[;&]/ \\1/p" \
+			-e "}" *.cf |
+		sort |
+		pr -t -e"#15"
+	} $C ;
+	users=.*
+	uid=root
+
+# An example to let anyone in group wheel (aka root, staff) to see the
+# op rules allowed to another login.  Use as "op op -l bob".
+op	/usr/local/bin/op $1 $2 ;
+	groups=^wheel$,^root$,^staff$,^adm$
+	uid=root
+	$1=^(-l|-r|-w)$
+	$2=^[^:]*$

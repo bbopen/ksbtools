@@ -1,0 +1,3 @@
+/* $Id: cmd.mi,v 8.7 1997/10/27 11:55:22 ksb Exp $
+ */
+extern void cmd_init();

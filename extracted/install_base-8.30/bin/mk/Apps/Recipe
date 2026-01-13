@@ -1,0 +1,29 @@
+#!/bin/sh
+# $Id: Recipe,v 5.0 1999/02/26 17:42:33 ksb Exp $
+#
+# This is an mk Recipe file.  It acts like a Makefile, kinda.
+#
+# We use mk marker lines with a shell wrapper to glue it all together,
+# the only problem is that (unlike make) this stuff builds all the files
+# all the time.
+# $Compile(*):	${sh-sh} %f %o
+# $Load(*):	${cc-cc} ${cc_debug--g} $OBJ -o maketd
+# $Cc(*):	${cc-cc} ${cc_debug--g} -c -I/usr/include/local %f
+#
+# We can use the full power of the shell here, unlike make, to set the
+# environment variables we need to compile....
+SRC=`echo *.c`
+
+# Turn those into products.
+# We should us a [ -nt ... ] test to be more like make
+OBJ=`echo $SRC | sed -e 's/\.c/.o/g'`
+
+# Tell mk how to deal with files.
+MK=`mk -V | sed -n -e 's/^mk: -t \`\(.*\)'\''$/-v -t'"$0"':\1/p'`
+export MK SRC OBJ
+
+# Then we use mk to compile the source files, and then chain back to
+# this script (with mk) to pick up the Load target
+mk "$@" -mCc $SRC
+
+exit 

@@ -1,0 +1,8 @@
+/* $Id: mode_out.mi,v 8.3 2004/12/15 22:20:18 ksb Exp $
+ */
+
+/* convert an integer mode into a symbolic format			(ksb)
+ * - the first parameter is the alpha bits buffer (11 chars or more)
+ * - the second parameter is the address of a (mode) type structure
+ */
+%extern char *%K<mode_out>1v(char *, u_MODE_CVT *)%;

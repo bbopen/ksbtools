@@ -1,0 +1,34 @@
+# $Id: README,v 2.1 2000/06/06 13:06:27 ksb Exp $
+
+The class library and the test driver to check it out.  Kinda primative
+as of today.
+
+To test this part:
+
+1) start the rcls and rcds services
+
+2) run these ltester commands (all should return 0):
+
+	./ltester -l test -c sso -C localhost
+
+	./ltester -l test -p untamo -L localhost
+
+	./ltester -l test -p no-my-pass -L localhost
+
+	./ltester -l test -p untamo -U localhost
+
+	./ltester -o rr -I localhost
+
+	./ltester -S localhost
+
+3) wait for the DNS timeout in sso.m (5 minutes unless you changed it)
+
+4) run the above with "test" change to "test2" to be sure we refreshed
+   the DNS RR
+
+5) change the DNS RR and wait for the timeouts (ours + DNS's), see if the
+   rcds list changed. (./ltester -o rr -I localhost) and run s/test/test3/.
+
+
+--
+ksb

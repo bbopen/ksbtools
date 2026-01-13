@@ -1,0 +1,3 @@
+/* $Id: util_fsearch.mh,v 8.10 1998/09/16 13:37:42 ksb Exp $
+ */
+%extern char *%K<util_fsearch>1v()%;

@@ -1,0 +1,64 @@
+`
+#	$Id: Make.host,v 8.2 2000/06/20 14:07:47 ksb Exp $
+#
+#	Makefile for install.cf
+#
+
+SHELL=/bin/sh
+PROG=	install.cf
+LIB=	${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/lib',`/usr/local/lib')`
+DOC=	${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/man',`/usr/local/man')`
+
+SRC=	install.cf
+MAN=	install.cf.man
+OTHER=	README
+SOURCE=	Makefile ${OTHER} ${MAN} ${SRC}
+
+all: ${PROG}
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${LIB}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: FRC
+
+dirs: ${LIB}
+
+distrib: FRC
+	distrib -c ${LIB}/${PROG} HOST
+
+install: all dirs FRC
+	install -c -m644 ${PROG} ${LIB}/${PROG}
+
+lint: FRC
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+/ ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

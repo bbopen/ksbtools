@@ -1,0 +1,12 @@
+# compacted data							(ksb)
+# $Id: compact,v 5.0 1996/09/09 21:05:58 kb207252 Exp $
+
+$Display(*):	${ccat-ccat} %f |${PAGER-${more-more}} %s
+$Display(*):	${ccat-ccat} %f |${PAGER-${more-more}}
+
+$Info(*):	${echo-echo} "compacted data"
+
+$*(*):		${ccat-ccat} %f >%P && %b %o -m%m -d%s %P && rm -f %P
+$*(*):		${ccat-ccat} %f >/tmp/C$\$%F && %b %o -m%m -d%s /tmp/C$\$%F && rm -f /tmp/C$\$%F
+$*(*):		${ccat-ccat} %f >%P && %b %o -m%m %P && rm -f %P
+$*(*):		${ccat-ccat} %f >/tmp/C$\$%F && %b %o -m%m /tmp/C$\$%F && rm -f /tmp/C$\$%F

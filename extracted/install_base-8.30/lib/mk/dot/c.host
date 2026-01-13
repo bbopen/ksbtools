@@ -1,0 +1,20 @@
+include(`../Machine.m4')dnl
+changequote(+,&)dnl
++# a C source file							(ksb)
+# $Id: c.host,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	${cc-&DEF_cc+} ${cc_debug--O} -D%s -o %F %f
+$Compile(*):	${cc-&DEF_cc+} ${cc_debug--O} -o %s %f
+$Compile(*):	${cc-&DEF_cc+} ${cc_debug--O} -o %F %f %s
+$Compile(*):	${cc-&DEF_cc+} ${cc_debug--O} -o %F %f
+$Cc(*):		${cc-&DEF_cc+} ${cc_debug--O} -c -D%s %f
+$Cc(*):		${cc-&DEF_cc+} ${cc_debug--O} -c %f
+
+$Clean(*):	${rm-rm} -f %F.o %F
+$Clean(*):	${rm-rm} -f %F.o
+
+$Depend(*):	${maketd-maketd} -da -I/usr/include/local -D%s %f
+$Depend(*):	${maketd-maketd} -da -I/usr/include/local %f
+
+$Info(*):	${echo-echo} "C source"
+&dnl

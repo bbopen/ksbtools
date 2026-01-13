@@ -1,0 +1,59 @@
+#	$Id: Make.host,v 1.5 2000/06/20 14:07:47 ksb Exp $
+#	Makefile for labwatch.cf
+# the meta source pushed the correct one to us (or an empty file)
+
+SHELL=/bin/sh
+PROG=	labwatch.cf gumby.cf groobee.cf puffball.cf \
+	tara.cf trixie.cf s03.cf build.cf
+LIB=	${DESTDIR}/usr/local/lib
+DOC=	${DESTDIR}/usr/man
+
+MAN=	labwatch.cf.man
+OTHER=	README
+SOURCE=	Makefile ${OTHER} ${MAN} ${PROG}
+
+all: ${PROG}
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} a.out core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${LIB}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: FRC
+
+dirs: ${LIB}
+
+distrib: FRC
+	distrib -c ${LIB}/${PROG} HOST
+
+install: all dirs FRC
+	install -cm 644 ${PROG} ${LIB}/.
+
+lint: FRC
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+/ ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***

@@ -1,0 +1,4 @@
+/* $Id: filesystem.mi,v 1.1 1999/06/14 14:46:27 ksb Exp $
+ * a primarive user interface to statfs, -- ksb
+ */
+%struct statfs *%K<fs_convert>1ev(/* pcGiven */)%;

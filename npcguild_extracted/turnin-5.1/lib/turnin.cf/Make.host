@@ -1,0 +1,54 @@
+`#	$Id: Make.host,v 4.11 1996/07/14 19:28:23 kb207252 Exp $
+#
+#	Makefile for turnin.cf
+#
+
+PROG=	turnin.cf
+LIB=	${DESTDIR}/usr/local/lib
+
+SRCl=	turnin.cf
+SRCs=	
+MAN=	turnin.man turnin.cf.man
+SOURCE=	Makefile ${SRCl} ${SRCs} ${MAN}
+
+all: ${SRCl} ${PROG}
+
+clean: FRC
+	rm -f Makefile.bak *.o a.out core errs tags
+
+deinstall: ${MAN}
+	install -R ${LIB}/${PROG}
+	mkcat -D ${MAN}
+
+depend: FRC
+
+distrib: FRC
+	distrib -c ${LIB}/${SRCl} HOST:
+
+install: all FRC
+	install -c -m 644 ${SRCl} ${LIB}/${SRCl}
+
+lint: FRC
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

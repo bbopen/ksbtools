@@ -1,0 +1,30 @@
+/* $Id: tftp_client.mi,v 8.22 2000/05/19 19:35:55 ksb Exp $
+ * BSD tftp code re-interfaced for mkcmd use
+ */
+
+typedef struct TCnode {
+	int rexmtval;			/* state machine timeouts	*/
+	int maxtimeout;
+	int schat;			/* data comm stuff		*/
+	int fconnected;
+	int wport;			/* keep port between xfers	*/
+	struct sockaddr_in SIme;
+	struct sockaddr_in SIserver;
+} TFTP_CLIENT;
+
+static TFTP_CLIENT *tftp_status();
+static SIGRET_T tftp_timer();
+
+extern void tftp_init(void);
+extern int tftp_rexmt(int);
+extern int tftp_timeout(int);
+extern int tftp_open(struct hostent *pHEServer, struct servent *pSEPort);
+extern int tftp_put(FILE *fpData, char *pcName, char *pcMode);
+extern int tftp_get(FILE *fpWrite, char *pcName, char *pcMode);
+extern int tftp_close(void);
+
+#if TFTP_STATS
+static void startclock();
+static void stopclock();
+extern void tftp_stats(FILE *fpOut, int, int int);
+#endif

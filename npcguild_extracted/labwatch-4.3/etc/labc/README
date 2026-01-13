@@ -1,0 +1,12 @@
+# $Id: README,v 2.1 1994/12/13 09:25:54 bj Exp $
+
+This code is part of the labd/labwatch/labstat system by Ben Jackson
+and Kevin Braunsdorf.
+
+This program controls individual client agents.  One can shoot them,
+poll them, redirect them (or what have you).  The interaction is very
+low-level, only a few commands are probably useful for real
+applications, the rest are mostly for debugging (the programs and the
+site installtion).
+
+kayessbee & beejay

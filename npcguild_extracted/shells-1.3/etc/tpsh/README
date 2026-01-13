@@ -1,0 +1,32 @@
+# $Id: README,v 2.1 1997/08/31 16:44:21 ksb Exp $
+
+The tape shell is called tpsh.  When it used as a login shell it allows
+a remote user to install a tape (usually sent from a remote admin) on
+the local system.  The password on the account is usually changed
+remotely to allow access only in a time boxed window (in an attempt to
+limit the "break in" window).
+
+This program is by NO MEANS safe to leave installed with a uid 0 account.
+If you have even a hint at the source code one can code an "upgrade" that
+installs a setuid program or adds a bogus super user account.
+
+When installed as a normal user it is pretty safe to leave on all the time.
+The normal user's home directory should be on a big partition to allow
+sizeable distributions to stage files.
+
+Features:
+	Sending a 4G DAT or a 17G Exabyte or a 40G DLT saves a lot of
+	line cost over a 28.8Kbps phone line.
+
+	The upgrade can be co-ordinated over the phone so the remote admin
+	knowns when to throw the switch to install the staged data OR
+	the upgrade can be done when the local tech has time.
+
+	There is an escape from the CUI model to allow additional features
+	(like running system backups) from the shell.
+
+	It is easy to turn off/on with a password change!
+
+--
+01 Sep 1997
+ksb@fedex.com

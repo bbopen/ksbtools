@@ -1,0 +1,15 @@
+# $Id: README,v 1.2 1994/02/11 16:20:54 ksb Exp $
+
+Qinit builds a queue system queue (in the default queue directory)
+for the names given on the command line.  It builds the default system
+queue if none are provided.
+
+A queue may have a file ".q-opts" which qstart takes as a short shell
+script to launch the qmgr with (special options to qmgr for example).
+Qstart feeds this script to the `su' process.  Qinit complains if it
+sees one of these.
+
+No known bugs.
+
+--
+ksb

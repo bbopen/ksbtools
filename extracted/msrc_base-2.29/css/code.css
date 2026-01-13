@@ -1,0 +1,18 @@
+/* $Id: code.css,v 1.4 2009/03/09 13:26:45 ksb Exp $
+ */
+blockquote.file {background-color: #EEEEEE}
+code.file {background-color: #EEEEEE}
+code.attr {color: #EE00EE }
+code.sh {color: #00CC00 }
+code.opt {color: #0000DD }
+code.make {color: #FF0000 }
+code.rdist {color: #EEEE00 }
+code.env {color: #00EEEE }
+code.param {font-style: italic}
+code.libc {font-style: italic ; color: #CCCC00 }
+code.markup {font-style: italic ; color: #00CC66 }
+code.path { text-decoration: underline }
+em.error { color: red }
+em.new { color: #00cc33 }
+/* body { font-size: 13px }
+ */

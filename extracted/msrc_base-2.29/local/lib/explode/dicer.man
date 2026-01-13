@@ -1,0 +1,212 @@
+.\" $Id: dicer.man,v 1.6 2009/12/26 16:14:11 ksb Exp $
+.\" by Kevin Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: ${groff:-groff} -Tascii -man %f |${PAGER:-less}
+.\" $Display(*): ${groff:-groff} -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man5/dicer.5
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]5/dicer.5*
+.TH DICER 5 LOCAL
+.SH NAME
+dicer \- generic markup to reformat string data
+
+.SH SYNOPSIS
+\fIdicer\fP ::= \fIterm\fP | \fIdicer\fP \fIterm\fP ;
+.br
+\fIterm\fP ::= \fB%\fP\fIsource\fP | \fB%(\fP \fIsource\fP [\fImix\fP]* \fB)\fP | \fB%{\fP \fIparam\fP \fB}\fP | \fIliteral\fP ;
+.br
+\fIsource\fP ::= \fB[\fP \fIparam\fP \fIchop\fP * \fB]\fP  | \fIparam\fP ;
+.br
+\fImix\fP ::= \fB,\fP \fIrange\fP | \fB(\fP\fImix\fP\fB)\fP | [\fB,\fP] \fItext\fP ;
+.br
+\fIrange\fP ::= \fIposition\fP [ \fB-\fP \fIposition\fP ] | \fB*\fP  ;
+.br
+\fIposition\fP ::= integer | \fB~\fPinteger | \fB$\fP ;
+.br
+\fItext\fP ::= \fB"\fP\fIC-string\fP\fB"\fP | \fB`\fP\fIm4-string\fP\fB'\fP ;
+.br
+\fIchop\fP ::= \fIsep\fP \fIselected\fP | \fIsep\fP \fB@\fP \fIsep\fP \fIselected\fP  ;
+.br
+\fIsep\fP ::= space | \fB\e\e\fP | \fB\e\fP\fIdigit\fP | \fB\e]\fP | \fIcharacter\fP  ;
+.br
+\fIselected\fP ::= [\fB-\fP] integer | [\fB-\fP] \fB$\fP ;
+.sp
+
+\fIparam\fP ::= defined by the application, usually single digits or letters.
+.sp
+
+.SH DESCRIPTION
+
+The \fIdicer\fP is a general purpose string reformatter used by
+several tools to place bits from a string in a known format into
+a different context.  For example extracting the simple hostname
+from a fully qualified domain name, or selecting the last
+digit from an integer.
+
+.P
+There are three parts to whole dicer operation: the input \fIparam\fP
+data, the \fIdicer\fP, and the \fImixer\fP.  These together are
+referred to generally as the "dicer".
+
+.SH PARAMETERS
+
+The the \fIparam\fP data is usually represented as a vector of
+numbered strings.  In much the same way parameters to a shell script
+are often referred to as \fB$1\fP, \fB$2\fP and so on, the parameters
+provided my the application are often referred to as \fB%1\fP,
+\fB%2\fP, and so on.  Other structures bind their parameters
+to mnemonic letters.  For example \fBoue\fP(1) binds the
+\fIkey\fP parameter to \fB%k\fP and the \fImemory\fP parameter
+to \fB%m\fP, while \fBmk\fP and \fBsbp\fP use more letters.
+
+.br
+.SH DICER
+
+\fIterm\fP ::= \fB%\fP\fIsource\fP | ... | \fIliteral\fP ;
+.P
+The \fIdicer\fP is activated by an escape character, usually the
+percent sign (%), which is consumed.
+Text which is not otherwise special to the application (\fIliteral\fP) is
+sent on as-is, while the text representing the \fIdicer\fP expression
+is replaced by the \fIparam\fP selected and processed.
+.sp
+\fIsource\fP ::= \fB[\fP \fIparam\fP \fIchop\fP * \fB]\fP  | \fIparam\fP ;
+.br
+\fIchop\fP ::= \fIsep\fP \fIselected\fP ;
+.P
+Enclosing a \fIparam\fP specification in square brackets
+(\fB[\fP\fIparam\fP\fB]\fP) may split the value represented by
+that parameter in several ways.
+To process the parameter we choose a separator (\fIsep\fP) to
+split the given value into a list of fields.
+Then choose a field from the list as the resulting value,
+or choose a field to remove from the list then reconstruct the
+list without that field.  This processing may be repeated by
+adding more \fIsep\fP and \fIselected\fP specification pairs.
+.sp
+\fIselected\fP ::= [\fB-\fP] integer | [\fB-\fP] \fB$\fP ;
+.P
+Taking the cases without the dashes (-) the integer
+selects a single field, with 1 being the left-most, 2 the
+next (after the first occurrence of \fIsep\fP), and so on.
+The empty string results from any integer beyond the last
+field.  The dollar notation selects the last field explicitly.
+.P
+So the \fIkey\fP parameter from \fBoue\fP would be given to the
+\fIdicer\fP as \fB%[k]\fP.
+That tells the \fIdicer\fP to use the \fIkey\fP parameter, but
+take no action on it.
+.P
+If we want the unqualified hostname from that key we would use
+the expression \fB%[k.1]\fP read as "split key on dot, take the first".
+For example if the present \fIkey\fP is "srv.example.com" we just
+split the string into fields "srv", "example", and "com" then selected
+the first one ("srv").
+.P
+The \fIdicer\fP can also remove a field from the list, just
+negate the selection.  So \fB%[k.-2]\fP represents "srv.com",
+because we deleted the second string from the list, then joined
+them together with the original \fIsep\fP character.
+.sp
+\fIsep\fP ::= space | \fB\e\e\fP | \fB\e\fP\fIdigit\fP | \fB\e]\fP | \fIcharacter\fP  ;
+.P
+In the example above we used dot (.) as the \fPsep\fP, but a far more
+common \fIsep\fP is the space character.
+The space character is a special \fIsep\fP, it breaks the list on
+spaces, but one separator may be any number of spaces or tabs.
+This helps process justified output from \fBprintf\fP(3).  Other
+special characters (as well as the space) may be backslash-quoted
+to remove their special meaning.
+
+.sp
+\fIchop\fP ::= \fIsep\fP \fB@\fP \fIsep\fP \fIselected\fP  ;
+.P
+The \fIdicer\fP has another mode, activated by placing a
+commercial at sign (\fB@\fP) after the \fIsep\fP, in which
+it applies a another level of field separation before it
+reconstructs the fields.
+.\"xapply -n '%[1 @,2-1]' "1.a.p,b-r-p,y.e.h 2.c.2,e-a-t,d.i.e 3.e.5,e-y-e,f.25.6"
+.P
+For example to map "10_11_12,20_21_22,30_32_34" to "11,21,32" we might
+use \fB%[m,@_2]\fP, read as "split memory on comma, join only the
+second field from each result when split on underscore".
+.\" Once in a while you need this, but mostly you don't.
+
+
+.SH MIXER
+
+
+\fIterm\fP ::= \fB%(\fP \fIsource\fP [\fImix\fP]* \fB)\fP
+.P
+The \fImixer\fP is activated by wrapping a \fIsource\fP in parenthesis (\fB(\fP \fB)\fP).
+The \fIsource\fP may be a \fIdicer\fP expression or a raw source.
+So the \fImemory\fP parameter to \fBoue\fP could be given to
+the \fImixer\fP as \fB%(m)\fP or \fB%([m])\fP.
+Like the \fIdicer\fP the \fImixer\fP
+doesn't do anything to its parameter by default: you have to add some
+\fIrange\fP selections before the matching close-parenthesis to
+process the value.
+.P
+The \fImixer\fP wraps the \fIdicer\fP because most often it
+is better to chop the string on field separators before you
+select characters.  The other composition of these functions
+is not provided by the vanilla code, but could be implemented
+by any enabled application.
+.sp
+\fImix\fP ::= \fB,\fP \fIrange\fP
+.br
+\fIrange\fP ::= \fIposition\fP [ \fB-\fP \fIposition\fP ] | \fB*\fP  ;
+.br
+\fIposition\fP ::= integer | \fB~\fPinteger | \fB$\fP ;
+.P
+The mixer selects characters from the value based on position in the
+string.  The left-most character is 1, the next 2 and so on.  A
+single position represents a single character, while two
+positions separated by a dash represent an inclusive range.
+For example if the present \fImemory\fP is "05Jan2010" and we
+want the year part we could select character 6 through 9 with
+\fB%(m,6-9)\fP to get "2010".
+.P
+A \fIposition\fP may be prefixed with a tilde (\fB~\fP) as: \fB%(m,~4-~1)\fP,
+which is the previous example counted from the right.
+This would be better if the leading zero in the date might be
+stripped by some other processor.
+.P
+The special \fIposition\fP dollar ($) represents the last character in
+the input string, and might as well be spelled as \fB~1\fP.
+The special \fIrange\fP star (\fB*\fP) represents the range \fB1-$\fP.
+.P
+A range which selects character from right to left does spell the
+text backwards: \fB%(k,*,$-1)\fP always produces a palindrome.
+
+.sp
+\fImix\fP ::= \fB,\fP \fIrange\fP | \fB(\fP\fImix\fP\fB)\fP | [\fB,\fP] \fItext\fP ;
+.br
+\fItext\fP ::= \fB"\fP\fIC-string\fP\fB"\fP | \fB`\fP\fIm4-string\fP\fB'\fP ;
+.P
+Mixer specifications may include multiple ranges set apart with commas.
+For example assume the first line of an \fBoue\fP element contained a
+10-digit phone number, like "(800)555-1212" but we wanted to key on the
+phone number in the format "8005551212", to be compatible with another
+data source.  We might use "%(1,2-4,6-8,10-13)" as the \fImemory\fP
+specification on the command-line.
+.P
+The inverse operation is also possible with the addition of a \fItext\fP
+term.  To transform "8005551212" back into "(800)555-1212" we could
+use the expression \fB%(k,`(',1-3,`)',4-6,`-',7-~1)\fP, but note that
+we'd have to protect the grave quotes from the shell on the command-line.
+To make command-lines easier C quotes are allowed in place of the
+\fBm4\fP quotes: \fB%(k,"(",1-3,")",4-6,"-",7-~1)\fP represents the
+same replacement, and may be safely enclosed in shell single-quotes.
+.sp
+\fIterm\fP ::= \fB%{\fP \fIparam\fP \fB}\fP
+.P
+Some processors might include more than 9 parameters, in this case the
+top-level expander should allow curly braces (\fB{\fP \fP}\fP) to group
+multiple digits into a parameter specification.  So \fB%{13}\fP expands
+to parameter thirteen not parameter one followed by a three
+(which is what \fB%13\fP might produce).  If the processor doesn't
+allow the curly braces for that just use the square brackets without
+a \fIsep\fP specification.
+
+.SH "SEE ALSO"
+mk(1), sbp(8), oue(1), xapply(1)

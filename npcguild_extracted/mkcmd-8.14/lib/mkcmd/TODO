@@ -1,0 +1,45 @@
+# $Id: TODO,v 8.9 1999/03/16 14:28:53 ksb Exp $
+
+examples:
+	A better enum example?
+
+types:
+	Code a type for a "filesystem" (like df), find the mount pt. at least.
+	
+	Code a type for a "mode" like chmod or umask (install has the code)
+
+	Code a type for a "signal", include "kill -l" example.
+
+	Code a types for a IPC objects "semaphore", "shared memory", 
+	"message queue".
+
+std:
+
+cmd:
+
+rc:
+	The RC files should read values for "-o macros" in some easy
+	to understand format (maybe wam's text encoding) (macro_read.m?).
+	It should take a (FILE *) and read macro -- hey, the cmd_macro.m
+	already has an interface like this.  Hummm.
+
+util:
+	util_mult.m example should be "mkfile".
+
+xdr:
+	We should be able to send a (FILE *) across a remote procedure
+	call.  xdr_Cstream should encode a file for read or write as a
+		host:port:key
+	and put a process up on host:port waiting for "key" to send the
+	file.  On the decode end we connect a socket to host:port and write
+	"key\n" then fdopen the socket.  How do we specify the direction?
+	I assume the file is already open, might be a process or whatnot.
+	Issues... sigh.
+
+	To encode a "file" (read/write/seek) we have to do the rmt thing.
+	The stream abstraction would be read or write only, but useful for
+	config files and setup for long exchanges.  We'd have to use a
+	more advanced interface to the stdio stream structure.
+
+--
+Mar 1999, ksb@sa.fedex.com

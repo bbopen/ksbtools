@@ -1,0 +1,12 @@
+# try an RCS delta file... really pushing it here			(ksb)
+# $Id: comma-v,v 5.0 1996/09/09 21:05:58 kb207252 Exp $
+# this is not (usually) a default rule because I think it stinks a little
+
+$Display(*):	${co-co} -q -p %f |${PAGER-${more-more}}
+
+$Info(*):	${echo-echo} "RCS delta file"
+
+$*(*):		${co-co} -q %f && %b %o -m%m -d%s %Q, && ${rcsclean-rcsclean} %Q,
+$*(*):		${co-co} -q %f && %b %o -m%m %Q, && ${rcsclean-rcsclean} %Q,
+$*(*):		t=/tmp/c$\$`expr %Q, : '.*/\\(.*\\)' '|' %Q,` &&\n\t${co-co} -q -p %f >$t && %b %o -m%m -d%s $t && ${rm-rm} $t
+$*(*):		t=/tmp/c$\$`expr %Q, : '.*/\\(.*\\)' '|' %Q,` &&\n\t${co-co} -q -p %f >$t && %b %o -m%m $t && ${rm-rm} $t

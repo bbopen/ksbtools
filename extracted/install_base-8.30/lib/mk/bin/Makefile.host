@@ -1,0 +1,57 @@
+`# Makefile for mk default rules
+#		Kevin S Braunsdorf, PUCC
+# $Id: Makefile.host,v 5.4 2010/04/09 15:15:56 ksb Exp $
+
+SHELL=/bin/sh
+LIB=${DESTDIR}/usr/local/lib/mk/bin
+
+REAL= extract-title is-latex is-texinfo
+SOURCE= Makefile ${REAL}
+
+all: source
+
+# bootstrap with makeme
+boot: install
+
+${LIB}:
+	install -d -r $@
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs tags
+
+depend: FRC
+	: "no depend"
+
+deinstall:
+	rm -rf ${LIB}
+
+dirs: ${LIB}
+
+'changequote(%,+)dnl
+%install: all dirs FRC
+	-for templ in ${REAL} ;do \
+		cmp -s $$templ ${LIB}/$$templ || \
+		install -c -m 755 $$templ ${LIB}/$$templ ;\
+	done
+
++changequote(`,')dnl
+`lint: FRC
+	: "nothing to lint"
+
+print: source FRC
+	lpr -J"mk templates" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+	: "no tags"
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+'dnl

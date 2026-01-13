@@ -1,0 +1,9 @@
+# a lint library							(ksb)
+# $Id: ln,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+# XXX no magic number check
+
+$Info(*):	${echo-echo} "lint library"
+
+$*(*):		: '%f is a lint library, cannot %m(%s) it' && ${false-false}
+$*(*):		: '%f is a lint library, cannot %m it' && ${false-false}

@@ -1,0 +1,85 @@
+`# $Id: Make.host,v 1.6 2000/06/20 14:09:43 ksb Exp $
+#
+# Makefile for script -- ksb
+#
+
+SHELL=/bin/sh
+PROG=	script
+BIN=	${DESTDIR}/usr/local/bin
+DOC=	${DESTDIR}/usr/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/local/include
+P=
+
+INCLUDE= -I$L -I../../lib/libptyd
+DEBUG='ifelse(HOSTTYPE,`V386',`',`-O')`
+CDEFS=  -D'HOSTTYPE` -DOPENPTY 'ifelse(
+HOSTTYPE,`SUN3',` -DTERMIO',
+HOSTTYPE,`IBMR2',` -DTERMIO',
+HOSTTYPE,`V386',`-DTERMIO -D_iPSC386',
+HOSTTYPE,`SUN4',`-DTERMIO',
+HOSTTYPE,`NEXT2',`-bsd -traditional')`
+
+
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	
+ONEC=	script.c
+MAN=	script.man
+OTHER=	
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${ONEC}
+
+all: ${PROG}
+
+${PROG}: ${ONEC}
+	${CC} -o $@ ${CFLAGS} ${ONEC} -L/usr/local/lib -L../../lib/libptyd -lpty
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} a.out *.o core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${HDR} ${ONEC} FRC
+	maketd -b ${CDEFS} ${INCLUDE} ${ONEC}
+
+dirs: ${BIN} ${LIB}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all dirs FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${ONEC} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${ONEC}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${ONEC}
+	ctags -t ${HDR} ${ONEC}
+
+/ ${BIN} ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+# *** Do not add anything here - It will go away. ***
+'dnl

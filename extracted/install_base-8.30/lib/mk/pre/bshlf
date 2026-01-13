@@ -1,0 +1,9 @@
+# a NeXT BookSelf for the Digital Librarian				(ksb)
+# $Id: bshlf,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+# XXX no magic number check
+
+$Info(*):	${echo-echo} "NeXT BookSelf for the Digital Librarian"
+
+$*(*):	: '%f: BookSelf: do not know how to %m(%s) it.' && ${false-false}
+$*(*):	: '%f: BookSelf: do not know how to %m it.' && ${false-false}

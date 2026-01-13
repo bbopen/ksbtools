@@ -1,0 +1,9 @@
+# $Id: README,v 2.1 2000/08/03 13:30:16 ksb Exp $
+
+This is the Remote Customer Login Services package.  It is what I use
+to implement credentials at a web site.
+
+There are no docs for this yet.  It depends on the Berk DB from Sleepycat.
+
+--
+ksb

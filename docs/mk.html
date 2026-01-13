@@ -1,0 +1,1067 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head>
+<title>How to get the most out of mk</title>
+<link rel="stylesheet" type="text/css" href="https://carrera.databits.net/~ksb/msrc/css/code.css" />
+</head><body>
+<H1 id="known">To understand this document</H1>
+
+This document assumes you are quite familiar with the
+standard UNIX tools from section 1
+<code class="sh">date</code>,
+<code class="sh">sed</code>,
+<code class="sh">cat</code>,
+and are very familiar with the shell itself,
+that is <code class="sh">sh</code>(1).
+<P>
+In addition you should have a working understanding of the shell's use of
+file descriptors and how they are manipulated (<code class="param">stdin</code>,
+<code class="param">stdout</code>, and <code class="param">stderr</code> are
+0, 1, and 2 respectively).
+A fair understanding of shell globs, parameter lists, command quotes,
+and the use of double-quotes or single-quotes (that is when to use each).
+<P>
+Lastly you must have a good working knowledge of the environment:
+how variables are set, common usage, and the common variables.
+See <A href="/~ksb/cgi-bin/manpage.cgi?environ">environ</A>(7).
+A fine point here that some people forget: variables may be set for
+a single command, see <A href="/~ksb/cgi-bin/manpage.cgi?sh">sh</A>(1) under
+Simple Commands.
+
+<h1 id="overview">What is <code class="sh">mk</code>?</h1>
+
+In short <code class="sh">mk</code> extracts code and data from any
+file to give it to the shell for execution.
+A <code class="param">marker</code> names each code fragment in each file,
+the <code class="param">marker</code> is just a name for the code,
+it doesn't really mean anything to <code class="sh">mk</code>.
+<P>
+It might not strike you, at first, that marking commands in a text file
+is useful enough to warrant a shell program.  After all we have
+scripts, <code class="sh">make</code>, <code class="sh">ant</code>,
+and any number of other processors that all run shell commands -- so
+why would I need <code class="sh">mk</code>?  Why would I try to get
+other people to use <code class="sh">mk</code>?
+
+<P>
+The best answer is that you can't lose a related command if
+you have it in the file it processes.
+Contrast that to a <code class="sh">make</code> recipe file
+that might get separated from the program it builds, or a script
+that installs your favorite application from a CD which is not
+included <strong>on</strong> that CD: these might <strong>not be</strong> where
+you need them, when you need them.
+The other way to say it is that it is a <strong>configuration management
+invariant</strong>: when I use <code class="sh">mk</code> to operate on
+a file the information about how I did that operation travels with
+the file.
+
+<P>
+Looked at another way, this makes the <code class="param">markers</code>
+into messages which, when sent to files, take actions like a `method'.
+In that model the file becomes an `object' that has methods and
+a concept of self, which matches the definition of object oriented.
+
+<P>
+We end up with an abstraction here that allows a file to manage itself.
+But none of that says anything about the contents of the file, other
+than the marked commands.  That means we can put the marked commands
+in the comments of the file, not in the `payload' part.
+That allows the file to contain any language that allows comment
+like a program in C, perl, Java, or LISP -- or a text
+file marked up in HTML, *roff, XML.  The file could even be a
+plain text file, if the marked lines are not too distracting.
+
+<h2 id="marker">What does a <code class="param">marker</code> look like?</h2>
+
+A <code class="param">marker</code> is an alphanumeric string, and is always prefixed by
+a dollar sign <code class="markup">$</code> to
+help <code class="sh">mk</code> find it in the text.
+To avoid finding shell variables as <code class="param">markers</code> each instance must
+be followed by a colon <code class="markup">:</code>
+In the example
+lines below the same <code class="param">marker</code> "Mark1" is the
+only one on each line:
+<blockquote class="file"><pre><code ><em class="new">$Mark1:</em>
+this is text with $Other a marker in it called <em class="new">$Mark1:</em> echo $USER</code></pre></blockquote>
+Note that "$Other" is not a <code class="param">marker</code> because it lacks a colon for before the white-space.
+
+<P>
+Later on we'll talk about other things that can come between the
+<code class="param">marker</code> and the colon, but for now we're
+going to assume we don't need those parameters.
+
+<P>
+After the colon comes the "marked line", that's the part after the
+colon until the end of line (or the token <code class="markup">$$</code>).
+The marked line is expanded, in
+much the same way <code class="libc">printf</code> does,
+to create a shell <code class="param">command</code>.
+That command <code class="sh">mk</code> gives to the shell for
+execution, unless <code class="opt">-n</code> is specified on the
+command-line.  In the example above the first marked line has an
+empty <code class="param">command</code>, while the second runs
+<code class="sh">echo</code> to print $<code class="env">USER</code>.
+
+<h2 id="example">Examples showing why and how I use <code class="sh">mk</code></h2>
+
+I want to remember how to
+use my <code class="sh">synergy</code> configuration file:
+<blockquote class="file"><pre><code ># comments about the file
+#  <em class="new">$w01: synergyc w02.example.com</em>
+#  <em class="new">$w02: synergys --config %f --daemon</em>
+
+section: screens
+	w02.example.com:
+	w01.example.com:
+end
+...</code></pre></blockquote>
+
+<P>
+On the "w01" host I need to run the client (<code class="sh">synergyc</code>)
+to connect to the main X server, on the main display I need to run the
+server part (<code class="sh">synergys</code>) in daemon mode with this
+file (called <code class="markup">%f</code> by <code class="sh">mk</code>)
+as the configuration file.
+
+<P>
+The reason I use the markup "<code class="markup">%f</code>" is that
+the file might be in a remote directory, or have a different name
+than it had when I created it.  If I were to use the name "ksb.syn"
+in the server command, then <code class="sh">mk</code> would only run
+the correct command when invoked from the file's directory and when
+the file's name was exactly the same as when I created it:
+that's not quite as useful as substituting the
+<code class="param">current filename</code> into the command.
+
+<P>
+To coax <code class="sh">mk</code> into running one of the commands we
+need to tell it the <code class="param">marker</code> we want to
+index, and which file to search:
+
+<blockquote class="file"><pre><code >$ <em class="new">mk -m w01</em> ksb.syn</code></pre></blockquote>
+
+<P>
+To take the a step farther lets build another marked line that works on
+either host:
+<blockquote class="file"><pre><code ># comments about the file
+#  <em class="new">$Start: mk -m$(hostname | sed -e 's/\\..*//') %f</em>
+#  $w01: synergyc...</code></pre></blockquote>
+
+<P>
+That shell command runs <code class="sh">mk</code> with a <code class="param">marker</code> built
+from the name of the current host (with the domain name removed).
+So on either host I can use the common X startup command:
+<blockquote class="file"><pre><code >$ mk -m Start $HOME/lib/ksb.syn</code></pre></blockquote>
+
+<P>
+On any host that doesn't match a marked line <code class="sh">mk</code>
+will exit non-zero, which is exactly what I wanted.  If I wanted to
+trap that case I could add a <code class="markup">*</code> <code class="param">marker</code> to
+catch the default case -- we'll explain that matching later.
+
+<P>
+The point of all of this is that <code class="sh">mk</code> allows us
+to put a memory of how to use a file <strong>into</strong> the file, one that
+automation can extract and use -- which is way more useful than a
+note to the reader that must be cut+pasted+edited every time it is used.
+It also allows failure as an option: you don't always have to match
+a command -- which is even more useful later.
+
+<h2 id="mtoo"><code class="sh">Mk</code>'s theory of operation</h2>
+
+To abstract this just a little I need to explain my configuration
+management model (just humor me for a few paragraphs, then we'll
+get back to making life better for you).
+
+<P>
+I break the configuration of a computer's software into 5 levels.
+Each level builds on the level listed above it.  Together they
+form a structure which joins the layers into a workable, repeatable,
+and audit-able process -- without mandating any particular tool or
+procedure.
+<dl>
+<dt id="cm1">Source files with revisions
+<dd>
+As we refine each program, document, or recipe we "check point" it
+so we can fall back to a known state, or show someone else the
+changes we made.  Every revision control system from SCCS, to RCS,
+to CVS, SVN, or git -- they all do about the same thing at this level.
+<dt id="cm2">Work products with versions built from revision controlled files
+<dd>
+Created from controlled files, build with <code class="sh">make</code>,
+<code class="sh">ant</code> or a shell script.  Sometimes we even use
+<code class="sh">autoconf</code> to spice the recipe for us.
+But the point is that many files that were separately controlled become
+a work-product with a distinct role to play.
+<dt id="cm3">Facilities built from multiple products form releases
+<dd>
+A RPM, or other package file, built from a specification of the products
+and how they need to be installed.  This is also the level that keeps
+track of bug reports and feature requests.  Each package is built from
+multiple products and files to become a new release.
+<dt id="cm4">Computer systems built from a signature of releases
+<dd>
+A running instance of a list of the packages installed on a machine
+to create a unique host.  Most of the files used to create the instance
+are from the release packages built above.
+<dt id="cm5">Site policy	based on rules and procedures, documented in files
+<dd>
+All the files created on a host that were built by that installation
+process that were <strong>not</strong> extracted from a package.  The network
+configuration, the hostname (usually) and all the documentation
+used to manage the structure itself.
+</dl>
+
+<P>
+I believe one can fit any software artifact into one of those 5 buckets,
+and <strong>only</strong> one.  There is some overlap in the implementation of
+site policy  and controlled files: they are both kept in a file
+with a revision history (aka an audit trail).  In both cases that
+file stands "alone", in that it is not processed or controlled by
+a recipe file, it must carry any "meta information" within itself.
+Which is what <code class="sh">mk</code> does, encoded as shell commands.
+
+<P>
+A classic example of this is the RCS (or CVS) keyword expansion.
+This allows tokens in the file like <code class="markup">$<!-- -->Id$</code>
+to expand to the current value of the identification string for each
+file -- in that file.  That lets other programs examine a file
+(with <code class="sh">ident</code>, or the like) to ascertain
+which revision is at hand.  The same facility is often promoted
+to the version information for a compiled product; one of the key
+files used to build the product displays its revision as the
+version string for the whole program (document, configuration, etc.).
+
+<P>
+In much the same way we use <code class="sh">mk</code> to manage
+meta information about a file, but in this case we manage it in
+terms of shell commands, not identification markup.
+
+<h3 id="ex_meta">Example meta information</h3>
+
+Lets assume that a group had many automated scripts driven
+by <code class="sh">cron</code> that  might be installed on each
+host under there control.  Some of these clean log files, some
+stop and start applications, some run backups, others are bound
+to processes an outsider would have trouble believing -- in other
+words it looks just like your setup.
+
+<P>
+If we assemble all these scripts into a source repository and
+revision control them we've solved part of the problem: we have
+a clean source for them (rather than having each instance be a
+typing adventure for the admin that installs it).
+
+<P>
+But we still need a way to know where to install it, when to
+run it, and on which hosts it should be installed.
+If we comment the files with 4 <code class="sh">mk</code> marked commands,
+we can solve this pretty cleanly.
+
+<dl>
+<dt># $Where: ${echo-echo} /usr/local/etc/rollLogs
+<dd>
+Tell the installation recipe where to install us, we could output
+different paths on different hosts.
+<dt># $Allow: [ -f /opt/www/etc/httpd.conf ]
+<dd>
+Only exit successfully when a certain file exists, the installation
+script won't install us unless that file is installed.  Other check
+are clearly possible here.  The output from this script might be
+included as a comment in the crontab, in either case.
+<dt># $Clock: ${echo-echo} '4 2 * * *'
+<dd>
+Suggest to the installation script when to run this task.  Some advanced
+version of the script might adjust times when there are conflicts:
+that would be a site policy issue.  Other simple tactics might include
+using a random number to put a minute within a range, so that not every
+host runs at exactly the same minute, but does report at the same offset
+for each interval.
+<dt># $Run: %f -S50 -I75 /usr/spool/uucppublic
+<dd>
+If we are a script we run ourself with the options we want (data files,
+or tunes for the local host).
+<dt># $Run: /usr/local/sbin/hxmd -C%f -K 'replay <i>...</i>' -Q<i>...</i>
+<dd>
+If we are a configuration file we
+call the correct application with specification that includes our file
+name and related options.
+</dl>
+Given the above the crontab line for this task might be:
+<blockquote class="file"><pre><code >4 2 * * * /usr/local/bin/mk -smRun /usr/local/etc/rollLogs</code></pre></blockquote>
+<p>
+So this indirection allows us to pass options (like "-S50") to the script, and
+use it on multiple hosts under different paths, logins, options, and times.
+If we allow <code class="markup">Clock</code> to output more than a single
+time, the task could be triggered at offsets that are not easy to do
+with a single <code class="sh">crontab</code> entry.  This is actually quite
+easy, by the way (with <code class="sh">xapply</code>).
+<P>
+To finish this structure you need <code class="sh">msrc</code> or at least
+<code class="sh">hxmd</code>, but
+that's <A href="../../sbin/msrc/msrc.html">another story</A>.
+I'll not present the code to automate it here, since it would
+break the flow of this document.
+
+<h3 id="good">Why is that a good idea?</h3>
+
+The best reason I can give you is that it keeps the meta information
+with the job it manages.  The revision log for that one files holds
+the audit trail for the task's code and for the task's deployment.
+In some respects that makes this structure more certain (alt. less complex)
+than a (lack of) structure that keeps the crontab on each host
+in a separate file.  More than likely just on that one host with no
+revision control and no log of why anything was done.
+
+<P>
+Remember all those little task scripts you wrote and lost?  Or the ones
+the admin before you wrote and you can't figure out how to use?  Let's
+avoid that next time.  A few comments and some marked lines and you are
+set.  The most important comment being the one that points you
+back to the structure that installed the file and has all the revision
+history.
+Say it with me, "Dump tapes are <strong>not</strong> my revision control system."
+
+<P>
+In fact this puts a structure on how such things are done, but it is
+a structure that you can grow.  When you need another marked command
+to handle an exception you can add it later.  But you don't need
+to plan for every case up-front: you are never going to need the ones
+you thought you did.  But you will need the some you never
+thought your would, I promise.
+
+<p>
+So I always execute <code class="sh">cron</code> tasks via <code class="sh">mk</code>.
+That way a configuration  file that lists all the switches to poll can be in
+<code class="sh">hxmd</code> format or any other format -- with the only
+limitation being the file-format must include a comment markup.
+With a comment line to call the poller script with the file as a parameter.
+So
+<blockquote class="file"><code class="sh">cron</code> -(via the clock)-> configuration -(via <code class="sh">mk</code>)-> poll script with options</blockquote>
+It just plain works for the right reasons.  When you add another
+configuration file, you'll add a parameter to the
+existing <code class="sh">cron</code> update command, or add another
+task line to the table.
+When you add an <code class="param">element</code>
+to poll, just update the configuration file.
+When you update the poller you may add a command-line option for
+the new feature, which might cause you to update the configuration file's
+marked lines, or not.
+
+<p>
+If you need to poll the same hosts for a different reason, then you
+can use that same configuration file with
+a different <code class="param">marker</code>.  That alone is worth
+the price of admission.
+There is no way to deduce which scripts might use the element list or
+the revision of the element list, unless you allows comments, so
+you're going to need comments anyway.
+When you allow comments you may as well embed the poll-command in
+them, because it is the best reference you can leave.
+
+<p>
+Contrast that to coding a script with the <code class="param">elements</code>
+listed in a shell here document with a <code class="sh">while</code> loop
+processing them.  There is no good way to update the poll-code without
+updating the list of elements, and no (good) way to reuse the list of elements.
+The script will fall into disrepair and become a liability, rather than
+a shared resource that is kept up-to-date.
+
+<h2 id="easy">Easy access to generic actions</h2>
+
+I an very capable of typing:
+<blockquote class="file"><pre><code >$ groff -tbl -Tascii -man mk.man |less</code></pre></blockquote>
+when I want to view a manual page.  I am also fine with typing
+<blockquote class="file"><pre><code >$ lynx -dump mk.html | less</code></pre></blockquote>
+to view this document.  Remembering the command-line options to
+<code class="sh">groff</code> and <code class="sh">lynx</code>
+is not a lot to ask from a systems programmer, but it might be
+harder for a Customer to remember that the <code class="sh">mk</code>
+manual page includes tables (and how to display them).
+
+<P>
+I can mark the formatting command in the file, for example in an old-school
+nroff manual page:
+<blockquote class="file"><pre><code >.\" <i>other comments like version markup</i>
+.\" $Display: <em class="new">${groff:-groff}</em> -tbl -Tascii -man %f |${PAGER:-less}</code></pre></blockquote>
+or in an HTML page I would use:
+<blockquote class="file"><pre><code >&lt;!-- <i>other comments like version markup</i>
+ -- $Display: ${lynx:-lynx} -dump %f | ${PAGER:-less}
+ --&gt;</code></pre></blockquote>
+<P>
+Then I could tell my Customers to use the program <code class="sh">Display</code>
+to display either page.  That program could be a short script:
+<blockquote class="file"><pre><code >#!/bin/sh
+exec /usr/local/bin/mk -mDisplay -s "$@"</code></pre></blockquote>
+or even a symbolic link to <code class="sh">mk</code>.
+When <code class="sh">mk</code> is called with a name that is not "mk"
+it assumes that the name is the name of the <code class="param">marker</code>
+it should find.  That doesn't add the <code class="opt">-s</code> option,
+but it is close enough for most application.
+<P>
+To view two pages a Customer might type:
+<blockquote class="file"><pre><code >$ Display example.html fritter.man</code></pre></blockquote>
+which has the feature that it uses their $<code class="env">PAGER</code>
+variable in favor of my choice of <code class="sh">less</code>, and
+works on any file I've marked-up with <code class="markup">$Display:</code>.
+
+<P>
+That would be really cool, but most products don't put marked lines in
+their manual pages, web pages and other documents.  Which is why
+<code class="sh">mk</code> knows how to look for the "marked line" in
+another file -- if the file either can't contain a comment line (viz.
+a compiled binary program) or if the file is not one you should edit
+(viz. a system provided manual page).  Keep reading to see how we
+solve this problem.
+
+<h2 id="markup">Percent Expanders</h2>
+
+We need to introduce a few of the many markups that <code class="sh">mk</code>
+replaces in the selected text.  The first group are all introduced with
+a percent-sign (<code class="markup">%</code>).  The one we already have
+seen is <code class="markup">%f</code> which is expanded to the name
+of the target file.
+
+<P>
+The option <code class="opt">-E</code> is a nifty command-line
+switch that previews what an expander might output.  We'll use that to
+explore some in this section.  For example we may use
+<code class="opt">-E</code> to ask <code class="sh">mk</code> to
+echo the name of the file it is processing:
+<blockquote class="file"><pre><code >mk -n <em class="new">-E "%f"</em> /etc/motd</code></pre></blockquote>
+That asks "without passing the command to the shell, expand "%f"
+for <code class="path">/etc/motd</code>?"  Which outputs a tab
+followed by the string "/etc/motd" and a newline.
+
+<P>
+There is a <A href="expand.html">whole list</A> of percent markups that you
+should read later, but for the time being here are the few we'll use
+in the next few examples:
+<dl>
+<dt><code class="markup">%b</code> - the name this instance of <code class="sh">mk</code> as called on the command-line
+<dd>
+When a marked command needs to recursively call <code class="sh">mk</code> it
+should use <code class="markup">%b</code> knowing that <i>that</i> path worked for
+the invoking process, unless it has changed the current directory.
+To see a benign example of this use <code class="opt">-E</code> to expand
+a string and <code class="opt">-n</code> to see the results without
+running that as a shell command:
+<blockquote class="file"><pre><code >/usr/local/bin/./mk -n -E "%b" /dev/null</code></pre></blockquote>
+Run that command to see the extra <code class="path">./</code> is preserved in
+the output.  No matter what convoluted path is specified the
+<code class="markup">%b</code> expander provides the correct spelling.
+This is important in that some sites installed the program under the
+name <code class="sh">dwim</code> (do what I mean), or under some other
+name since the <code class="sh">make</code> replacement "muck" is
+often installed as "mk".
+<dt><code class="markup">%F</code> - the target file's basename
+<dd>
+This expands to the last path component of the target file, with
+the last dot-extender removed.  For example touch a file called
+<code class="path">/tmp/foo.tar.gz</code> and run
+<blockquote class="file"><pre><code >mk -n -E "%F" /tmp/foo.tar.gz</code></pre></blockquote>
+And you should see the expansion <code class="path">foo.tar</code>.
+<dt><code class="markup">%P</code> - the target file's path as given
+<dd>
+Replace the capital-F with capital-P and you should get the name of
+the target file as you typed it.  Neither extra slashes nor
+a longer path through a symbolic link will be compressed out.
+<dt><code class="markup">%p</code> - the target file's path minus the last
+dot extender
+<dd>
+Like <code class="markup">%P</code> but remove the
+<code class="path">.gz</code> from the end (in our example file).
+<dt><code class="markup">%d</code> - the directory part of the target's path
+<dd>
+If the target contains any slashes this expander removes all the
+characters after the right-most.
+</dl>
+
+<P>
+This is not even close to a full list of the percent expanders, it
+is enough for you to read all the examples below, and most of the
+markup for simple tasks.
+
+<h2 id="reject">Rejection is not always a bad thing</h2>
+
+<code class="sh">Mk</code> has the concept that some marked lines
+are not appropriate for the task at-hand.  The simplest example is
+the lack of a target directory.  If a rule only works if the target
+is specified with a leading directory path then <code class="markup">%D</code>
+might be your friend.  It expands to the same string as
+<code class="markup">%d</code>, but <strong>rejects</strong> the proposed
+command when the directory path would be the empty string (that is to say
+that no explicit directory was provided).
+
+<P>
+Another example of this is the <code class="param">submarker</code>
+which is provided under the <code class="opt">-d</code> option.
+Like a <code class="param">marker</code>, the
+<code class="param">submarker</code> has no "special" meaning to
+<code class="sh">mk</code> itself.  It is just a way to pick (or reject) a
+marked line from a list of the (already) matching lines.
+The <code class="param">submarker</code> specified must be matched when requested.
+Another way to say that is
+"the marked line <strong>without</strong> any <code class="param">submarker</code> is rejected when any
+<code class="param">submarker</code> is requested."
+
+<P>
+In a marked line the <code class="param">submarker</code> is
+specified in parenthesis after the <code class="param">marker</code>:
+<blockquote class="file"><pre><code >/* $Compile: ${cc:-gcc} -o %F %f -lgdbm
+ * $Compile<em class="new">(debug)</em>: ${cc:-gcc} -DDEBUG -g -Wall -o %F %f -lgdbm
+ */</code></pre></blockquote>
+the second marked line is selected if the specification <code class="opt">-d debug</code> is
+presented on the command line.  When no <code class="param">submarker</code> is provided then the
+first marked line matches before the second line is examined.  In this
+way the presence of the <code class="param">submarker</code> rejects the first marked line, and
+the specification of a different <code class="param">submarker</code>
+(e.g. <code class="markup">optimize</code>) would reject both lines.
+We can't say that the lack of a <code class="param">submarker</code> rejected the second line,
+because <code class="sh">mk</code> didn't look at it if it picked the
+first one.  (See the command-line options <code class="opt">-a</code>,
+<code class="opt">-i</code> and <code class="opt">-V</code>.)
+
+<P>
+Another way to "match" the <code class="param">submarker</code> is match any
+<code class="param">submarker</code>, then use it in the marked line:
+<blockquote class="file"><pre><code ># $Info(<em class="new">*</em>): echo "marker %m, submarker %s"</code></pre></blockquote>
+The <code class="markup">%m</code> is replaced with
+the <code class="param">marker</code>, while <code class="markup">%s</code>
+the is replaced with <code class="param">submarker</code>.
+<P>
+The "wild card" notation above allows any <code class="param">submarker</code> or even no
+<code class="param">submarker</code> to match the <code class="param">marker</code> part.  Otherwise a marked line without
+a <code class="param">submarker</code> specification will <strong>never</strong> match a command that
+specifically requests a <code class="param">submarker</code>.  The marked line rejects the
+command in this case when no <code class="param">submarker</code> is specified (so under
+<code class="opt">-V</code> you would see the notice
+"no submarker for <code class="param">file</code>").
+
+
+<P>
+There are many other ways the expander might reject a marked line.
+Under the command-line option <code class="opt">-V</code>
+<code class="sh">mk</code> outputs a reason why each marked line is
+rejected, that can be very helpful when debugging rules.
+Here are a few reasons <code class="sh">mk</code> rejects marked lines:
+
+<dl>
+<dt><code class="markup">%{</code><code class="param">ENV</code><code class="markup">}</code> reject the command unless $<code class="param">ENV</code> is set in the environment
+<dd>
+A useful example of this is the $<code class="env">DISPLAY</code> environment
+variable that X11 uses.  If you don't have one we should reject any
+X11 client command, like <code class="sh">xpdf</code>.
+<dt><code class="markup">%{</code><code class="param">pos</code><code class="markup">}</code> reject the command unless <code class="opt">-</code><code class="param">pos</code> <code class="param">value</code> is presented on
+the command-line
+<dd>
+This allows a clear 1-level <acronym title="application/programmer interface">API</acronym>
+between the <code class="sh">mk</code> invokation and the marked lines or
+any templates.  This is much <strong>tighter</strong> because it doesn't
+polute the envonrment with (otherwise useless) variables.
+<dt><code class="markup">%^</code> always reject this marked line, try another
+<dd>
+Always reject this marked line.  This sounds like a self-defeating idea, but
+later we'll see how to make it conditional, and it has less
+obvious uses beyond that.
+<dt><code class="markup">%;</code> end file search here
+<dd>
+This is the last possible marked command, so if it doesn't work look no further.
+<dt><code class="markup">%.</code> end the current target search here
+<dd>
+The <code class="param">marker</code> you are looking for cannot
+match under the current conditions, we reject not only the current
+marked line, but the whole task specified.
+<dt><code class="markup">%Y</code><code class="param">t</code> reject by file type (<code class="param">t</code> is one of
+<code class="markup">b</code> block special,
+<code class="markup">c</code> character special,
+<code class="markup">d</code> directory,
+<code class="markup">f</code> plain file,
+<code class="markup">l</code> link,
+<code class="markup">p</code> FIFO, or
+<code class="markup">s</code> socket, under Solaris <code class="markup">D</code> for a door, and under FreeBSD <code class="markup">w</code> for a white-out)
+<dd>
+When a command would be dangerous (or silly) to run on a special
+device we can reject that command to search for another.
+<dt><code class="markup">%Y~</code><code class="param">t</code> reject file not of this type (<code class="param">t</code> is one of the list above)
+<dd>
+When a command only applies to a certain type of file we can exclude
+all others.
+For example <code class="sh">newfs</code> and <code class="sh">fsck</code>
+<strong>only</strong> work for disk special device: using a
+negated check would be a good idea for any such commands.
+</dl>
+
+<P>
+Let's look at an example using the type restriction:
+<blockquote class="file"><pre><code ># $Page: <em class="new">%Yf</em> ${PAGER:-less} %f
+# $Page: <em class="new">%Y~f</em> ls -las %f | ${PAGER:-less}</code></pre></blockquote>
+the first line traps "plain files" and runs a pager on them, the
+second line trap "non-plain files" and runs <code class="sh">ls</code> on them
+with some options to show the type and mode.
+<P>
+The spaces between the <code class="markup">%Y~f</code> markup and
+the command are <strong>not</strong> required, I include the extra space to make
+the rejection-markup easier to separate from the command.
+
+<h2 id="outside">Marking files from the outside</h2>
+
+As I said at the end of the previous section: some files you just
+can't mark-up.
+<code class="sh">Mk</code> has three features to help you detect that
+there is no marked line, and to find the correct command anyway.
+They work together to do that without looking endlessly through
+files that don't have any text in them.
+
+<dl>
+<dt>The <code class="opt">-l</code> <code class="param">lines</code> option
+limits the number of lines <code class="sh">mk</code> searches from any
+given file.
+<dd>
+This is what keeps <code class="sh">mk</code> from reading an entire binary
+file looking for marked lines.  After about 99 newline characters it stops.
+You can make it search a whole file
+(specify 0 lines as <code class="opt">-l0</code>),
+but that's usually fruitless
+(unless local policy is to put all the <code class="param">markers</code> at the end of each file,
+which I've seen done).
+<dt>The <code class="opt">-t</code> <code class="param">templates</code> option
+provides a list of (marked up) filenames to search after the target file.
+<dd>
+This is a good one, in that you can trap a <code class="param">marker</code> in two ways by
+the name of the file you search and by the <code class="param">marker</code> names in that file.
+We should talk about the filenames a bit later, but you can imagine that
+if <code class="sh">mk</code> always searched a file from
+<code class="path">/usr/local/lib/mk</code>, say "defaults" then
+you could put a "$Display:" <code class="param">marker</code> in that file.  The problem would
+be that that command would then have to figure out how to display
+every type of file that might be requested.
+<dt>The <code class="opt">-e</code> <code class="param">templates</code> option
+provides a list of (marked up) filenames to search <strong>before</strong> the target file.
+<dd>
+This is even better, it depends on the markup in the filename list to pick
+an <i>apropos</i> file to search.  That file has special marked lines that
+know the contextual reason why we should (or should not) search the file itself.
+This will be come more clear below.
+</dl>
+
+Under <code class="opt">-e</code> or <code class="opt">-t</code>
+the colon (<code class="markup">:</code>) may be quoted
+with a backslash (<code class="markup">\</code>) to remove the
+special meaning.  Since colon is quite often used as a separator
+for configuration files this is hardly ever useful.
+
+<h3 id="inExample">Examples of external markup</h3>
+
+Suppose I have many configuration files for <code class="sh">rsync</code>
+that I could install on my servers.  Each file had markup that tells
+which host(s) it might be installed on, and I'm going to use a real
+example and use <code class="sh">efmd</code> to pick the hosts.
+(If you've never used <code class="sh">hxmd</code> or
+<code class="sh">efmd</code> to manage hosts don't worry, this will
+still be a fine example.)
+
+<P>
+I'm going to break the spelling of the rule into 3 parts:
+<dl>
+<dt>$<code class="markup">List</code>(<code class="param">hxmd.cf</code>)
+<dd>
+List the hosts in <code class="param">hxmd.cf</code> that should
+install this file.  This might use something like:
+<blockquote class="file"><pre><code >${efmd-efmd} -L -C%s -I -- -Y "include(class.m4)" -E www=CLASS</code></pre></blockquote>
+or
+<blockquote class="file"><pre><code >${efmd-efmd} -L -C%s -E "-1!=index(SERVICE,radiation)"</code></pre></blockquote>
+
+<dt>$<code class="markup">Install</code>(<code class="param">host</code>)
+<dd>
+Install this configuration file on <code class="param">host</code>.
+Assuming your version of <code class="sh">install</code> can read
+<code class="param">stdin</code> for the payload, this should run
+something like:
+<blockquote class="file"><pre><code >${ssh-ssh} -x root@%s /usr/local/bin/install -c -m0644 - /etc/rsyncd.conf &lt;%f</code></pre></blockquote>
+
+<dt>$<code class="markup">Compile</code>(<code class="param">hxmd.cf</code>)
+<dd>
+Update all the hosts from hxmd.cf that should get this file now, by
+using the <code class="markup">List</code> and
+<code class="markup">Install</code> <code class="param">markers</code>.  We pick this one
+because it is the default <code class="param">marker</code>, you might
+have good reason not to do this based on local site policy.
+<P>
+This might be implemented as:
+<blockquote class="file"><pre><code >xapply -i/dev/tty -P1 '%b -mInstall -d%%1 %f' $(%b -mList -d%s %f)</code></pre></blockquote>
+or when no configuration file was offered:
+<blockquote class="file"><pre><code >xapply -i/dev/tty -P1 '%b -mInstall -d%%1 %f' $(%b -mList %f)</code></pre></blockquote>
+</dl>
+<P>
+Of these the <code class="markup">List</code> <code class="param">marker</code> is the one most
+apt to change.  Each file should pick a non-overlapping set of hosts
+for deployment, or some site policy must choose between the overlaps.
+But almost all the files could have exactly
+the same <code class="markup">Install</code> markup.
+
+<P>
+In that case we can put the default markup in a common file, for example
+the <code class="path">README</code> file in the directory (which explains
+the markup and why it is done this way).  Then the <code class="opt">-t</code>
+option might be set in $<code class="env">MK</code> to specify that
+<code class="sh">mk</code> should consult that file for default rules:
+<blockquote class="file"><pre><code >MK="-t $PWD/README"</code></pre></blockquote>
+
+<P>
+So what default rules might we put in?
+I would put in:
+<blockquote class="file"><pre><code >$List: ${false:-false} 'no default host list available'%;
+$List(*): ${false:-false} 'no default criteria for "%s"'%;
+$Install: ${false:-false} 'no host specified'%;
+$Install(*): ${ssh-ssh} -x root@%s /usr/local/bin/install -c -m0644 - /etc/rsyncd.conf &lt;%f
+$Compile: xapply -i/dev/tty -P1 '%b -mInstall -d%%1 %f' $(%b -mList %f)
+$Compile(*): xapply -i/dev/tty -P1 '%b -mInstall -d%%1 %f' $(%b -mList -d%s %f)</code></pre></blockquote>
+<P>
+The two <code class="markup">List</code> commands give reasonable failure
+messages (especially under <code class="opt">-V</code>) when asked for
+data we don't know how to synthesize.  Any request to
+<code class="markup">Install</code> without a
+<code class="param">submarker</code> to name the host is
+an error, but with a <code class="param">submarker</code> we install the file.
+<P>
+The two <code class="markup">Compile</code> commands should always work
+if the other markup is in-place, otherwise they should be harmless.
+
+<h2 id="hotwire">The default action</h2>
+
+Sometimes there is only one action that a file really supports.  For
+example a configuration file for a special-purpose tool really only
+wants to "run" that tool with the file specified on the command-line.
+In that case the markup in the file can <strong>change</strong> the
+<code class="param">marker</code> from the default one to
+a <code class="param">marker</code> that makes sense in the context of that file.
+
+<P>
+In <code class="sh">mk</code> terms this is referred to as a "hotwire":
+we shift to a different <code class="param">marker</code> for the
+remainder of this file, returning to the original for any subsequent
+files.  There are 2 expanders that map the expanded
+<code class="param">command</code> to the new <code class="param">marker</code>,
+which is a bit unexpected, I'm sure.
+<P>
+For example the default <code class="param">marker</code> "Compile" makes
+little sense in the context of <code class="path">/etc/syslog.conf</code>.
+But the <code class="param">marker</code> "Restart" might be the most common (and harmless)
+action one could imply from a request to process that file.
+
+<P>
+So we have two options: bind a restart operation to the "Compile"
+marker, or make the "Compile" <code class="param">marker</code> <strong>rewrite</strong> the request
+to ask for the "Restart" <code class="param">marker</code>.  I would never bind the first, I
+would rather fail the request than wholesalely distort the common
+meaning of <code class="markup">Compile</code>.  In addition I might
+want other marked lines in the file (viz. "Stop", "Start") and
+"Compile" would be <i>non sequitur</i> in the list.
+<P>
+I would hotwire a match for "Compile" like this:
+<blockquote class="file"><pre><code ># $Compile: <em class="new">Restart%h</em>
+# $*: /etc/rc.d/syslogd %M</code></pre></blockquote>
+When a <code class="opt">-m</code> specified a <code class="param">marker</code> we pass that
+marker (mapped to lowercase) to the <code class="path">/etc/rc.d/syslogd</code>
+startup script.  When the default <code class="param">marker</code> is presented we map that to
+<code class="markup">Restart</code> and use the default rule to pass
+that to the startup script.
+
+<h2 id="othermarks">Other markup</h2>
+
+<code class="sh">Mk</code> allows for 2 other markups.  C-like
+backslash expansions to quote characters from the enclosing processor,
+and an `end-of-line' markup to ignore extra characters required
+by the enclosing processor.
+
+<h3 id="Cescape">Backslash markup</h3>
+
+See the backslash markup in the <A href="expand.html">expander document</A>
+for a list of those.  Mostly this is useful to put a literal newline into
+the shell command with <code class="markup">\n</code>.
+
+
+<h3 id="doubleDollar">The <code class="markup">$$</code> end markup</h3>
+
+There are three reasons why I included the <code class="markup">$$</code>
+end <code class="param">marker</code>.  First the original author included it in the first
+draft of the program he posted.  Second some comments might be
+enclosed on a single line, and we don't want the end of the comment
+to be included in the expanded command.  Here is an example
+from C:
+<blockquote class="file"><pre><code >/* $Cleanup: rm -i *.o core
+ */</code></pre></blockquote>
+Now imagine that another committer removes the "extra" newline
+to save space on the screen.
+The position of the newline doesn't matter to the C compile, but
+the marked line now reads:
+<blockquote class="file"><pre><code >/* $Cleanup: rm -i *.o core <em class="error">*/</em></code></pre></blockquote>
+I put the <code class="opt">-i</code> in, in case someone actually
+tried to run this: you don't want to as the <code class="markup">*/</code>
+matches any directory directly below the present and might really
+ruin your whole day.
+
+<P>
+Better to write it as:
+<blockquote class="file"><pre><code >/* $Cleanup: ${rm:-rm} -i *.o core <em class="new">$$</em>
+ */</code></pre></blockquote>
+so your friends don't ruin the
+<acronym title="wind and water balance">feng shui</acronym> of
+your code, or worse, by joining the two lines.  Also the indirection
+through the $<code class="env">rm</code> environment variable allows
+the caller to replace <code class="sh">rm</code> with any command
+they'd rather apply.
+
+<P>
+The final reason is far less obvious.  Consider the marked line below:
+<blockquote class="file"><pre><code ># $Hide: %^$$ $Hidden: some-marked-line</code></pre></blockquote>
+<P>
+Since <code class="sh">mk</code> is line oriented it looks at that line
+and sees the <code class="markup">Hide</code> <code class="param">marker</code>, if it is looking
+for that <code class="param">marker</code> it tried to expand the
+marked line "%^" which rejects the command and skips to the next
+marked line.  In that case the <code class="markup">Hidden</code>
+marker is never examined.
+<P>
+If some other processor (say <code class="sh">sed</code>) removes
+the pattern <code class="markup">s/&nbsp;*$Hide:[&nbsp;%^]*$$&nbsp;/&nbsp;/</code> from
+the file then the hidden <code class="param">marker</code> would become the first <code class="param">marker</code> on the
+line, and hence visible to subsequent <code class="sh">mk</code>
+searches.
+
+<P>
+This nesting of marked lines is not so much a feature, more a
+proof that <code class="sh">mk</code>'s markup can be quoted in
+cases where the payload of a <code class="param">marker</code> is a <code class="param">marker</code> to any number of
+levels.  Really it just makes me happy, and I use it in shell <i>here</i>
+documents once in a while.
+<!-- which shows how much fun I find in strange places -->
+<P>
+The hidden <code class="param">marker</code> text is also available as <code class="markup">%$</code>
+to the enclosing <code class="param">marker</code>, which could be useful for a <i>quine</i>.
+
+<h2 id="shidiom">Shell command idioms</h2>
+
+Shell programmers with 20 years of coding might grok the
+<code class="param">command</code> hooks I employ in
+<code class="sh">mk</code> markup without any explanation; for the
+vast majority of readers we provide some blow-by-blow
+explanation of the mechanics.
+
+<h3 id="failgrace">How to fail gracefully</h3>
+
+Sometimes there is no reasonable way to apply a verb (viz.
+<code class="markup">Compile</code>) to a given file.  In that
+case we'd like automation to see just a non-zero exit code,
+but we'd like a human to be <strong>able</strong> to see why.
+
+<P>
+In that case we call the shell program <code class="sh">false</code>,
+but we give it a positional parameter that explains why we failed.
+Since <code class="sh">false</code> ignores any command-line positional
+parameters no output to <code class="param">stdout</code> or
+<code class="param">stderr</code> should be generated, but under
+<code class="opt">-v</code> a trace shows the reason as part of
+the <code class="param">command</code>.
+For example matching the <code class="param">marker</code> <code class="markup">Compile</code>
+against an <acronym title="hypertext markup language">HTML</acronym>
+file makes little sense:
+<blockquote class="file"><pre><code >&lt;-- $Compile: <em class="new">${false:-false}</em> 'HTML is not compiled'
+ --&gt;</code></pre></blockquote>
+<P>
+Let local policy decide which is better:
+to hotwire the nonsense <code class="param">marker</code>
+(via <code class="markup">%h</code>)
+or to accept the <code class="param">marker</code> then fail the request.
+
+<h3 id="winAlways">How to succeed by doing nothing</h3>
+
+One of the most overlooked commands in the shell is <code class="sh">:</code>
+(colon).  This beauty does nothing as a built-in to the shell, so it doesn't
+<code class="libc">fork</code> any processes, so it costs almost nothing.
+
+<P>
+Just like <code class="sh">false</code> you can give it a parameter
+to ignore so that a customer (under <code class="opt">-v</code>) can
+see why no action was required.  For example a byte-code file might
+include a comment that explains that <code class="markup">Compile</code>
+is already done for the file.
+<blockquote class="file"><pre><code >( $Compile: <em class="new">:</em> 'already compiled' $$ )</code></pre></blockquote>
+
+<h3 id="shellTrap">Trap the key shell program</h3>
+
+Reading the <A href="/~ksb/cgi-bin/manpage.cgi?environ&amp;7">manual page for environ</A>
+one can see that there are some shell environment variables that are used
+by many programs for common features.
+For example the $<code class="env">PAGER</code> variable is used by most
+command-line driven programs that need to display text to a customer
+on a teletype device.
+
+<P>
+To make <code class="sh">mk</code> driven commands use
+the same convention we code shell expressions like:
+<blockquote class="file"><pre><code ># $Display: ${PAGER:-more} %f</code></pre></blockquote>
+The shell expanded $<code class="env">PAGER</code> when it is set
+to a non-empty string, otherwise it expands the word "more".
+That lets the customer's value of $<code class="env">PAGER</code>
+hold sway over the interface, with a sane default.  And it is not
+so much to type that you shouldn't do it.
+
+<P>
+For programs that have no specification in
+the <code class="libc">environ</code>(7) manual page we use the convention that
+the name of the program (in lowercase)
+might be used as the hook.  For example:
+<blockquote class="file"><pre><code >/* $Compile: ${cc:-cc} -O -o %F %f -lgdbm $$
+ */</code></pre></blockquote>
+This allows <code class="sh">gcc</code> as a replacement for
+<code class="sh">cc</code> without editing the markup, which is the
+point of such markup (you should never have to edit it as a customer).
+
+<h3 id="nested">Nested markup</h3>
+
+When there are two passes required to compile a file we may need to
+hide the inner marked line from the first instance of
+<code class="sh">mk</code>.  For example a <code class="sh">yacc</code>,
+<code class="sh">lex</code>, or <code class="sh">mkcmd</code> source file
+also may be run through the C compiler.  Here is an example from
+a <code class="sh">mkcmd</code> source file:
+<blockquote class="file"><pre><code ># $Compile: ${mkcmd-mkcmd} -n %F %f &amp;&amp; %b %o -m%m %F.c
+comment "* <em class="new">%kCompile</em>: %k%{cc-cc%} -o %%F %%f %k%k"</code></pre></blockquote>
+
+The first line is marked with <code class="markup">$Compile</code> to
+run <code class="sh">mkcmd</code> over the file.  The second line
+<strong>becomes</strong> a marked line in the comments in
+the resulting C source file, because
+<code class="sh">mkcmd</code> replaces the
+<code class="markup">%k</code> with <code class="sh">mk</code>'s
+marker character.  It is mildly surprising that the two tools have
+mutual knownledge about each other, until you think about how often
+they actually interact.  The other name for <code class="markup">%k</code>, in
+<code class="sh">mkcmd</code>, is <code class="markup">%&lt;mkdelim&gt;</code>.
+
+<h2 id="here">Here documents in the markup</h2>
+
+A shell here-document allows in-line streams for
+command input, extracted from the script.
+Similarly <code class="sh">mk</code> allows in-line streams, extracted from
+the target file (or template).  These here-documents allow data files or
+shell, <code class="sh">expect</code>, <code class="sh">perl</code> or other
+scripts to be included in the comments of a file.
+Unlike the <code class="sh">sh</code>), multiple here-documents
+may be active for the same command.
+
+<p>
+There are 3 expander markups that are primarily used to manage
+here-documents:
+<dl>
+<dt><code class="markup">%J</code>
+<dd>
+Start a new here-document.  The scans the current template from the line
+after the present marked line until we find another marked line that
+matches the current <code class="param">marker</code>+<code class="param">submarker</code> pair and
+contains the end markup (<code class="markup">%j</code> below).
+The text between the two marked lines is the contents of the new
+here-document.  The name of the file is bound to <code class="markup">%j</code>
+and also the bound to the next available integer (<code class="markup">%0</code>,
+<code class="markup">%1</code>, <code class="markup">%2</code>, ...).
+<dt><code class="markup">%j</code>
+<dd>
+End a here-document.  Any scan for the end of a here-document must find a
+<code class="markup">%j</code> someplace on the candidate line.  It may
+either be after the <code class="markup">$$</code> terminator, or as part of
+the command template.
+<dt><code class="markup">%|</code><code class="param">d</code><code class="param">prefix</code><code class="param">d</code>
+<dd>
+This markup removes the string <code class="param">prefix</code> from each
+line in the here-document.  The allows the document to appear as comments
+to processors that require a comment markup on each new line.  The
+character <code class="param">d</code> my be any character, traditionally
+I tend to use slash (<code class="markup">/</code>) or double quotes
+(<code class="markup">"</code>).
+</dl>
+
+<P>
+Given those rules the example below diffs two here-documents: the
+first contains the lines "a", "b", "c" and
+is named <code class="markup">%0</code>, the second contains the lines
+"a", "c", "c" and is named <code class="markup">%1</code>.  (The second
+may also be called <code class="markup">%j</code> if you like.)
+<blockquote class="file"><pre><code >$Compile(*): <em class="new">%J%J</em>diff -U 1 %0 %1
+a
+b
+c
+$Compile(*): %. $$ <em class="new">%j</em>
+a
+c
+c
+$Compile(*): echo %%0=%0 %%1=%1 %%j=<em class="new">%j</em></code></pre></blockquote>
+<p>
+When run without any special options this outputs a unidiff showing
+a deletion of the "b" line and an addition of a duplicate "c" line.
+When run under <code class="opt">-c</code> the <code class="sh">echo</code>
+command may be selected to show the filenames created:
+<blockquote class="file"><pre><code >%0=/tmp/mkhereWywb06 %1=/tmp/mkhere2EWJsX %j=/tmp/mkhere2EWJsX</code></pre></blockquote>
+<p>
+Note that the here-documents from the first command are still available
+in the chained <code class="sh">echo</code> command.  Only the
+<code class="markup">%.</code> markup in the second marked line
+prevents it from including an active alternate command.
+
+<p>
+In some cases an empty here-document may be created just for the
+temporary filename (since <code class="sh">mk</code> will remove the
+file after the command completes for us).
+
+<p>
+The next example removes the double-slash comment markup from a
+<code class="sh">named</code> configuration file to reveal a template
+for a configuration stanza.  Then uses that stanza, and the first
+few lines of the current file to build a more up-to-date version of
+the configuration file.  The second marked command (under
+<code class="markup">Update</code> uses an empty here-document to
+create a temporary file we can put the updated text in, then
+<code class="sh">rcs</code>-lock the current file, update it, and commit
+the change with <code class="sh">ci</code>
+
+<p>
+(Note that the line marked with the <i>...</i> is a continuation of
+the line above it, wrapped to allow the page to print correctly.)
+<blockquote class="file"><pre><code >// $Id<i>...</i> $
+// $Rebuild: <em class="new">%|'//'%J</em>sed -n -e "1,/^..[ ]END_HEADER/p" %f; (cd /etc/namedb/parked &amp;&amp;
+<i>...</i>	/usr/local/bin/glob -r 'db.*') | sort | xapply -nf "\n`cat %j`" -
+<em class="new">//</em>zone "<em class="new">%[1.-1]</em>" {
+<em class="new">//</em>      type master;
+<em class="new">//</em>      file "parked/%1";
+<em class="new">//</em>};
+// $Rebuild: %. $$ <em class="new">%j</em>
+// $Update: <em class="new">%J</em>%b -smRebuild %f ><em class="new">%j</em> &amp;&amp; co -q -l %f &amp;&amp; cp <em class="new">%j</em> %f &amp;&amp; ci -q -u -m"auto update" %f
+// $Update: %. $$ <em class="new">%j</em>
+// END_HEADER</code></pre></blockquote>
+
+<p>
+Here-documents give <code class="sh">mk</code> a new level of power: they
+allow much more meta-data in the mix.  We used the here-document to build
+the template zone stanza and the <code class="sh">xapply</code> markup to
+trim the ".db" off the filename (which is assumed to be named for the zone.
+
+<h2 id="summary">Summary</h2>
+
+<code class="sh">Mk</code> provides a way to embed commands related to
+a file in that file.  These commands are expanded as they are extracted
+from the file with run-time parameters and file location to build the
+exact command needed in the current context.  The command selected
+is only bound to the <code class="param">marker</code> by the fact that
+they are on the same line in the file -- no binding between any
+marker and command exists within <code class="sh">mk</code>.
+
+<P>
+There is a lot of markup here you could use, most of it you'll
+not need unless you write lots of external (template) files.
+Access to <code class="sh">xapply</code>'s dicer was added late in
+<code class="sh">mk</code>'s evolution, so some "extra" markup
+is provided which could be replaced with dicer notation.
+
+<hr><pre>
+$Id: mk.html,v 5.26 2012/07/23 23:37:42 ksb Exp $</pre></body></html>

@@ -1,0 +1,168 @@
+<HTML>
+<HEAD></HEAD>
+<BODY>
+<H1>Unsupported Software</H1>
+This software is <STRONG>not</STRONG> in <STRONG>any way</STRONG>
+supported by FedEx, FDX, or their management.
+<P>
+This source code is published as reference documents only.  This is
+an overview of the code used to run various system admin functions
+by me (K S Braunsdorf).  It doesn't represent anything useful.
+<P>
+In fact it might be bad.  I wouldn't recommend that you download it
+or run any part of it.  Just read it.
+
+<H1>The packages</H1>
+This source is broken into packages:
+
+<DL>
+<P><DT><A href="msrc0-0.7.tgz">master source boot helpers - 0.7</A>
+<DT>makeme, rsrc
+<DD>
+You need this to get started building my software.
+<P>
+My software is built with a model that says there is a
+<STRONG>master copy</STRONG> of all the source to a product that is
+distribured to <STRONG>paltform</STRONG> servers to be built and
+installed on <STRONG>target</STRONG> hosts.  If you want to build
+this stuff accross 100 hosts it makes it easy -- across a single host
+it gets in a way a little.
+
+<P><DT><A href="mkcmd-8.14.tgz">the make command tool - 8.14</A>
+<DT>mkcmd, explode, mkcmd-lib, explode-lib
+<DD>
+This product takes a short description of the command line options and
+modular code parts you want an builds an integrated C source file.
+I write all my code in <CODE>mkcmd</CODE>.
+
+
+<P><DT><A href="install-8.5.tgz">install software with a backout - 8.5</A>
+<DT>install, instck, purge, installus
+<DD>
+The 8.4 version of the install package had a bug in installus that
+cause it to fail (not give extra privs.) on some hosts.  The only
+update in 8.5 is to fix this problem.
+
+<P><DT><A href="msrc-4.20.tgz">the master source tools - 4.20</A>
+<DT>distrib, rcsvg, Admin
+<DD>
+The code you need (after you've loaded the above) is build your
+own master source'd products and install these on many hosts.
+
+<P><DT><A href="conserver-8.4.tgz">console server - 8.4</A>
+<DT><A href="conserver-8.5.tgz">console server - 8.5</A>
+<DT>conserver, console, autologin
+<DD>
+The serial console service I coded at Purdue -- upgraded to fix
+some bugs and such.  Purdue says we can produce modified version if
+they are clearly marked:  there you are.
+<P>
+Release 8.5 has the -Y (restart) option in the console client program
+for Scott, sorry I forgot it in 8.4, dude.
+
+<P><DT><A href="calls-3.12.tgz">C support code - 3.12</A>
+<DT>calls, maketd, cdecl
+<DD>
+Some code I find useful when I code C programs, and to teach C.
+
+<P><DT><A href="entomb-3.9.tgz">file entombing - 3.9 </A>
+<DT>unrm, libtomb, entomb, rmfile, preend
+<DD>
+Helps recover lost files, must be installed and configured
+before you run "rm".  Also you must have source to the programs
+you want to protect (viz. <CODE>rm</CODE>, <CODE>mv</CODE> and
+<CODE>cp</CODE>).
+
+<P><DT><A href="xapply-3.4.tgz">xapply pipe tools - 3.4</A>
+<DT>xapply, curly, uncurly, flock, Tee
+<DD>
+There are all pipe tools.   They control data or reformat it in
+a stream.  I think <CODE>xapply</CODE> is the most powerful tool
+I have.
+
+<P><DT><A href="labwatch-4.3.tgz">host monitoring - 4.3 </A>
+<DT>labwatch, labstat, labd, labc, labwatch.cf
+<DD>
+Helps you keep track of clients that might "walk away",
+or monitor CPU load/ login load of hosts real time.
+This is more useful than it sounds, and works very well as
+a virtual console under the conserver (above).
+
+<P><DT><A href="turnin-5.1.tgz">electronic submission of assignments - 5.1 </A>
+<DT>turnin, project, turnin.cf
+<DD>
+Students can update a tar archive of work under an instructor's account.
+Large bugs fixed since last time out (4.18),  the expliots that
+some found in turnin required the (semi trusted) owner of a course
+to work to read the password (cum shadow) file -- most Profs I
+know wouldn't care to try.
+
+<P><DT><A href="ptyd-1.8.tgz">pseudo-tty allocation - 1.8 </A>
+<DT>ptyd, script, libpty
+<DD>
+A very old daemon that allocated pseudo-ttys to ordinary logins in
+a safe way.
+<P>
+Script is an old version of BSD script that I hacked to use ptyd.
+
+<P><DT><A href="qsys-1.7.tgz">CPU bound job queue - 1.7 </A>
+<DT>qmgr, qadd, qrm, qkill, qinit, qstart, qend, qstat, qlock, qcommon
+<DD>
+A very light weight job scheduler.  Now days hosts are so fast it
+hardly seems worth it.  It has a pleasing (non-root) design in any case.
+
+
+<P><DT><A href="rcls-2.2.tgz">remote customer login services - 2.2 </A>
+<DT>rcls, rcds, rcls-lib, rcds-lib, hashd
+<DD>
+A design I proposed to make CGIs a lot smarter about web Customers.
+This is not as useful without WISE (which is not released yet).
+
+<P><DT><A href="shells-1.3.tgz">funny login shells - 1.3 </A>
+<DT>tpsh, remote, msh
+<DD>
+Put a login in s shell that limits their access a <STRONG>lot</STRONG>.
+<P>
+The <CODE>tsh</CODE> ("tape") shell allows them to unpack a tape,
+floppy, or CDROM to
+the local machine.  It could be used to break root if the operator
+and build a tape with a tar file on it -- but they are the system
+operator and can boot the host single, right?
+<P>
+The <CODE>remote</CODE> shell turns the console of an idle host
+into a dumb terminal (X, tn3270, or telnet) for a guest user.
+<P>
+The <CODE>msh</CODE> ("message") shell forces the login to
+read the same message over and over
+(while never getting a real login shell, of course).
+
+<P><DT><A href="modec-0.5.tgz">mode canon - 0.5 </A>
+<DT>sbp, vinst, <FONT COLOR="ff0000">modecanon</FONT>
+<DD>
+Tools to help you run a system with security and backout paths.
+You need <CODE>sbp</CODE>.
+
+<!-- ZZZ todo unity and friends -->
+
+<P>
+Older packages I didn't update.
+
+<P><DT><A href="gnu-0.1.tgz">master source to GNU examples - 0.1 </A>
+<DT>screen, gzip
+<DD>
+An example of using the master source push system to install GNU
+"configure" based hosts.
+
+<P><DT><A href="rm-1.1.tgz">entomb add-ons - 1.1 </A>
+<DT>rm, mv, cp
+<DD>
+An older version of the BSD rm,mv,cp code.  Don't use unless you
+can't get the present FreeBSD makefile to grok you.
+
+</DL>
+
+<P>
+See also <A HREF="What.html">the description file</A> for more info.
+
+</BODY>
+</HTML>

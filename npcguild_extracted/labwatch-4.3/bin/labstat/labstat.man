@@ -1,0 +1,143 @@
+.\" $Id: labstat.man,v 4.2 1994/12/12 05:57:21 bj Exp $
+.\" by Kevin Braunsdorf & Ben Jackson
+.TH LABSTAT 1L LOCAL
+.SH NAME
+labstat \- user interface to the \fIlabwatch\fP statistics server
+.SH SYNOPSIS
+.ds PN "labstat
+\fI\*(PN\fP [\-\fBb\fP | \-\fBc\fP | \-\fBf\fP | \-\fBl\fP | \-\fBn\fP | \-\fBr\fP | \-\fBx\fP | \-\fBz\fP \fIminutes\fP] [\-\fBL\fP\fBt\fP\fBv\fP]  [+\fImaps\fP] [\fI\-\fBM\fP \fImasters\fP] [\fIhosts\fP]
+.br
+\fI\*(PN\fP \-\fBw\fP [\-\fBv\fP] [\fI\-\fBM\fP \fImasters\fP] logins
+.br
+\fI\*(PN\fP \-\fBW\fP [\-\fBv\fP] [\fI\-\fBM\fP \fImasters\fP]
+.br
+\fI\*(PN\fP \-\fBm\fP [\-\fBv\fP] [\fI\-\fBM\fP \fImasters\fP]
+.br
+\fI\*(PN\fP \-\fBs\fP [\-\fBv\fP] [\fI\-\fBM\fP \fImasters\fP]
+.br
+\fI\*(PN\fP \-\fBa\fP [\-\fBb\fP | \-\fBc\fP | \-\fBf\fP | \-\fBl\fP | \-\fBn\fP | \-\fBr\fP | \-\fBx\fP | \-\fBz\fP \fIminutes\fP] [\-\fBLtv\fP] [\fI\-\fBM\fP \fImasters\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.sp
+.SH DESCRIPTION
+.PP
+The \fIlabwatch\fP statistics server knows far more about the workstation
+labs than the average customer wants to know.  The \fIlabstat\fP user
+interface program provides a filter to present parts of the raw data in
+an easy to understand format.
+\fILabstat\fP outputs formats like ``overhead views'' and ``short tables''
+to present status information about requested labs or machines.
+.PP
+Various properties are tracked for each machine: boottime, last report time,
+console login time, load average, automounted filesystems, and online/offline
+information.  All of these are access by the options that have the
+keyword ``show'' in there description below.
+.PP
+Each \fIlabwatch\fP server usually
+has several overhead views (maps) available.  The default map is the first
+map (\fBin the labwatch.cf file, not alphabetically\fI)
+on the first server in the search path.
+In text mode (\-\fBt\fP) each map becomes a list of hosts.
+
+.SH OPTIONS
+.PP
+This command reads the environment variable \fBLABSTAT\fP for options.
+If the program is called as \fIlabstat\fP then no options are forced.
+.TP
+.BI \-a
+List all managed hosts from all \fIlabwatch\fP servers (implies \-\fBt\fP).
+.TP
+.BI \-b 
+Show boot time of hosts listed.
+.TP
+.BI \-c 
+Show console login time for the listed hosts.
+.TP
+.BI \-f 
+Show mounted filesystems.  This is only really useful to
+system administrators tracking distribution of home directories.
+.TP
+.BI \-h 
+Print a breif help message.
+.TP
+.BI \-l 
+Show load average estimates for each listed host.
+.TP
+.BI \-L 
+Label uninteresting hosts.  For example under \-\fBl\fP hosts with a load
+of ``0.00'' are labeled.
+.TP
+.BI \-m
+Display a list of all the overhead maps provided by each \fIlabwatch\fP
+server.
+.TP
+.BI \-M masters
+Serach the comma separated list of hosts for \fBlabwatch\fP daemons.
+The server's port number can be specified by adding `:port' to the
+hostname in case it is running on a port other than
+the default (see \-\fBV\fP).
+.TP
+.BI \-n 
+Show unique user counts (including idle users) on each listed host.
+.TP
+.BI \-r 
+Show last report time for each host.
+.TP
+.BI \-t 
+Output information in a text format only.  Overhead views are
+translated to a columnated format of host, report time, requested data.
+.TP
+.BI \-v 
+Under \-\fBW\fP output a rationale for the machine selection.
+Under \-\fsW\fP add a header to the output.
+Under \-\fwW\fP indicate which server found the logins requested.
+.TP
+.BI \-V 
+Show version information and default port and server path information.
+.TP
+.BI \-w logins
+Look for the various logins on all the managed hosts.
+Display a line for each host that has at least one of the logins on it.
+.TP
+.BI \-W 
+Select an idle machine for an rlogin connection.
+.TP
+.BI \-x 
+Show unresponsive hosts as `DEAD' or `UNSEEN'.  Hosts marked
+DEAD were reporting for a while -- then stopped.  Hosts marked
+UNSEEN have not reported since the last server restart.
+.TP
+.BI \-z minutes
+Show console idle times longer than \fBminutes\fP.
+
+.SH EXAMPLES
+.TP
+\fIlabstat\fP \-L +enad302
+Get an overhead view of ENAD302 showing users who are logged in on
+the console and machine names where no one is logged on.
+.TP
+\fIlabstat\fP \-ax | grep DEAD
+Find out what machines have not sent a packet in a long time.
+
+.SH BUGS
+None.  Well, some more info could be provided and the \-\fBF\fP
+and \-\fBC\fP options are hidden.
+
+.SH CAVEATS
+\fIlabwatch\fP's information can be up to 7 minutes old, since \fIlabd\fP
+only reports every few minutes and only if something interesting has
+happened (the load has changed, someone has logged on, etc.).
+
+.SH AUTHORS
+Kevin Braunsdorf & Ben Jackson
+.br
+ksb@cc.purdue.edu & bj@cc.purdue.edu
+.br
+PUCC UNIX Group
+
+.SH "SEE ALSO"
+labwatch(8L), labd(8L)

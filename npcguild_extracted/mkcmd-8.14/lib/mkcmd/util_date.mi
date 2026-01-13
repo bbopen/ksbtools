@@ -1,0 +1,5 @@
+/* date conversion interface						(ksb)
+ * $Id: util_date.mi,v 8.8 1999/06/14 14:37:48 ksb Exp $
+ */
+%static char *%K<DateParse>1v(/* char *pcCvt, time_t * */)%;
+%static long %K<DateCvt>1v(/* char *pcCvt, char *pcWho */)%;

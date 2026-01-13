@@ -1,0 +1,8 @@
+# Regular expression match tests
+# $Id: RE,v 5.0 1999/02/26 17:43:03 ksb Exp $
+
+# $Compile(*): [ "%<%f>" = yes ]
+
+this	not	fail
+	this	yes
+	.	how

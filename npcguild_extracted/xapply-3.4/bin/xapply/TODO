@@ -1,0 +1,63 @@
+# $Id: TODO,v 3.4 2000/03/20 21:07:47 ksb Exp $
+
+Ideas:
+
+Input sources:
+
++ xapply -z should accept the -print0 output from (GNU) find.  It might
+  be a suboption to -f?  Or a special case all by itself?
+
++ under -f should a filename that starts with a pipe be treated as a
+  popen command (like Tee)?  Yow that might rock.
+	xapply -f 'diff %1 ../old/%1'  "|ls -1t"
+
+
+Shell options:
+
+We might combine the following into "-o opts" to give the shell options?
+
++ xapply -e should call the shell with -e
+
++ xapply -x might call the shell -x
+
++ xapply -q should quote the paramers so that they are single words to the
+  shell -- which means xapply might have to know about sh|ksh/csh quoting
+  differences.  Heavy sigh.
+
+
+
+Apply options:
+
+Xapply is pretty cool the way it is, but we can do even better.
+
++ xapply -s (under -P) should sequence the kids such that process N+1
+  won't be started until process 1 has exited.  A sliding sequence
+  window of workers would result.
+
+  Say N=5 and 1-5 are started.  When 2 exits no new work would be stared,
+  but subsequently when 1 exits 6 and 7 would be released to start.  This
+  might be useful in some rare cases, and it is really hard to do any
+  other way.
+  
++ xapply -F is a monster but should be do-able:
+  Cascade the processes such that the output of the first is the input the
+  second and the output of the second is the input to the third and so on.
+
+  This means that "xapply -F 'grep' a b c" runs this pipeline:
+	  grep a | grep b | grep c
+
+  BUT it breaks because the grep[b] won't fork until the grep[a] finishes.
+  This means that we have to do something clever to honor -P, or ignore
+  process limits (and start them until we run out ?).
+
+  We can use fcntl to check for data on the pipe we are holding (after we
+  fork the first one which might be the flow source).  Only fork the kid
+  if either:
+	  there are -P counts left
+  or
+	  there is pending input on the last pipe.
+
+  That might work.  And we should _become_ the last process (in this case).
+
+--
+ksb, Jan 2000

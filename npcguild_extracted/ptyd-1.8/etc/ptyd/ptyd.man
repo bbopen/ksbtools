@@ -1,0 +1,117 @@
+.\" $Id: ptyd.man,v 1.4 1993/10/07 22:12:46 bj Exp $
+.\" by Kevin Braunsdorf
+.TH PTYD 8L PUCC
+.SH NAME
+ptyd \- the PUCC pseudotty daemon
+.SH SYNOPSIS
+\fB/usr/local/etc/ptyd\fP [\-\fBcdhkns\fP] [\-\fBf\fP \fIport\fP] [\-\fBm\fP \fImachine\fP] [\-\fBp\fP \fIpty\fP] [\fInservers\fP]
+.SH DESCRIPTION
+\fBPtyd\fP should be run at boot time via rc.local.
+\fBPtyd\fP waits on a UNIX domain socket for client requests for
+pseudotty services.  If \fInservers\fP is given, \fBptyd\fP will fork
+at most \fInservers\fP children to distribute the load (on demand).
+The default behavior is to have a single server.  \fBPtyd\fP will kill
+any running daemon before starting.
+.PP
+The services provided by \fBptyd\fP include:
+.sp 1
+	\(bu chowning a tty/pty pair to a specified uid
+.br
+	\(bu adding utmp and wtmp records
+.br
+	\(bu closing utmp(wtmp) records
+.br
+	\(bu restoring default modes to unused tty/pty pairs
+.br
+	\(bu killing runnig ptyds (reporting running pids)
+.sp 1
+.PP
+\fBPtyd\fP uses a simple English-like text protocol to exchange data
+with clients.  In debug mode it will log all conversations in
+/usr/adm/daemon.log via \fIsyslog\fP(8). The table below lists some
+of the commands and replys ptyd will accept/produce.
+.sp 1
+.TS
+l l l.
+Command	String Sent	Purpose
+PTYD_HELLO	hello ?	make sure the daemon is there
+PTYD_OPEN	get \fIuid\fP[@\fIhost\fP]	get a pty/tty pair for uid
+PTYD_MKUTMP	mkutmp \fIpty\fP	build utmp record for pty
+PTYD_RMUTMP	rmutmp \fIpty\fP	remove utmp entry for pty
+PTYD_LOGIN	login \fIpty\fP	build wtmp record for pty
+PTYD_LOGOUT	logout \fIpty\fP	build close wtmp for pty
+PTYD_CLOSE	release \fIpty\fP	return the pty to default
+PTYD_CLEAN	clean up	set all unused to default
+PTYD_PID	pid ?	show me your pid
+
+PTYD_IDENT	running \fIhost\fP	respond to a hello
+PTYD_TAKE	take \fIpty\fP	ptyd tells you to take it
+PTYD_OK	ok \fIpty\fP	ptyd believes you
+PTYD_NO	liar \fIcurse\fP	ptyd says you lie
+PTYD_UNKNOWN	unknown \fIthing\fP	ptyd doesn't grok you
+PTYD_USER	user \fIuid\fP	unknown user error
+PTYD_SYSERR	ouch \fIthing\fP	a syscall returned -1
+PTYD_IMPL	?eak \fIcmd\fP	ptyd is unable to complete cmd
+.TE
+PP
+Since \fIopenpty\fP and friends implement this protocol for the user
+the details of the protocol are left as a puzzle for a rainy day.
+.SH OPTIONS
+.TP
+.BI \-c 
+Ask the daemon to reset unused ptys to root.tty mode 0666.  A status report
+showing (\fIclean\fP+\fIin-use\fP)/\fIfound\fP.
+.TP
+.BI \-d 
+Start in debug mode.
+.TP
+.BI \-f port
+Give the filename for ptyd to listen on.
+.TP
+.BI \-h 
+Print a short help message.
+.TP
+.BI \-k 
+Kill the running daemon.
+.TP
+.BI \-m machine
+default machine people are on from
+.TP
+.BI \-n 
+trace actions only
+.TP
+.BI \-p pty
+Provide a sample pty for us to stat to get the magic device numbers
+from.  The default is /dev/ptyp0.
+.TP
+.BI \-s 
+ask the daemon for a status output
+.SH EXAMPLES
+.TP
+ptyd -c
+Clean up /dev/pty* and their corresponding ttys.
+.TP
+ptyd -dn -k
+Report a shell line that would kill the running daemon.
+.TP
+ptyd -f /dev/PTYD -d
+Start a daemon on an alternate port in debug mode.
+.SH FILES
+.TP
+/dev/ptyd
+the default port to accept requests on
+.SH BUGS
+Command line option order is too critical.
+.PP
+Source code is not available for every
+pty-using program installed at PUCC. PUCC reserves several pty's 
+(/dev/ptyq*) for 
+general use.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+Purdue UNIX Group
+.br
+ksb@cc.purdue.edu, purdue!ksb
+.SH SEE ALSO
+script(1), openpty(3L), syslog(8)

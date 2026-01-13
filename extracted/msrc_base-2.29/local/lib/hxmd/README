@@ -1,0 +1,62 @@
+# $Id: README,v 1.10 2010/07/08 22:22:11 ksb Exp $
+
+Hxmd won't work with an m4 that doesn't know how to include a search directory
+under -I (like GNU m4 or FreeBSD m4), so you're going to have to install one
+of those if you don't have it.  Sun's m4 (either one) won't do it for you.
+
+We know you are going to install msrc.  Sure you are.  So we populate the
+hxmd library with the files you are going to need in there to run the master
+source system, and related toosl:
+
+
+site.html
+	The documentation for updating this for local site policy.
+
+empty
+	A file you can use to build a unique temporary file for the current
+	hxmd task.  It starts out empty (hence the name) and is removed
+	after the task is complete.  I removed the source file, as RCS
+	complained about no RCS keywords in the file.
+
+msrc.cf
+	The zero configuration file for msrc.  Also used for local builds
+	with "makeme" if it exists (or at least it should be).
+
+class.m4
+	A file you'll have to customize for your local site: this one
+	produces the class-name of a host from the name of the host.  The
+	worst case would be an ifelse for each hostname, I think you can
+	do better.  The example is from an admin domain of about 1000 hosts
+	(my main cluster at fedex.com).  Exports macros "CLASSOF" that
+	returns the class of the given host and "CLASS" that is a shorthand
+	for "CLASSOF(HOST)".
+
+	This has two bugs in it:
+		- it assumes that the current diversion is 0,
+		- it must be recoded at every site for local policy.
+	Both are easy to fix locally and you'll need the practice.
+
+gnumake.m4
+	This is a Makefile.host include template to build a GNU product
+	from some information you can get mostly from the tar file name.
+
+auto.cf.host
+	This is the basis of the remote build process.  If you have a
+	configuration for many hosts you can push a copy of this to
+	each host, then build with "mmsrc -Cauto.cf ..." to activate
+	a copy of a master source directory locally -- if it can be
+	done at all in the context of the local host.
+
+	Note the commented values for RDIST_PATH and RSH_CMD/SSH.  These
+	are for reference about how we got here, they are not installed
+	because they could be misleading as to how to get out to any
+	other host.  When you need them remove the octothorps with sed.
+
+sendfile.m4
+	Three m4 macros that send a local file to the target directory
+	under msrc.  Used in the PRE_CMD hook in msrc to send a specail
+	file, one that other hosts don't get, on for processing on the
+	platform (see the example in options.html).
+
+--
+ksb, Jul 2010

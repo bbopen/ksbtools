@@ -1,0 +1,33 @@
+# $Id: LICENSE,v 1.2 2009/01/27 18:04:44 ksb Exp $
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so.
+
+
+You can stop reading here.  The rest of this is non-binding opinion.
+Please contribute to this Software in a constructive light:
+
++ Keep your versions distinct -- if you are making changes to the
+  Software you should mark the fact it is not the same as the package
+  you got (especially when you release the modified version).
+
+  All these programs have revision control tags in them: you should
+  choose a way to mark your changes.  A unique keyword/tag would
+  be great (like MyDomain).
+
++ Send bug reports back to me -- bugs at spam dot npcguild dot
+  org =~ s/spam/ksb/.  I must obfuscate the address to cut down on
+  the spam I get from these releases.
+
++ Make this Software more portable, not less -- avoid using special
+  vendor calls, header files that don't exist on most systems, or
+  funny types.  When that is the only option please leave some
+  compatible interface on the other side of a #if for the rest of us.
+   
+--
+Thanks!
+Kevin S. Braunsdorf, Dec 2008

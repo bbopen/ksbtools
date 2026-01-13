@@ -1,0 +1,92 @@
+.\" $Id: qsys.man,v 1.3 1997/01/06 02:20:25 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH QSYS 5L LOCAL
+.SH NAME
+qsys \- queue system for large jobs
+.SH SYNOPSIS
+.ds PN "command
+\fI\*(PN\fP [\-\fBn\fP\fBv\fP] [\-\fBd\fP \fIdir\fP]
+.br
+.ds PN "command
+\fI\*(PN\fP \-\fBh\fP
+.br
+.ds PN "command
+\fI\*(PN\fP \-\fBV\fP
+.sp
+.SH DESCRIPTION
+.PP
+When a user wishes to run many large jobs (for example phototype setting,
+recompiling, or regression testing) the best stratagey may not be
+starting them all at once.  System performance will be poor due to
+excess swapping or paging.  If multiple users take this same tactic
+the system may crash.
+.PP
+Co-operating users should schedule (via \fIqadd\fP) jobs for execution
+under the queue system.  The jobs are sequenced on a first come/first
+served bases when the jobs are of the same priority.  An optional
+nice value (default 10) my be included to suggest a different order
+to the queue manager (\fIqmgr\fP).
+.PP
+The queue manager launches a fixed number of tasks from the queue (usually 1).
+As tasks finish new tasks are drawn from the queue to replace them.
+An empty queue causes the queue manager to sleep for a short interval, 
+then poll.
+.PP
+Multiple jobs queues with different expected `sizes' may be instanced
+on the same host. For example and `short', `long', and `huge' queue
+might each be available on a particular CPU.  The system administrator
+may select the number of tasks to pull from each queue as well and
+the baseline nice value for each queue (usually 0).
+.PP
+Jobs submitted with a request for e-mail notification have their
+output divered to the letter.  Other jobs output may be directed to
+the null device, or logged to /usr/adm/jobq.log.
+.SH OPTIONS
+Some options are common to almost all queue system commands.
+.TP
+.BI \-d dir
+Specify the spool directory the queue lives in.  This directory
+must be built with \fIqinit\fP(8L).
+.BI \-h 
+Print a brief help message.
+.TP
+.BI \-n 
+Just output a trace of commands run.  This is only used for debugging.
+.TP
+.BI \-v 
+Be verbose.
+.TP
+.BI \-V 
+Show version information.
+.SH SUPPORT
+.TP
+the login ``daemon''
+This is the login generally in control of the queue system, although any
+member of group ``qmgr'' would do as well.
+.TP
+the group ``qmgr''
+Logins in this group may examine any queue system spool directry,
+directly for a job to execute, remove a job with \fIrm\fP, or lock
+a queue with \fIqlock\fP.  Such privilladge should not be taken lightly.
+.TP
+\fI/usr/spool/qsys\fP
+The default system queue.  Usuaully a symbolic link (see \fIln\fP(1))
+to either ``long'' or ``huge'' depending on some site predisposition.
+.TP
+$\fBQSTAT\fP
+Each queue system program reads an environment variable for default
+options (see \fPenviron\fP(5)).  The name of the command in all caps
+would be a good rule.
+.SH FILE
+\fI/usr/spool/qsys\fP	"the default job queue"
+\fI/usr/adm/qmgr.log\fP	"log of qmgr actions"
+.SH BUGS
+None known.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Group
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+qmgr(8l), qinit(8L), qadd(1L), qrm(1L), qstat(1L), qlock(8L)

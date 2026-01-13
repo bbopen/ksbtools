@@ -1,0 +1,365 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head>
+<title>Configuring site data for a new msrc installation</title>
+<link rel="stylesheet" type="text/css" href="https://carrera.databits.net/~ksb/msrc/css/code.css" />
+</head><body>
+<h1 id="known">To understand this document</h1>
+This is a base document.  You mostly just need to read it and
+try to understand the ideas.  Later you can come back to understand
+how this impacts other aspects of the configuration structure at
+your site..
+
+<H1 id="local">Having it your way</H1>
+
+It is really cool and groovy how the
+whole <code class="sh">msrc</code> building an
+<code class="sh">hxmd</code>, instancing an
+<code class="sh">xapply</code> machine, wrapped in
+<code class="sh">xclate</code>s above and below, to
+collate output works.
+But it doesn't do much for you until you build a local configuration.
+
+<P>
+The local configuration consists of some <code class="sh">hxmd</code>
+data files that describe your host populations (you can have as many
+of these as you need) and a zero configuration file to set the
+default attribute macros for <code class="sh">msrc</code> for
+transport options.  You can even build multiple default attribute
+macro files.
+
+<P>
+There is a remote configuration too, which we'll get to below.
+
+
+<H2 id="key">The key attributes in a zero configuration file</H2>
+
+We need to tell <code class="sh">hxmd</code> what default attribute
+macros to set when <code class="sh">msrc</code> uses it to visit
+hosts.
+I'm sure you've already read
+<href="sbin/hxmd/hxmd.html#config">the <code class="sh">hxmd</code> HTML document</A>
+and
+<href="sbin/msrc/msrc.html#attrmacro">the <code class="sh">msrc</code> HTML document</A>, so
+we don't have to review all that material.
+In this context you need to remember which of the attribute macros
+are used by the application as hooks, and which are
+used by the <em>structure itself</em>.
+
+<p>
+These three attributes are almost always used by
+any "Msrc.hxmd" files to hook back to the make recipe file, so
+avoid setting them:
+<code class="attr">INIT_CMD</code>,
+<code class="attr">PRE_CMD</code>, and
+<code class="attr">POST_CMD</code>.
+
+<p>
+The <code class="attr">HOST</code> macro and the other four
+<code class="sh">distrib</code> used (<code class="attr">SHORTHOST</code>
+<code class="attr">HOSTTYPE</code>,
+<code class="attr">HOSTOS</code>, and
+<code class="attr">HASSRC</code>)
+would not be global preferences.  So don't set those here.
+
+
+<p id="who">
+That leaves the attributes that describe <em>how</em> to get the
+each machine
+(<code class="attr">RSH_PATH</code> and <code class="attr">SSH</code>)
+and <em>who</em> to become there (<code class="attr">ENTRY_LOGIN</code>),
+<em>what</em> to source to get a clean environment
+(<code class="attr">ENTRY_DEFS</code>), and
+<em>which</em> transport programs to use
+(<code class="attr">RDISTD_PATH</code>,
+<code class="attr">RDIST_PATH</code> and
+<code class="attr">SDIST</code>).
+Of those you needn't set any.  The structure should work if
+you can ssh over to each host with
+the default <code class="sh">ssh</code> program,
+and if <code class="sh">rdist</code> is installed in the default
+search path on both ends.
+
+<p id="how">
+I usually do change <code class="attr">RDIST_PATH</code> to suppress
+<code class="sh">rdist</code>'s chatty nature.  One could add the
+<code class="opt">-q</code> option to <code class="sh">rdist </code>
+or include shell markup to redirect the <code class="markup">stdout</code>
+stream to the bit-bucket.
+
+<p id="what">
+The other tune I include, in the default
+<code class="sh">hxmd</code> file for <code class="sh">msrc</code>, is
+an <code class="attr">ENTRY_DEFS</code> that is backwards compatible
+with the old master source system: the old system always sourced
+a shell file named "/usr/local/lib/distrib/local.defs".  You could
+spell the filename anyway local policy requires in the new system,
+and even put the file in a different place for different groups of
+hosts.
+
+<p id="which">
+Here is an example <code class="path">msrc.cf</code> from my site policy:
+<blockquote class="file"><pre><code ># $<!---->Id: msrc.cf,v <i>...</i>
+# Hxmd configuration (designed for the -Z option) which sets all the	(ksb)
+# macro definitions that msrc needs to set to locally significant values.
+ENTRY_DEFS=`/usr/local/lib/distrib/local.defs'
+RDIST_PATH=`rdist &gt;/dev/null'</code></pre></blockquote>
+which looks a lot like the default one shipped in this directory,
+but forces the local.defs path.
+
+<H2 id="list">The list of hosts</H2>
+
+After we've told <code class="sh">msrc</code> "how", "who", "what" and "which"
+we need to tell <code class="sh">hxmd</code> <em>where</em>
+(a list of hosts) and <em>why</em> (other attributes about those hosts).
+
+<p id="where">
+I break my hosts into realms.  For example the "dmz" realm holds
+the hosts that run our Internet face.  The "sac" realm holds the
+workstations and test hosts for the system administration group.
+One large file with all your hosts in it is also a workable solution.
+
+<p>
+Since <code class="sh">hxmd</code> reads as many configuration files
+as you like (under <code class="opt">-C</code>) you can build one
+file per host, if you feel that's a good solution to your local
+issues.  I'm pretty sure that doesn't scale to thousands of hosts.
+
+<p>
+Pick a name (like <code class="path">mysite.cf</code>) build the file
+here.  I used <code class="path">sac.cf</code>, and it starts out
+like:
+<blockquote class="file"><pre><code ># $<!---->Id: <i>...</i>
+%HOST
+w01.sac.fedex.com
+w02.sac.fedex.com
+adm0.sac.fedex.com<i>....</i>
+</code></pre></blockquote>
+
+<p id="mysite">
+Add the file name to the <code class="path">Makefile</code>
+in the <code class="make">SOURCE</code> macro, and in
+<code class="path">Makefile.host</code> to
+the <code class="make">DATA</code> macro.
+After that, when you run <code class="sh">mmsrc</code> (or <code class="sh">msrc</code>) to
+install this directory the new "mysite.cf" file should
+become available via <code class="sh">hxmd</code> under
+<code class="opt">-C</code> without a full pathname.  We'll add a shell
+script (called "dmz.sh" in <code class="sh">msrc</code>'s source directory)
+later so we don't have to type that option over and over.
+
+<p>
+Keep that list of hosts up-to-date.  Put an revision control spell
+over it (subversion, RCS, SCCS, CVS, or what ever you like) and keep
+track of the current revision.
+Break it up later into realms, only if you need to.
+
+<p id="prime">
+Now you must prime the pump for <code class="sh">ssh</code>.  If you
+don't give it a chance to record the host keys for each host
+<code class="sh">ssh</code> is going to go interactive on you at the
+worst time to ask if the host key matches for each of your hosts.
+To prevent this make sure you have an active <code class="sh">ssh-agent</code>
+loaded with your keys, then run a command like:
+<blockquote class="file"><pre><code >hxmd -xP1 -C mysite.cf 'ssh -o "Batchmode=yes" -n HOST date'</code></pre></blockquote>
+which asks <code class="sh">hxmd</code> to verify the file is syntactically
+correct, the trace the launch of an <code class="sh">ssh</code> to
+each host sequentially to run <code class="sh">date</code>.
+
+<P>
+Remove the "Batchmode" option to verify host keys then
+fix any errors you see in that output: misspelled hosts, mismatched
+host keys, incorrect dates, and the like.
+Later the <code class="opt">-P1</code> can be made wider, but
+the secure shell client sometimes steps on
+the <code class="path">known_hosts</code> file with large
+numbers of parallel updates.
+
+<p id="why">
+Now you must add some additional facts about each host.
+For the base tools to work you <em>must</em> add "HOSTTYPE" and
+"HOSTOS" to the file.  If all your hosts are the same, you may
+add them as <code class="param">macro</code>=<code class="param">value</code>
+lines before the host list:
+<blockquote class="file"><pre><code ># $<!---->Id:<i>...</i>
+HOSTTYPE="<i>value</i>"
+HOSTOS="<i>value</i>"
+%HOST
+host1
+host2<i>...</i></code></pre></blockquote>
+
+If they are a mixed set you should use the column-style for each host.
+
+<blockquote class="file"><pre><code ># $<!---->Id:<i>...</i>
+%HOST	HOSTTYPE	HOSTOS"
+<i>host1</i>	<i>type1</i>		<i>os1</i>
+<i>host2</i>	<i>type2</i>		<i>os2</i></code></pre></blockquote>
+
+<P>
+I use the columns for attributes
+like a serial number: all hosts have one and they are all different.
+I use the "set it an forget it" style for attributes that are
+common to a large section of the file, or to all hosts in the file.
+
+<p id="unset">
+If you use the set-it-here style you might need to "unset it"
+after the end of the hosts that have that attribute, this can
+be hard to remember, so write a sanity checker if you need one.
+
+
+<H2 id="when">The triggers</H2>
+
+The <em>when</em> part of the system is broken in to two parts:
+different files for different populations, and different
+triggers to start the processes.
+
+<p id="files">
+We might break the list of hosts up on a few criteria: the
+mechanism to gain access, the
+political span of administrative control, or the
+class of support (viz. test, development, beta, production).
+That partitioning is largely up to you.
+
+<p id="triggers">
+A <code class="sh">crontab</code>, <code class="sh">at</code>,
+or <code class="sh">batch</code> command can trigger a shell
+action to start the process to touch a list of hosts.  My
+<code class="sh">kicker</code> batch-file injector, the
+<code class="sh">op</code> or <code class="sh">sudo</code> rule-base
+may include scripts to run <code class="sh">hxmd</code> on a
+list of hosts.  Any task management service (even a web CGI)
+could start the ball rolling.
+
+<H2 id="other">Other attribute lists</H2>
+
+The example above of the serial number of the hosts is not a
+fiction.  But the group that keeps track of asset management
+might not be the group that does the software provisioning
+for the site.  These two groups only have to agree on the
+<code class="param">key</code> field (usually the "HOST"
+attribute macro).
+
+<P>
+Then the Hardware guys can keep "hardware.cf" up to date
+with 3 columns:
+<blockquote class="file"><pre><code ># $<!---->Id: hardware.cf,v <i>...</i>
+%HOST			SNUMBER		LOCATION
+host1.example.com	5271010		E101:97:1
+host2.example.com	1964215		E101:97:2
+<i>...</i></code></pre></blockquote>
+The Software guys can merge that file in with
+"<code class="opt">-X</code>&nbsp;<code class="path">hardware.cf</code>"
+when they need to use the location or serial number to select a host
+or report on a host's status.
+
+<h3 id="classes">Classes of hosts</h3>
+
+By a class we mean hosts with similar application stacks, a common set of
+logins and groups, and maybe a common set of privilege escalation rules.
+I use a common basename for hosts of the same "class".  For example
+the "cache" class might have members "cache1", "cache2", ... up
+to "cache32" (today) and some preproduction members "cachetest1" and
+"cachetest2".
+
+<P>
+The file "class.m4" always (in my implementations) contains a macro
+<code class="attr">CLASSOF</code> which converts a given
+<code class="attr">HOST</code> into the name of the parent class.
+It should hide any local macros behind the local political domain.
+The <A href="class.m4">example in this directory</A> uses the
+domain "my", and is actually not the one I use in my group.
+
+<P>
+The shorthand macro <code class="attr">CLASS</code> just expands
+to <code class="attr">CLASSOF</code>(<code class="attr">HOST</code>),
+which is what you want most of the time.  Sometimes you need to
+find the class of a host you found by a macro like
+<code class="attr">NFS_SERVER</code> or <code class="attr">HIS_NAME</code>.
+
+<P>
+You should edit that file so it turns your local hostnames into
+classes, if you are going to use that (for <code class="sh">op</code>'s
+rule-base) later on.
+See <href="bin/op/op.html">the HTML documentation</A>.
+
+<h2 id="remote">Remote configuration in  <code class="path">auto.cf</code></h2>
+
+The configuration file  <code class="path">auto.cf</code> is generated
+by some detailed <code class="sh">m4</code> markup in
+<A href="auto.cf.host"><code class="path">auto.cf.host</code></A>.
+This includes macros which describe some of the macro values needed to
+push or pull updates to the local host.
+
+<p>
+These should include at least some of the lines below.  Other
+additions to this file would be local site policy.
+<dl>
+<dt><em class="new">DATE_STAMP</em>="<code class="param">date when file created</code>"
+<dd>
+<p>A comment that lets an admin know when the update was built, the time
+on the file tell when it was installed.  It may have been packaged in
+an RPM or  <code class="sh">tar</code> archive for quite some time.
+<dt><em class="new">ENTRY_DEFS</em>="<code class="param">absolute path to local.defs</code>"
+<dt><em class="new">RDISTD_PATH</em>="<code class="param">path to rdistd on this host</code>"
+<dt><em class="new">#RDIST_PATH</em>="<code class="param">path to rdist on msrc host</code>"
+<dd>
+<p>
+There may be useful for local self-updates.
+The <code class="attr">RDIST_PATH</code> is a comment because there is
+no proof that the source host has the same location as the client (which may
+have different everything from each other) for <code class="sh">rdist</code>.
+<dt><em class="new"># preserved pull update information</em>
+<dd>
+<p>
+If this line is in the file then the update was a pull, rather than a push.
+<p><strong>Only</strong> if this line is present should the next three lines be
+included.
+<dt><em class="new">MSRCMUX=</em>"<code class="param">tcmpmux name for msrcmux</code>"
+<dt><em class="new">MSRCMUX_MPS</em>="<code class="param">msrc pull service <acronym title="common name record in DNS">CNAME</acronym></code>"
+<dt><em class="new">MSRCMUX_CFG</em>="<code class="param"> <code class="param">config</code> given to  <code class="sh">mmsrc</code> for target host</code>"
+<dd>
+<p>All the information required to connect to the pull service to ask for
+another update: the RFC1078 service name, the host to connect to, and the
+configuration file which contains our definition.
+<p>
+For example:
+<blockquote class=file><pre><code >muxcat MSRCMUX_MPS MSRCMUX local/bin/flock MSRCMUX_CFG > /tmp/$TFILE.tar
+</code></pre></blockquote>
+
+<dt>%HOST SHORTHOST HOSTTYPE HOSTOS HASSRC
+<dt><em class="new"><code class="param">FQDN</code> <code class="param">short-name</code></em> <code class="param">hosttype</code> <code class="param">base10-OS-version</code> ..
+<dt>localhost<em class="new"><code class="param">domain.site.tld</code></em> localhost <code class="param">hosttype</code> <code class="param">base10-OS-version</code> ..
+<dt><em class="new">localhost</em> localhost <code class="param">hosttype</code> <code class="param">base10-OS-version</code> ..
+<dd>
+<p>
+I always use <code class="markup">localhost</code>, but other site policy
+calls for the hostname.  If you don't specify one you may update the
+host three times.  If you specify a common name for the host you might
+match none of the lines.
+<p>
+None of these sets  <code class="attr">HASSRC</code> because we really
+do not know if this host should have a full platform source.
+</dl>
+
+<h2 id="nits">Other nits</h2>
+
+If your version of <code class="sh">ssh</code> is not up to snuff
+you might need to specify a path to another for some group of hosts, or
+build a script that adds command-line options to the vanilla
+<code class="sh">ssh</code> to diddle options.
+You might also want to apply the
+<A href="http://www.psc.edu/networking/projects/hpn-ssh/">
+high performance network patches</A> to
+<code class="sh">ssh</code>.
+
+<h2 id="also">See also</h2>
+
+If you've not installed the tool-chain start with the
+<code class="sh">mmsrc</code>
+<href="sbin/mmsrc/mmsrc.html">HTML document</A>.
+
+<p>
+If you are interested in <strong>pull</strong> updates to your hosts,
+then see <code class="sh">msrcmux</code>'s
+<href="libexec/msrcmux/msrcmux.html">HTML document</A>.
+<hr><pre>
+$Id: site.html,v 1.18 2012/06/26 19:31:37 ksb Exp $</pre></body></html>

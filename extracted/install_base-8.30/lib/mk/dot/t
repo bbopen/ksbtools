@@ -1,0 +1,15 @@
+# an nroff source file							(ksb)
+# $Id: t,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	${eqn-eqn} %f |${tbl-tbl} |${nroff-nroff} %s |${PAGER-${more-more}}
+$Compile(*):	${eqn-eqn} %f |${tbl-tbl} |${nroff-nroff} |${PAGER-${more-more}}
+
+$Display(*):	${eqn-eqn} %f |${tbl-tbl} |${nroff-nroff} %s |${PAGER-${more-more}}
+$Display(*):	${eqn-eqn} %f |${tbl-tbl} |${nroff-nroff} |${PAGER-${more-more}}
+
+$Laser(*):	${eqn-eqn} %f |${tbl-tbl} |${ltroff-ltroff} %s
+$Laser(*):	${eqn-eqn} %f |${tbl-tbl} |${ltroff-ltroff}
+
+$Clean(*):	${rm-rm} -f %F.fmt
+
+$Info(*):	${echo-echo} "nroff/troff source"

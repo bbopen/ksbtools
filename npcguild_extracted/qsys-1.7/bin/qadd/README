@@ -1,0 +1,38 @@
+# $Id: README,v 1.3 1997/01/06 01:23:21 kb207252 Exp $
+
+This program adds tasks to a queue.  The shell commands to run the task are
+provided as a _single_word_ on the command line, or as stdin (much better
+interface).
+
+So the shell command
+	$ qadd 'touch /tmp/i-ran-boss'
+
+touches the file "/tmp/i-ran-boss" in less than about 2 minutes.  I think
+a better interface is
+	$ qadd -N "rebuild catd"
+	qadd> cd /usr/src/local/etc/catd
+	qadd> make all install clean
+	qadd> rdist -c /usr/local/etc/catd server:
+	qadd> ^D
+	[EOT]
+	$ exit
+
+Note the "qadd>" prompt, this builds a job named "rebuild catd" in the queue
+(see qstat) which executes there commands in a sh(1).  If you'd like to see
+the output of the job you can add `-m $USER' to the command line above.
+
+
+Bugs:
+	- qadd is less-than-friendly when you give it more words on
+	the command line.  They become $0 $1 $2 $3... to the shell processes
+	the first command given.  This could be useful -- if you had
+	some unresolved feelings for /bin/sh.
+
+	- qadd should default to sending you mail, maybe.  You can do this
+	with the option environment variable "QADD" set to "-m me".
+
+	- qadd takes too long to insert commands in the queue, because
+	it wraps them in a short C program.
+
+--
+ksb

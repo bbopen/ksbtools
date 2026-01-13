@@ -1,0 +1,13 @@
+.\" $Id: conclusions,v 3.0 1992/04/22 13:22:59 ksb Stab $
+.\"
+.\"
+.LP
+.NH
+Conclusions
+.LP
+It is possible to design and implement at the user level a file
+entombing system
+that is secure, effective, and efficient enough to be widely
+used.  In three months of productional use, this
+system has saved work for the system administrators and grief for the
+users.

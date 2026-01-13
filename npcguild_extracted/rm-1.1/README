@@ -1,0 +1,15 @@
+# $Id: README,v 1.1 1997/11/24 01:41:03 ksb Exp $
+
+This is the Berkeley source to rm/mv/cp as it was a few years ago.
+I (Kevin Braunsdorf) put in the "-ltomb" and the master source stuff.
+Bugs in this are possible, since it is so old.
+
+After you've installed entombing you can install this package to
+build an rm, mv, and cp that entomb.  Install them in /bin only if
+you are sure (make _sure_ mv is loaded static on a Sun/Solaris system).
+
+I didn't tell you this would make your system better.  It might not
+help you out at all.  You'd be safer with the power set to "0".  Really.
+
+--
+ksb

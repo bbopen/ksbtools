@@ -1,0 +1,4 @@
+/* $Id: util_nproc.mh,v 1.1 2006/08/18 23:06:42 ksb Exp $
+ * external declaration for util_nproc()
+ */
+%extern unsigned long %K<util_nproc>1ev(void);

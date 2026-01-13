@@ -1,0 +1,22 @@
+# $Id: README,v 1.2 1994/02/11 18:40:10 ksb Exp $
+
+This file will have to be site configured, at least.  But it is really
+simple.  Don't panic.
+
+
+Qstart is run from /etc/rc.local (or /etc/rc's localrc function, or from
+/etc/inittab) to fire up the queue system.  It runs as root but drops (with
+su) to the queue master login.  This is kinda a bug -- we don't want the
+groups of the queue master, but a safe login name and the qmgr group.
+
+So we look in the Q_SPOOL directory for all the subdirectories that are
+group owned by Q_GROUP (qmgr) and fire a qmgr process off in each.  If there
+is a .q-opts file in one we use that file as a shell script to run to fire
+up qmgr.  You should be happy I didn't use mk(1) here.  I would have, you
+know.
+
+Edit this file, if you wish.  But mostly you can build .q-opts files in the
+queue's to change things.
+
+--
+ksb

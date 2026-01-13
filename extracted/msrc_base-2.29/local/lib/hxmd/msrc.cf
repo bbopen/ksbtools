@@ -1,0 +1,5 @@
+# $Id: msrc.cf,v 1.5 2007/08/28 13:50:28 ksb Exp $
+# Hxmd configuration (designed for the -Z option) which sets all the	(ksb)
+# macro definitions that msrc needs to set to locally significant values.
+#ENTRY_DEFS=`/usr/local/lib/distrib/local.defs'
+RDIST_PATH=`rdist >/dev/null'

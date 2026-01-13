@@ -1,0 +1,9 @@
+#  $Header: /usr/msrc/usr/local/lib/mk/pre/RCS/texi,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+#
+#  Verify that the file is a TexInfo file
+# $Id: texi,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+#
+
+$*(*):          if %~/bin/is-texinfo %f\n\tthen\n\t\t%b %o -m%m -d%s -e'%~/is/texinfo%%;' %f\n\telse\n\t\t%${echo-echo} "%f: is not a TexInfo file" && ${false-false}\n\tfi
+
+$*(*):          if %~/bin/is-texinfo %f\n\tthen\n\t\t%b %o -m%m -e'%~/is/texinfo%%;' %f\n\telse\n\t\t%${echo-echo} "%f: is not a TexInfo file" && ${false-false}\n\tfi

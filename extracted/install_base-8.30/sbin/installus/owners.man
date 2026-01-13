@@ -1,0 +1,152 @@
+.\" $Id: owners.man,v 2.6 2010/08/13 19:18:46 ksb Exp $
+.\" by Ben Jackson
+.\" $Compile: Display%h
+.\" $Display: ${groff:-groff} -Tascii -man %f | ${PAGER:-less}
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man5/owners.5
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]5/owners.5*
+.TH OWNERS 5L LOCAL
+.SH NAME
+owners \- control file for installus
+
+.SH DESCRIPTION
+\fIinstallus\fP is a utility to allow non-superusers to maintain
+software in system binary directories.  The access control is done
+by examining the .owners file associated with the destination.
+\fIinstallus\fP checks for a .owners file first in the destination directory,
+and then in each successive parent directory until it
+finds one or reaches slash.  When \fIinstallus\fP finds
+a .owners file, it searches for the first \fIglob\fP (see below) matching
+the destination and then checks to see if the installer matches the
+permission checks specified.  The .owners file must be owned by the
+same user that owns the \fIinstallus\fP binary (usually root) and have
+write permission disabled for group and other (go-w).
+
+.PP
+If the installer is not the owner of the \fIinstallus\fP binary, she is
+prompted for her own password before any files are installed.  This
+is to prevent abuse of unattended terminals.
+
+.PP
+If there are users maintaining large software packages (such as TeX),
+you can create a special group with a password field, and make
+the \&.owners file setgid to that group.
+If the \&.owners file is setgid, and the user running \fIinstallus\fP is
+in that group, she will \fBnot\fP be prompted for her password.
+This allows these users to use \fInewgrp\fP in the same way superusers
+use \fIsu\fP.
+
+.PP
+Each line in a .owners file consists of 3 fields separated by spaces or
+tabs.  The second field has two subfields separated by `.':
+.IP
+\fIglob		user\fP\fB.\fP\fIgroup	install-opts\fP
+.IP \fIglob\fP 14
+A standard shell glob expression as described in sh(1) relative to the
+directory containing
+the .owners file.  In addition to the normal wildcards, the pattern may
+use `**' which spans directories (for example, `foo/**' matches any
+of `foo/bar', `foo/x/bar', `foo/x/y/bar', etc).
+.IP \fIuser\fP 14
+The user who is authorized to install the file(s) specified by \fIglob\fP.
+This can be either a decimal user ID (uid) or a login name found in the
+password file.  If \fIuser\fP is `*', anyone (meeting the group restriction)
+may install the file.
+.IP \fIgroup\fP 14
+The group which is authorized to install the file(s) specified by \fIglob\fP.
+This can be either a decimal group ID (gid) or a group name found in
+the group file.  If \fIgroup\fP is `*', users in any group (meeting the user
+restriction) may install the file.
+.IP \fIinstall-opts\fP 14
+The options to pass to \fIinstall\fP when installing this file.  These
+should usually include owner, group and modes
+(\fB\-o\fP, \fB\-g\fP and \fB\-m\fP) and may also include symlinks or
+hardlinks that should be made to the file (\fB\-S\fP or \fB\-H\fP).  Within
+these arguments, `~' (which must appear as a distinct word) is replaced by
+the login name of the installer.
+.LP
+Blank lines and lines starting with `#' are ignored.  Leading whitespace
+is trimmed.
+
+.PP
+It is usually a good idea to test new .owners entries.  To find out who
+can install a file, use:
+.sp 1
+	installus -W \fIfiles\fP
+.sp 1
+which will tell you the specific user and/or groups required to install
+the file.
+
+.SH EXAMPLES
+Installing this in /var/news/.owners allows anyone to install files
+in /var/news.  The files will be owned by the installer and in group
+news:
+.sp 1
+.nf
+    *               *.*          -o ~ -g news -m 644
+.fi
+
+For maintaining user supported software, the .owners file is usually placed
+in /usr/unsup.
+While it is possible to keep a separate .owners file in
+/usr/unsup/bin, /usr/unsup/lib, etc., it is easier to group related files
+if they are kept in one .owners file.  Here is an example distilled from
+an actual installation:
+.sp 1
+.nf
+    # Ben Jackson
+.br
+    bin/zsh         bj.*         -m 755 -o root -g bin
+.br
+    tex/latex       bj.*         -m 755 -o root -g bin
+.br
+    tex/lib/**      bj.*         -m 644 -o root -g bin
+.br
+    etc/top         bj.*         -m 2755 -o root -g kmem
+.br
+    # William McVey
+.br
+    bin/pgp         wam.*        -m 755 -o root -g bin
+.br
+    bin/nvi         wam.*        -m 755 -o root -g bin -Hnex
+.br
+    elm/elm         wam.*        -m 2755 -o root -g staff
+.br
+    elm/frm         wam.*        -m 2755 -o root -g staff
+.br
+    elm/*           wam.*        -m 755 -o root -g bin
+.br
+    # Else allow users in group wheel to install in any subdirectory
+.br
+    **/*           *.wheel       -m 755 -o root -g bin
+.br
+.fi
+
+.SH BUGS
+The recursive directory building option (\-\fBr\fP) to install doesn't
+work.
+
+.SH CAVEATS
+A well formed .owners file prevents unauthorized users from installing
+files using \fIinstallus\fP.  It does not prevent authorized users from
+abusing their privilege.  System administrators should be wary of running
+their paths through binary directories controlled by \fIinstallus\fP, and
+some type of regular auditing is advised.
+
+.PP
+This is a modified version of the the original Purdue University
+Computing Center source.  It has been updated to work on more platforms
+and has a few more features. \-\- ksb
+
+.SH FILES
+For example the "user supported" directory might be "/usr/unsup" on
+some hosts.  The file "/usr/unsup/.owners" would control update access
+to that hierarchy.
+
+.SH AUTHORS
+Ben Jackson & KS Braunsdorf
+.br
+ben@ben.com & rpm no-At-spam ksb.npcguild.org
+
+.SH "SEE ALSO"
+chgrp(1), chmod(1), chown(8), group(5), install(1L), installus(1L),
+newgrp(1), passwd(5), sh(1), su(1)

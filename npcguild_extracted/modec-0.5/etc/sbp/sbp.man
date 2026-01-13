@@ -1,0 +1,201 @@
+.\" $Id: sbp.man,v 1.4 1999/05/08 20:10:20 ksb Exp $
+.\" by Kevin Braunsdorf
+.TH SBP 1L LOCAL
+.SH NAME
+sbp \-  sync backup partitions
+.SH SYNOPSIS
+.ds PN "sbp
+\fI\*(PN\fP [\-\fBa\fP\fBj\fP\fBn\fP\fBv\fP] [\-\fBC\fP \fIcmd\fP] [\-\fBf\fP \fIfstab\fP] [\-\fBH\fP \fIhow\fP] [\-\fBm\fP \fIbackup\fP] [\-\fBr\fP \fIsource\fP] [\fIfile-systems\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.SH DESCRIPTION
+\fBSbp\fP uses a common convention in the system file system list to
+locate a "backup" copy of a partition.  It then synchronizes the
+data from the primary (current) partition to the backup (alternate)
+location.  These two disk slices are usually about the same size.
+.\" in the case of raw partitions they should be exactly the same size
+.PP
+This process is used to create an image of the running system just before
+major changes (like OS upgrades or major patches) are installed to
+provide a backout path, should something go awry.
+.PP
+By convention there is a shell script driver for each production system
+(which might be the same for most) that does this operation.  This script
+remembers the options to force the boot loader onto the new root
+file system.
+Also see installboot(8).
+.PP
+As an optimization, minor changes can be captured with a delta-only
+copy using the \fBrsync\fP tool (see \-\fBH\fP below).
+
+.SH OPTIONS
+If the program is called as \fBsbp\fP then no options are forced.
+.TP
+\fB\-a\fP
+Mount the destination file systems \fBasync\fP to speed the backup.
+On hosts with no known \fBasync\fP support this does nothing.
+If either the primary or backup partitoins are normally mounted
+\fBasync\fP, then this is the default for that file system.
+.TP
+\fB\-C\fP \fIcmd\fP
+Cleanup command executed after copy, before umount.
+This is often provided as an mk(1) command on the fstab, or in
+a locally written shell driver.
+Examples include the "installboot spell" from the installboot
+manual page.
+There are a few percent escapes that may be embedded in this
+string to expand to parameters found at run-time. They are
+documented below.
+.TP
+\fB\-f\fP \fIfstab\fP
+The file system table to read, defaults to \fI/etc/fstab\fP,
+\fI/etc/vfstab\fP, or  \fI/etc/checklist\fP as apropos for this host.
+.TP
+\fB\-h\fP
+Print a help message.
+.TP
+\fB\-H\fP \fIhow\fP
+Specify how to sync the partitions (use ? for help).  The
+supported methods are (at least) "dump", "rsync", and "dd".
+Note that the \fBrsync\fP and \fBdd\fP programs must be installed in the
+current seach path.
+.RS
+.PP
+The \fIhow\fP parameter may include a colon (:) followed by method
+options.  These options are presented to the method in some obvious way.
+For example the \fBbs=\fP (block size) option to \fBdd\fP may be
+specified to the \fBdd\fP method (-H dd:bs=768k).
+.RE
+.TP
+\fB\-j\fP
+Just guess at the \fBnewfs\fP tune for backup partitions.
+.TP
+\fB\-m\fP \fIbackup\fP
+Construct the backup partition on this mount-point, rather than \fI/backup\fP.
+\fBSbp\fP doesn't allow the \fIbackup\fP directory to be any of the common
+mount points (viz. /, \fI/usr\fP, \fI/var\fP, \fI/opt\fP) because that would
+destroy the running system.  Use \fBnewfs\fP to destroy your own host.
+.TP
+\fB\-n\fP
+Do not execute commands, trace only. Implies \-\fBv\fP
+.TP
+\fB\-r\fP \fIsource\fP
+The source heirarchy (default to the root filesystem).  When you
+want to sync a backup to a backup you need this option (or chroot).
+.TP
+\fB\-v\fP
+Be verbose -- show shell commands as they are executed.
+.TP
+\fB\-V\fP
+Show version information.
+
+.SH ESCAPES
+The escapes below are used internally to product the shell
+commands to drive the syncronization; they are documented here
+for the \-\fBC\fP command.  To write a new sync method see the
+comments in the source file sbp.c.
+
+.TS
+allbox;
+r l.
+%d	block device name
+%i	\fBnewfs\fP tune options (\-i, \-c, \-a) given or computed
+%m	mount point
+%r	raw device name
+%X\fIx\fP	any of the above on our primary
+	(so %Xm is our primary's mount pount)
+
+%a	the string "\-o async" or nothing (see \-\fBa\fP)
+%f	the fstab file we read for this run (from \-\fBm\fP)
+%F	the fstab file we know the system uses
+%P	the method specific parameter for \fBdd\fP, \fBrsync\fP, GNU \fBtar\fP
+%K	the method keys for \fBcpio\fP, \fBdump\fP
+.TE
+
+.PP
+The \fB%i\fP escape above looks for a comment on the end of the
+primary or backup entry in the file system list that (after any
+leading white space) starts with a dash (\-) and a letter.  If
+it can find a comment like that it assumes that those are all
+options for \fBnewfs\fP.  For example:
+.sp
+	/dev/sd3a /backup ufs 0 2 # \-i 12288 \-c 20
+.sp
+This line specifies the alternate partition for the root file system is
+on disk three-a and should be newfs'd with "\-i 12288 \-c 20".
+.PP
+If no such comment is found and \-\fBj\fP is presented we make a good guess.
+.\" There are some undocumented options (-D, -I) which tune the guess work.
+
+.SH EXAMPLES
+.TP
+\fBsbp\fP
+Backup all the partitions that have "/backup" prefixes from their
+primary versions.
+.TP
+\fBsbp\fP \-jv /
+Copy the current root file system to the alternate.  Automatically
+tune the bytes/inode (\-\fBi\fP option) to \fBnewfs\fP.
+.TP
+\fBsbp\fP \-Hrsync:--verbose /usr
+Update just the \fI/backup/usr\fP partition with \fBrsync\fP, tell
+\fBrsync\fP to be verbose.
+.TP
+\fBsbp\fP \-H '?'
+Show all the method \fBsbp\fP knows to copy partitions.
+.TP
+\fBsbp\fP \-V
+Display the version of \fBsbp\fP installed.
+.TP
+\fBsbp\fP \-Hrsync /etc/passwd
+Backup the partition that contains \fI/etc/passwd\fP with \fBrsync\fP.
+(Yeah, I know that should be the root partition.)
+.TP
+\fBsbp\fP \-jv \-Hdump:u -C 'installboot $T/bootblk %r' /
+Backup the root filesystem with \fBdump\fP, guess a better inode
+tuning and install a boot block from the $T directory.  One should
+export and set $T before the command is executed.  See installboot(8).
+.TP
+\fBsbp\fP \-Hrsync:--dry-run -r /backup -m /monthly
+Show the differences between last nights backup and the monthly backup.
+
+
+.SH BUGS
+.PP
+There is no way under Solaris to provide comments on the end of a
+\fBvfstab\fP file.  The newfs option comment trick never works
+on that plotform.  Some logic to put the comment for a slice on
+another line (above or below the entry) would be nifty.  A work-around
+is to keep a \fBvfstab.sbp\fP in \fB/etc\fP with the comments in it, then
+build /etc/vfstab with \fBsed\fP, sigh.
+.PP
+The \fBdd\fP method can create file systems that are so corrupt
+\fBfsck\fP drops core.  It also copies the stuff under the mount
+points on the active partitions -- which might be a feature.
+.PP
+The percent expander in this program is not well documented.
+.PP
+The per-partition command hooks like \-\fBC\fP for before (\-\fBB\fP)
+and after (\-\fBA\fP) each partition is copied should be documented.
+.PP
+A side-effect of just backing up \fB/usr\fP is that we
+\fBmkdir\fP \fI/backup/usr\fP
+to mount it on and do not remove it.  The extra directories this creates
+under the mount point for \fI/backup\fP are just facts-of-life.
+It would be more of a bug to \fBrmdir\fP them.
+
+
+.SH AUTHOR
+Kevin S Braunsdorf
+.br
+At home.
+.br
+ksb@sa.fedex.com
+
+.SH "SEE ALSO"
+sh(1), rsync(1), installboot(8), newfs(8), dump(8), restore(8),
+ufsdump(8), ufsrestore(8), cpio(1), gnutar(1), dd(1)

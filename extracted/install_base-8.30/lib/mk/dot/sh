@@ -1,0 +1,12 @@
+# a script written in any shell						(ksb)
+# $Id: sh,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	sed -e '/#$/d' -e '/^#[^!]/d' %f > %D/%F && chmod 755 %D/%F
+$Compile(*):	sed -e '/#$/d' -e '/^#[^!]/d' %f > %F && chmod 755 %F
+$Clean(*):	rm -f %D/%F
+$Clean(*):	rm -f %F
+
+$Info(*):	${echo-echo} "%x commands"
+
+$Run(*):	%x %f %s
+$Run(*):	%x %f

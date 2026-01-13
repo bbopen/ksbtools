@@ -1,0 +1,51 @@
+# $Id: README,v 2.0 2000/05/30 12:30:00 ksb Exp $
+
+Remote customer data services.
+
+See ZZZ/README for super structure.
+
+On a modern UNIX host a directory of 64 entrys (1 character names) is
+pretty small.  It takes about 4 seconds on our test hardware to make it.
+The resultant directory is about 1024 bytes.
+
+If we take two characters at a time (of our base64 encoded UUID) we make
+4096 entries of 2 characters each. It takes about 188 seconds to build the
+4096 directories.  Groups of 64 at the end take as much as 44 seconds.  The
+resultant directory is about 50176 bytes.
+
+So in the first case the average mkdir take 4/64 (1/16) seconds and we'de
+have to make 10 of them, 7 on average.  Total time 7/16 to 10/16.
+About .44 to .63 seconds.
+
+In the second case the average directory takes form 8/64 to 188/4096 seconds
+(between 47 and 128 /1024, I'll call it 90/1024) and we have to make 5 of
+them worst case, 3 on average.  Total time 3*90/1024 to 5*90/1024.
+About .25 to .45 seconds.
+
+for a 10 character UUID (6 bits/ character) we have a possible login count of:
+	2^60
+	=1152921504606846976  possible logins
+
+In terms of inodes for structure the first would take
+	1+64*(1+64*(1+64*(1+64*(1+64*(1+64*(1+64*(1+64*(1+64*(1+64)))))))))
+	=1171221845949812801  inodes for overhead
+which is about 101.587%
+
+While the second scheme would take:
+	1+4096*(1+4096*(1+4096*(1+4096*(1+4096))))
+	=1153203048319815681  inodes for overhead
+which is about 100.025%
+
+BTW: a filesystem with 1e+18 inodes is not practical in Jun 2000, but
+might be soon...
+
+
+So we break a 10 character UUID, bye default, into 12/34/56/78/90/.
+
+We WILL someday allow a .map file in a directory to map  names for us.
+Maybe it'll be a loadable module :-).
+
+We cache the last 4096 name -> path tranlations to speed access.
+
+--
+ksb, May 2000

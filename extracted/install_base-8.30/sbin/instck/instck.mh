@@ -1,0 +1,9 @@
+/* $Id: instck.mh,v 8.7 2009/12/10 18:45:22 ksb Exp $
+ */
+%@foreach instck_paths
+%#define BIN_%a	%D/%a/epqv
+%@endfor
+%#define BIN_chflags	%K<instck_chflags>?p1qv
+%#define BIN_install	%K<install_path>?eqv
+%#define BIN_purge	%K<purge_path>?eqv
+%#define BIN_ranlib	%K<instck_ranlib>?p1qv

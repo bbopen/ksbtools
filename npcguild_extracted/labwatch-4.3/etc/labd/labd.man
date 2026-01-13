@@ -1,0 +1,111 @@
+.\" $Id: labd.man,v 3.5 1994/09/08 18:33:29 bj Exp $
+.\" by Ben Jackson & Kevin Braunsdorf
+.TH LABD 8L LOCAL
+.SH NAME
+labd \- send UDP datagrams with load info to server
+.SH SYNOPSIS
+.ds PN "labd
+\fI\*(PN\fP [\-\fBd\fP\fBn\fP\fBN\fP\fBu\fP] [\-\fBi\fP \fImins\fP] [\-\fBm\fP \fInsleeps\fP] [\-\fBs\fP \fIsecs\fP] [\-\fBt\fP \fIpercent
+\fP] [\-\fBX\fP \fIpath\fP] \fIserver-host\fP [\fIserver-port\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.sp
+.SH DESCRIPTION
+The parameters \fIserver-host\fP and \fIserver-port\fP
+tell \fIlabd\fP what machine and port
+\fIlabwatch\fP is running on.
+Labd looks up the default \fIserver-port\fP under
+the service name ``lablog/udp'' which is usually port 784.
+.PP
+For more details on the interaction between \fIlabd\fP and its server,
+see the manpage for \fIlabwatch\fP(8L).  Some of the command line
+parameters may be modified via \fIlabc\fP(8L).
+
+.SH OPTIONS
+.TP
+.BI \-d 
+Run in debug mode, implies \fB\-n\fP.
+.TP
+.BI \-h 
+Print a help message.
+.TP
+.BI \-i mins
+Consider users who have been inactive for \fImins\fP minutes to be idle.
+.TP
+.BI \-m nsleeps
+Maximum number of times \fIlabd\fP will wait between sending packets.
+If the status of the machine doesn't change much (no new users, load
+fairly constant) between two successive sleeps (see \fB\-s\fP) \fIlabd\fP
+won't send an update to \fIlabwatch\fP unless it has already skipped
+sending a packet this many times.
+.TP
+.BI \-u 
+Send a list of all users instead of just the console user in each packet.
+This is usually the behavior prefered for servers.
+.TP
+.BI \-n 
+Don't daemonize on startup.
+.TP
+.BI \-N 
+Never grant rlogin service tickets (from labstat \-W).
+This is usually the behavior prefered for servers and other special (non
+lab) machines.
+.TP
+.BI \-s secs
+Time to sleep between checking load/users/mounts.  If any of the information
+has changed or \fIlabd\fP has already skipped reporting the maximum
+number of times (see \fB\-m\fP) \fIlabd\fP will send a report.
+.TP
+.BI \-t percent
+Percent change in load average considered worth reporting.
+.TP
+.BI \-X path
+When XDM is running an X server on the console of a workstation, no one
+will ever be logged onto /dev/console.  We can take advantage of the
+fact that XDM usually invokes a script called GiveConsole to chown some
+devices to the user at login.  The \fB\-X\fP option lets you
+specify the path to such a device (such as /dev/kbd or /dev/mouse).
+With this option, if no one is logged onto /dev/console,
+\fIlabd\fP will stat(2) the device and use the owner as the console
+user.  The ctime (which reflects the time of the chown) will be used as
+the login time.
+.TP
+.BI \-V 
+Show version information.
+.SH EXAMPLES
+.TP
+\fIlabd\fP labinfo.your.dom
+The normal invocation of \fIlabd\fP on a client.
+.TP
+\fIlabd\fP \-X /dev/kbd labinfo.your.dom
+The normal invocation of \fIlabd\fP on a client running XDM instead of
+getty or ttymon on the console.
+.TP
+\fIlabd\fP \-uN labinfo.your.dom
+The normal invocation of \fIlabd\fP on a server.  In this mode,
+the servers will report all connected users (useful for a tabular
+display in \fIlabstat\fP) and \fIlabwatch\fP will not give out
+``login tickets'' (since we don't want user logins on the servers).
+
+.SH BUGS
+Labd does no bounds checking when constructing the datagram in
+a fixed-length buffer.  On machines with more than 150 users with
+the \-u option this may cause the buffer to overflow.
+
+The hostname coded in the \fI/etc/rc.local\fP start of \fBlabd\fP
+should be a pointer to a real host.  Then \fBlabd\fP may be redirected
+via \fInamed\fP.
+
+.SH AUTHORS
+Ben Jackson & Kevin Braunsdorf
+.br
+bj@cs.purdue.edu & ksb@cc.purdue.edu
+.br
+PUCC UNIX Group
+.br
+.SH "SEE ALSO"
+labwatch(8L), labstat(1L), labc(8L)

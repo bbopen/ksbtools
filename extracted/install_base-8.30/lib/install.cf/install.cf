@@ -1,0 +1,68 @@
+# $Id: install.cf,v 8.4 2008/07/31 16:35:22 ksb Exp $
+# This file tells install(1l) what files to check as special.
+
+# See instck(8) for help building custom one {and modecanon}.
+# The format looks like this:
+# file		mode/		owner	group	strip/	comment
+# or glob	optional	or *	or *	ranlib	to end of line
+
+# Protect dirs in the std search path (and related);
+# these must be owned by root for root to trust them.
+/		dr?xr-xr-x	root	*	-
+/bin		"		"	"	"
+/etc		"		"	"	"
+/lib		"		"	"	"
+/usr		"		"	"	"
+/var		"		"	"	"
+/sbin		"		"	"	"
+/usr/bin	"		"	"	"
+/usr/etc	"		"	"	"
+/usr/lib	"		"	"	"
+/usr/sbin	"		"	"	"
+/usr/share	"		"	"	"
+
+# protect user file systems
+# /usera, /userb... paradigm
+#/user?		dr?xr-xr-x	root	*	-
+# /home/host1, /home/host1, /home/project paradigm
+#/home		"		"	"	"
+#/home/*		"		"	"	"
+
+# unix and variants (cannot be stripped, owned by root)
+#/unix		-r?-r--r--	root	*	n	new kernel
+#/vmunix		"		"	"	"	"
+#/dynix		"		"	"	"	"
+#/hp-ux		"		"	"	"	"
+#/kernel/unix	"		"	"	"	"
+#vmunix		"		"	"	"	new client kernel
+
+# important special binaries
+/bin/sh		-r?x?-x?-x	*	*	?
+/bin/su		-r?s?-x?-?	root	*	?
+/bin/init	-r?x?--?-- 	root	*	?
+/etc/init	"	 	"	*	?
+
+# important system data files
+/etc/passwd	-r?-r--r--	"	"	-
+/etc/group	-r?-r--r--/0100000000  "	"	-
+/etc/shadow	-r?-------	"	"	-
+/etc/master.passwd	"	"	"	-
+
+# dumpdates must be group writable
+/etc/dumpdates           -rw-rw-r--      *    *     -
+
+# one might make a directory with install
+/tmp		drwxrwxrwt 	root	*	-
+/usr/tmp	" 		"	"	-
+lost+found	drwxr-x?-?	"	sys	-	for fcsk(8)
+
+# these cannot be stripped (and must have the world read bit)
+saved_kcl	-r?xr-xr-x	*	*	n
+
+# protect from default execute bit or force (no)ranlib spells
+# and "libg.a" is really an object file on some systems, don't ranlib
+/usr/lib/libg.a -r?-r?-r--	*	*	n	not a library
+#*.a		-r?-??-??-	*	*	l	library
+#*.so.[0-9]*	"		"	"	n	dynamic library
+#*.o		"		*	*	n
+#*.ln		"		*	*	n

@@ -1,0 +1,69 @@
+# $Id: README,v 1.3 2000/08/05 02:12:55 ksb Exp $
+
+sync backup partitions, the C version.
+
+The shell script version (see sbp.ksh) was a good prototype, but it
+suffered from a few bugs:
+	The newfs options are hard coded in the script, not the vfstab
+
+	Matching the backup to the primary is very primative
+
+	The backup must be on t1 (c0t1d0) and the primary on t0 (c0t0d0)
+	or the reverse.  It would be great if the device was just text.
+
+	Missing manual page, on-line help, and version features.
+
+	Only works on Sun 2.X; we'd like FreeBSD as well.
+
+	The order of the partitions mattered a lot before
+
+	Name of some commands were not portable (viz. ufsrestore vs restore)
+
+
+The code is clear enough as a script, there are features we'd like to
+keep:
+	The trace, but do not do it feature (now -n, -v)
+
+	The simple parts (like fixing the vfstab for you)
+
+
+We should add some features as well:
+
+0) cross platform code!
+	+ FreeBSD (native port for this app)
+	+ Solaris 2.5.1, 2.6, 7.0 (4.1.4 ?)
+	+ HPUX9 if it is easy
+
+1) it should accept the backup (and primary) filesystems on any device
+	+ we can move alternates around, even across controllers
+	+ we can move primaries around, even better
+	+ backup on NFS?  Maybe backup on another host via rsync?
+
+2) it will mount the backups async to speed the copy
+	+ this make FreeBSD copies fly
+
+3) it will use newfs options hidden in the fstab (vfstab, checklist) file
+	+ they can be on the primary or alternate entry
+	+ they can be tuned per fs
+	? build in the "auto-tune" code from itune?
+
+4) it will copy just a single (or subset) the the partitions from the
+   command line:
+	+ in that way (*when you are booted alternate*) you can copy only
+	  the broken partition back, example
+		sbp -v /usr
+	  will copy the active /usr to the /backup/usr
+
+5) we can have multiple backup partitions (/backup1 might be another backup).
+	+ in that way
+		sbp -m /backup1 / /usr /var
+	  might just backup a minimal system or
+		sbp -m /archive /sybase/data
+	  might backup the database partition alone
+
+
+See also:
+	Get rsync-2.4.4 from http://rsync.samba.org/.
+
+--
+ksb, at HOME June 2000

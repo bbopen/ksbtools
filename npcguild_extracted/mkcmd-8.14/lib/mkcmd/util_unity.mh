@@ -1,0 +1,7 @@
+/* $Id: util_unity.mh,v 1.2 1999/06/13 18:17:13 ksb Exp $
+ */
+extern int unity_init(/* pcHostname */);
+extern char *unity_recover(/* pcState, fKeep */);
+extern void unity_free(/* pcBlob */);
+extern void unity_close(/* void */);
+extern void unity_offload(/* pcStateName */);

@@ -1,0 +1,102 @@
+# $Id: README,v 8.3 2000/05/09 00:42:32 ksb Exp $
+#
+
+Important news for Release 8.3:
+ I added a HowMany.c file to help you tune MAXMEMB.  I got a lot of
+ questions about that.
+
+Important news for Release 8.2:
+ There is some problem withe LINUX select and fd_set macros.  I got
+ a report and a patch I don't believe.  Any LINUX hacks have a clue?
+
+ The power controller stuff works, but it _really_ dangerous in the
+ wrong hands.  If you power off the console server itself it is not
+ my problem.  In fact, none of what you do with this is my problem.
+
+ As the Purdue Copyright said "Modified version must be clearly marked."
+ This is a MODIFIED VERSION of my PURDUE RELEASE.
+
+Important news for Release 7.4 (last public release):
+ There was a long standing bug fixed in access.c.  Upgrade.
+
+ Ports to NeXT, LINUX, and BSDI now.
+
+
+The general idea...
+
+ The idea is you have a big network.  You have several machines whose consoles
+ you want to access remotely.  You connect the console lines of these machines
+ to serial ports on another machine, which runs the server half of this
+ software.  Then you can use the client program to get at the consoles from
+ anywhere in the network.  It also provides log file of the consoles and
+ an operator stream.
+
+
+Who will help me?
+
+ Send questions, comments, and bug reports to:
+	ksb@sa.fedex.com  (Kevin Braunsdorf)
+
+Permissions needed to run this?
+
+ The console server does not need to be run as root.  As long as it has
+ permission to write to all the log files, any id will be fine.  Keep in
+ mind, though, that log files occasionally end up with sensitive data in
+ them (like root passwords when people don't watch for the pasword
+ prompt).
+
+ You'll have to pick a port number greater than 1024 for non-root to work.
+
+Console server process management.
+
+ The conserver (usually) ends up running several process:  one master
+ and several children.  Each of the children is responsible for some of
+ the consoles.  Occasionally, we've had problems with one of the
+ children becoming "stuck" in one sense or another.  To make dealing
+ with this easier here is the plan:
+
+ 1.  If a console is spewing trash use the down (`d') command to make the
+     server ignore it.  Use the reopen (`o') command to restore it to
+     working order.
+
+ 2.  If any child dies, the master process will start another one to replace
+     it.  So if you have a process which is "stuck" it is easy to restart.
+     {Send it a TERM and let conserver respawn it.}
+
+     To find the stuck one you'll have to use lsof(8) or netstat.
+
+ 3.  If you need to restart on one host, killing the master process (on
+     that host) with a SIGTERM (the default for kill) will tell the master
+     process to kill everything (including itself).
+
+     The console client program can do this for you remotely if things are
+     not in too bad a state:
+	console -M target -Q
+
+ 4.  If you need to restart everything everywhere, run
+	console -q
+     which will terminate the console server on all master hosts.
+     This will make people using any of the consoles Very Unhappy.
+
+ 5.  If all else fails get a real tty on a cart and push it to the poor
+     machine :-).  [Keep one handy -- we don't claim this software is
+     any better than any other *FREE* product.]
+
+
+Log file time stamping
+
+ We use to use a simple script like stamper.sh, which we start from
+ rc.local, to time-stamp the files from all the machines that don't do
+ this already.  Using this script has the advantage over crontab entries
+ that it doesn't interrupt what is happening on the console, if someone
+ is using it.  But the time stamps were hardly ever useful.  So we quit.
+
+ Use
+	stamper /usr/adm/target.console /usr/adm/other.console
+ to add time stamps to the log file for the `target' and `other' machines.
+
+ [ This stamper script will go away sometime soon. -- ksb]
+
+--
+"When the head and heart of it finally alope!"
+kayessbee, Kevin Braunsdorf, ksb@sa.fedex.com

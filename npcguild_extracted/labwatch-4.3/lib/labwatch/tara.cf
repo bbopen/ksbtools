@@ -1,0 +1,88 @@
+# tara.cf labwatch configuration
+# SA+C Amdin hosts
+wadm0.zmd
+wadm1.zmd
+wadm2.zmd
+wadm3.zmd
+wadm4.zmd
+# SA+C misc hosts
+dew1.zmd
+dew2.zmd
+dewtest1.zmd
+# Web servers, www, fdxcorp, search (partial)
+cps2.zmd
+cps3.zmd
+cps4.zmd
+cpstest1.zmd
+cpstest2.zmd
+log1.zmd
+log2.zmd
+msrc1.zmd
+msrctest1.zmd
+www1.zmd
+www2.zmd
+www3.zmd
+www4.zmd
+www5.zmd
+www6.zmd
+www7.zmd
+www8.zmd
+www9.zmd
+wwwalpha.zmd
+wwwbeta.zmd
+wwwtest1.zmd
+wwwtest2.zmd
+wwwtest3.zmd
+wwwtest4.zmd
+# Inbound Visibility (cum Insight) hosts
+ivdb1.zmd
+ivdb2.zmd
+%%status -- The CGI status report
+   Report   Host      Load  Status
+@ %{@:r} %{@:h} %{@:l} %{@:x} %{@:f}
+%%sac -- SAC Admin
+      wadm0.zmd %{wadm0.zmd:X} %{wadm0.zmd}
+      wadm1.zmd %{wadm1.zmd:X} %{wadm1.zmd}
+      wadm2.zmd %{wadm2.zmd:X} %{wadm2.zmd}
+      wadm3.zmd %{wadm3.zmd:X} %{wadm3.zmd}
+      wadm4.zmd %{wadm4.zmd:X} %{wadm4.zmd}
+%%sac2 -- SAC misc
+       dew1.zmd %{dew1.zmd:X} %{dew1.zmd}
+       dew2.zmd %{dew2.zmd:X} %{dew2.zmd}
+       dewtest1.zmd %{dewtest1.zmd:X} %{dewtest1.zmd}
+%%www -- Web Servers
+       www1.zmd %{www1.zmd:X} %{www1.zmd:}
+       www2.zmd %{www2.zmd:X} %{www2.zmd:}
+       www3.zmd %{www3.zmd:X} %{www3.zmd:}
+       www4.zmd %{www4.zmd:X} %{www4.zmd:}
+       www5.zmd %{www5.zmd:X} %{www5.zmd:}
+       www6.zmd %{www6.zmd:X} %{www6.zmd:}
+       www7.zmd %{www7.zmd:X} %{www7.zmd:}
+       www8.zmd %{www8.zmd:X} %{www8.zmd:}
+       www9.zmd %{www9.zmd:X} %{www9.zmd:}
+   wwwtest1.zmd %{wwwtest1.zmd:X} %{wwwtest1.zmd:}
+   wwwtest2.zmd %{wwwtest2.zmd:X} %{wwwtest2.zmd:}
+   wwwtest3.zmd %{wwwtest3.zmd:X} %{wwwtest3.zmd:}
+   wwwtest4.zmd %{wwwtest4.zmd:X} %{wwwtest4.zmd:}
+   wwwalpha.zmd %{wwwalpha.zmd:X} %{wwwalpha.zmd:}
+    wwwbeta.zmd %{wwwbeta.zmd:X} %{wwwbeta.zmd:}
+       cps2.zmd %{cps2.zmd:X} %{cps2.zmd:}
+       cps3.zmd %{cps3.zmd:X} %{cps3.zmd:}
+       cps4.zmd %{cps4.zmd:X} %{cps4.zmd:}
+   cpstest1.zmd %{cpstest1.zmd:X} %{cpstest1.zmd:}
+       log1.zmd %{log1.zmd:X} %{log1.zmd:}
+       log2.zmd %{log2.zmd:X} %{log2.zmd:}
+      msrc1.zmd %{msrc1.zmd:X} %{msrc1.zmd:}
+  msrctest1.zmd %{msrctest1.zmd:X} %{msrctest1.zmd:}
+%%iv -- InSight (Inbound Visibility)
+      ivdb1.zmd %{ivdb1.zmd:X} %{ivdb1.zmd:}
+      ivdb2.zmd %{ivdb2.zmd:X} %{ivdb2.zmd:}
+%%motd -- the message of the day
+This is one way to track clients and servers.  The code is from
+	ksb@sa.fedex.com
+The programs are labd, labc, labwatch, and labstat.  The configuration is in
+labwatch.cf (in /usr/local/lib or /root).
+
+	-- ksb
+%%version -- the version of this configuration file
+$Id: tara.cf,v 1.20 2000/04/20 16:15:37 root Exp $

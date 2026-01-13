@@ -1,0 +1,40 @@
+.\" $Id: qinit.man,v 1.2 1997/01/06 02:36:55 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH QINIT 1L LOCAL
+.SH NAME
+qinit \- add a queue to the queue system
+.SH SYNOPSIS
+.ds PN "qinit
+\fI\*(PN\fP [\fIdirs\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+.sp
+.SH DESCRIPTION
+.PP
+Queue system jobs spool in a directory (each of \fIdirs\fP).
+The queue manager, \fIqmgr\fP, only runs on directories built with
+qinit.
+.SH OPTIONS
+.TP
+.BI \-h 
+Print a brief help message.
+.TP
+.BI \-V 
+Show version information.
+.SH EXAMPLES
+.TP
+qinit /usr/spool/qsys
+Build the default system queue.
+.SH BUGS
+None known.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Group
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+qmgr(8L), qadd(1L)

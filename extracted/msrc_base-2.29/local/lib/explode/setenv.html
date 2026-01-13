@@ -1,0 +1,67 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Set environment variables</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: setenv
+<BR>
+Authors: Kevin S Braunsdorf
+<BR>
+Mail: ksb@sa.fedex.com
+<BR>
+Version: 5.1
+<BR>
+Bugs: None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+This code emulates the <code class="libc">setenv</code> code for
+systems which do not support that interface.
+
+<H1>Configuration</H1>
+
+<DL>
+<DT>#define USE_MALLOC_H
+<DD>
+If defined to a non-zero we include &lt;malloc.h&gt; to
+get the declarations for <code class="libc">malloc</code> and <code class="libc">calloc</code>.
+<DT>#define REALLY_USE_STDLIB
+<DD>
+If defined to a non-zero we include &lt;stdlib.h&gt; to
+get the declarations for <code class="markup">malloc</code> and <code class="markup">calloc</code>.
+If there is a declaration of <code class="markup">setenv</code> in there it
+<em>must</em> match our prototype.
+<DT>#define EMU_UINT32
+<DD>
+The type that <code class="markup">malloc</code> takes for the size parameter.
+Only used when !USE_MALLOC_H &amp;&amp; !REALLY_USE_STDLIB.  Defaults
+to <code class="markup">(unsigned int)</code>.
+</DL>
+
+<H1>Provides</H1>
+<DL>
+<DT>int setenv(const char *pcName, const char *pcValue, int fOver);
+<DD>
+Given a named environment variable and a value this code
+updates the global C variable <code class="libc">environ</code> to point to
+a new vector with the variable replaced or added (someplace).
+
+<P>
+If the new value is <code class="markup">(char *)0</code> (the NULL pointer) then
+the variable is <STRONG>removed</STRONG> from the global environment.
+
+<P>
+I added the silly fOver parameter to make it compatible with
+FreeBSD and AIX versions with the same name.  I would add that this
+code is much older than those interfaces.
+</DL>
+
+<H1>To Do List</H1>
+
+Port to more systems.  Add a <code class="libc">putenv</code> interface.
+<HR><PRE>
+$Id: setenv.html,v 6.7 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

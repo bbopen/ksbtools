@@ -1,0 +1,10 @@
+# a Distfile for rdist or distrib
+# $Id: distfile_,v 5.0 1996/09/09 20:59:59 kb207252 Exp $
+# mapped from Distfile and file.rdist
+
+$Compile(*):	%hRdist
+
+$Rdist(*):	${rdist-rdist} -f %f %s
+$Rdist(*):	${rdist-rdist} -f %f
+
+$Info(*):	${echo-echo} "a rdist description file (or older distrib)"

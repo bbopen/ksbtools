@@ -1,0 +1,6 @@
+#!/bin/sh
+# $Id: is-latex,v 5.0 1996/09/09 20:19:26 kb207252 Exp $
+
+grep -s '^\\begin{document}' $1
+
+exit $?

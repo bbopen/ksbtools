@@ -1,0 +1,556 @@
+# $Id: Changes,v 8.7 1999/03/07 19:05:13 ksb Exp $
+
+Changes from 8.10 to 8.12
+	We can read RPCGEN (XDR) code though a call to rpcgen if you
+	require "file-xdr.x".
+		file.x	    rpcgen the whole thing (add all below)
+		file-xdr.x  rpcgen -c file.x; include file_xdr.c & file.i
+		file-svc.x  rpcgen -m; include file_svc.c & file.i
+		file-clnt.x rpcgen -l; include file_clnt.c & file.i
+		file-hdr.x  rpcgen -h; include file.h & file.i
+		file-inc.x  rpcgen -h; include file.h & file.i
+	See example_rls.m and friends.  [The directory code is not 100%
+	portable in the example, but that's not the point.]
+
+	The routine code got a little more general, synthetic types can
+	have a clue (type routine file|fd|string|action) to tell them
+	which class of conversion routines to code.  There should be a
+	type for "take the converted value as is" but what would be do
+	in a conversion routine for a (int) parameter?  I think you get to
+	code that all on your own.
+
+	The tweak for a global init from a body was parsed wrong, it
+	ate the next token in the stream.  I guess I should use a
+	parser generator.
+
+	I needed escape %@ to match %# -- optind is history unless you use
+	"mkcmd_backcompat.m".
+
+	Added the magic keys mkcmd "mkcmd_declares" and "mkcmd_verifies".
+	If any trigger is made of a type the label will be in mkcmd_declares.
+	If any trigger has a verify with no action mkcmd_verifies" contains
+	its label.
+
+	Stopped using "optind" and "optarg", key'd them.
+
+Changes from 8.8 to 8.10
+	Init cleanups.  Bug fixes.
+
+Changes from 8.6 to 8.8
+	Removed depend on awk, just for Ben Jackson.
+
+	Meta exapander can include files to expand.  The makes "output"
+	planned for 9.1 easier to do and use.
+
+	Removed "A.c" and "T.c" in favor of "getopt.m" which uses
+	a pair of keys ".mkcmd" to find the 3 getopt flags and "-mkcmd"
+	to find mkcmd's command line options (-A, -G, -P).  It should be
+	understood that "getopt.m" is really part of mkcmd's guts.
+
+Changes from 8.5 to 8.6					[Not Released]
+	Changes header comment to be more correct.
+
+	Added %@expand to meta expander.  Repaired the contect option
+	code to be more like the documentation.
+
+	Internal code rework to make the guts easier to work on.
+
+	Repaired the value/key escapes.  %..J was useles and broken.
+	Added H/h.
+
+Changes from 8.4 to 8.5					[Not Released]
+	The pointer type now may take an optional "dim spec" to change
+	the type it points to (%Zg is the type pointed to).
+
+	The escape %H <hold> moves %a to %P and moves the text after
+	%H into %a.  E.g. %H/temp/K<example>/ef expands the key
+	example with %a set to "temp".
+
+	The init code for progname (%b) traps a nil argv[0] now, sigh.
+	I had this in an older mkcmd but took it out: CGI code
+	made me put it back.  We still do not trap if no basename is
+	asked for -- which might be a botch becase the "%a" used in the
+	basename code is not available anywhere else.
+
+	_Lots_ of cleanup in module land.  Names changed to final 8.X
+	names and type modules for socket,client,server,rc...
+
+	Inits now take an optional integer priority (0 to 10) by default
+	all inits happen at prio 5.  User code should use odd prios,
+	utility code evens.  Cleanups use the prios in reverse, so you
+	can cleanup at the same prio you init'd to unwind.
+	The trigger attribute 'init action [int] "code"' acts like a
+	global init.
+
+	Fix the bug in type finesse resolver code.  One can finesse multiple
+	type references, see example_mult.m
+
+Changes from 8.3 to 8.4					[Not RELEASED]
+	Routines for strings had some nits.  I think these are useful now.
+	For example a char* option with a routine as simple as (given the
+	buffers implted):
+		routine {
+			list "dFive" "," "dTen" "," "dFifteen"
+			update "/* just load the averages */"
+		}
+	will take 3 comma separated load averages as a parameter.
+
+	Moved conversion code out of the mkcmd binary.  In the template
+	cvt.mc now.  Wow: you can build your own conversion and install
+	it as cvt-$type.mc and we'll use it rather than the ksb ones.
+	Of course it has to be call compatible.
+
+	Added "key basename 'argv0'" code to make the UNIX hard link trick
+	less hard to implement on hosts that don't have such things.  If
+	you say "key basename 'mt'" then "mt offline" looks like the special
+	basename "offline" but progname is "mt".
+
+	Added a few more value expanders (l, U, ~) for case changes (yeah,
+	I needed them in #define land) (b, d, f, w) for file name cuts. I
+	bet no-one will use them for anything.  These are for me.
+
+Changes from 8.1 to 8.3
+	The usage generator was still not perfect.  Repaired I hope.
+	We changes the output for enable options to better reflect how
+	I think they are used -- shows what I know.  Not crossing an
+	option's enable set is the same as an exclude of that set, this
+	is just a note to remind me.
+
+	This is all an understatement.  I really worked here.
+
+	The %D/string/..v escape at the top level prevents the 1 value key
+	litter I found in my test interfaces (viz. key "tar" init { "tar" }).
+	Now we use init "system(%D/clear/pqv)" to find the path to clear.
+
+	Routines may be bound to strins/char*/void* types (and functions).
+	This provides a "stateful inspection" of the strings as they are
+	tiggered. Routines may now have a counted number of lines in a hunk:
+	provide "ends 11" to limit a hunk to 11 lines (or less).
+
+	I've decided to change all the "-" to "_" in the templates and reserve
+	the "-" for explode'd stuff only.  I'm going to have trouble explaining
+	why the explode stuff makes mkcmd better for people.  Sigh.
+
+Changes from 8.0 to 8.1
+	The meta foreach contruct got the magic context feature I've
+	wanted from the first mkcmd with keys.  If the foreach is doing
+	a client key then the meta code is expanded WRT the options that
+	are clients of the type (if any).
+
+	Bug fix from Greg Becker.  In the emit code we also complain about
+	keys we think the user expected but do not exist.  (Use -K to help
+	debug these.)  Even small user types have 5 keys.
+
+	Made "-" a legal key identifier character (this plus C idents),
+	use quotes around a key name for more complex names.
+
+Changes from 7.26 to 8.0
+	The "pointer" type is not an aliase for "char*" anymore. It is
+	a (void*) type that works like (char*) in most cases, but one
+	_may_ derive a type that malloc's a structure from it and be
+	type-safe under ANSI C (for the most part).  See "rmt.m".
+
+	I don't know why I bother but %T still works.  Even for user
+	types (if you build them by the rules).
+
+	Added one more type attribute "type help".  I'm not sure how to
+	explain why we need the "type" attributes at all.  I think the
+	syntax for them should have been better.  Sigh.
+
+	Added the keyword "keep" to get the to keep name w/o the named one.
+
+	Added "type keep" to make a user defined type require a keep like
+	(file) and (fd) do.
+
+Changes from 7.24 to 7.26
+	The usage state machine we recoded to avoid a bug in qsort'ing
+	with an unstable sort function.  This _may_ change the order
+	of the usage diagram in some complex cases, but I think it is
+	(maybe) better in most.  This was a big change (500 lines) and
+	may have inserted a bug or two.
+
+	The long promised "global exit" code is in, now mkcmd more often
+	exits with the correct code in semantic error cases.
+
+	The user defined type code is installed.
+		type "new-name" <client-trigger> {
+		}
+	Uses a user-defined type named "new-name".  New-name must be
+	built with:
+		<type-spec> type "new-name" <key-spec-opt> {
+			<attributes-opt>
+		}
+	Someplace where mkcmd can see it.  If we can't find "new-name"
+	as a type after all the files are read we'll try:
+		require "new-name.m"
+	to see if we can get it.
+
+	Type trigger can have 5 new attributes:
+		type comment "text"		# to manual page
+		type update "C-expr"
+		type initializer "C-expr"	# must be constant
+		type verify "C-statement"
+		type parameter "word"
+	they do what you'd think to the "new" type.
+	Most other attribute (by "named", "keep", and "track") are
+	transfered in some manner to the client triggers.  The key is
+	for the meta "foreach" to work it's magic....
+
+Changes from 7.23 to 7.24
+	Big change (maybe) exit's before is done later in the processing.
+	If you used to use exit's update to run something you should move
+	it to exit's before because the new "cleanup" attribute is going to
+	be triggered before you run (and close stuff down).
+
+	Added "cleanup"s which are done just before exit (to inverse init
+	things).  They are expand WRT the current exit if we've got one.
+	Inits are now expand WRT the global before if we have one, more
+	clever than it sounds if you put stuff in it's API key.
+
+	Interface to explode parts from a larger mkcmd chunk.  We will
+	popen an explode if you request "std_control-n.m" we can just
+	pluck the 'n' option out of std_control.m, only if std_control.m
+	has explode directives in it for "n" (Explode or Append). A file
+	ending in /e/ rather than /m/ is prefered -- don't ask.
+
+	Foreach meta loops may take a list of keys now and can take a
+	key[number] as a key name -- damn!  Early 7.23 Alpha had a bug
+	that made this code loop forever [no alpha site reported the bug].
+
+Changes from 7.22 to 7.23
+	Made the check for u_envopt (ENVOPT macro 0/1) better for gcc -Wall.
+	Added the value escape %u to protect from %e, and I didn't even use it.
+
+	Removed unused "register int u_curopt;" and let a 'named ""' at the
+	top level remove the decl/def/init of progname.
+
+	Made %@if's expressions much more clever:
+		quotes (double or single) will quote non-identifier values
+		%@if (expr)			# parens work
+		%@if expr || expr && expr	# disjunction and conjunction
+		%@if vaule in key		# membership in key
+		%@if key is integer		# API version number
+		%@if value == key[integer]	# identity or
+		%@if value != key[integer]	# inequality
+	now mkcmd might be able to do the L7 thing w/o any help from an
+	external program (other than meta source's HOSTTYPE being filled
+	into "machine.m" on the fly). TODO: some error messages in this
+	code do not give a line number and some "false" cases are because
+	the key is not defined (or spelled right).
+	Still can't check (but why would you?):
+		key[integer] == other_key[integer]
+	Should add
+		%@eval line
+	to expand line through toplevel and re-interp as meta line... ha!
+
+	Added missing meta include file names (mi, mc, and mh) to -M output.
+
+	Misc. bugs in routine code hunk token detector.  Added %u in the
+	key value escapes (unexpand a level of quoting, protect percent
+	and the like from the expander).
+
+Changes from 7.21 to 7.22
+	Fixes several error messages in the keys code to reflect what is
+	wrong better.
+
+	Added -M for maketd.  Use
+		maketd -s.c -tmain prog.m
+	to added trans. depends. to a Makefile for prog.m -> main.c.
+	(make maketd recognize file.m later?)
+
+Changes from 7.20 to 7.21
+	Fixed the double damned %X bug.  See rlog for emit.c.
+	
+	Added noparam attribute and sanity checks for that, in types too.
+	Added %G, %K..A for key emit support.
+
+	Fixed bug in the mkman stuff (missing backslashes).
+
+	Depricated keyword "variable", just use "named" in its place.
+
+Changes from 7.19 to 7.20
+	Added key position '$' for the last value in the key.
+
+	Leading separator in routine/list is allowed now, and a
+	INTEGER as a separator feature for fixed width input.
+	The int tells how wide a fixed width field is: it work by
+	copying the data to a buffer (\000 terminated) and converting
+	from the copy.  Yes the leader can be an INTEGER to skip chars.
+
+	Double strange noise in meta.m{c,i,h} files that I'd rather not
+	talk about.  (Try %@if key-exists %@else ... %@endif in file.mc).
+
+Changes from 7.18 to 7.19
+	Added API keys!  These are very neat.  An API key contains a list
+	of positional strings (order is important) bound under a name and
+	a version number.
+
+	The owner module initializes the list like:
+		key "my_abstraction" 1 initial {
+			"value1"  "value2" "value3"
+		}
+	which makes a key called "my_abstraction" which supports version
+	1 with 3 values [1..3]).
+
+	Client APIs can write on strings with a similar syntax:
+		key "his_abstraction" 5 {
+			"newvalue"
+		}
+	(order of the modules doesn't matter, the keyword "initial"
+	controls which module has the last word).  Values in the list
+	are skipped with an integer count of the number to pass.  To
+	update "value2" we might:
+		key "my_abstraction" {
+			1 "newToYou"
+		}
+
+	Now the Cool Part:  the expander can use a value as any of the
+	expander artifacts (option, type, routine, key, etc.)  See
+	'mkcmd -E key' for deatils.  And mkcmd '-E value' for more.
+
+	Each option has one  unnamed key.  This might be used to hold
+	any user data, or version numbers you need.  This key is
+	consulted by any API the option interacts with to get parameters
+	to tune the API.  (Viz. util_rc, cmd, and std_macro are example.)
+
+	The culture for key names is still soft, but I prefer a style
+	where the first value is a function name and the others are
+	default parameters -- that way %K<...>/ef makes a nifty shorthand.
+	The name of such a key today is the default name of the function.
+
+	Keys init'd from a master key (must have a name, clever).
+
+	Options do not have to have a { ... } body.  Use ; to replace {}.
+
+	New option -K (not quite prefect output, yet).
+
+Changes from 7.17 to 7.18
+	Templates no longer have hard coded "strerror" or "progname" in
+	them.  There are lots of new features in there (RcOpen() is
+	really cool, Socket stuff, username and homedir of user...)
+
+	We now emit late conversion for variables, it was easy.
+	Set the track (%U) to one to force conversion of default
+	values (util_rc.m could use this).
+
+	We counted wrong in a emit thing -- which was never used by
+	anyone by my test programs.  Also a nil pointer check missing.
+
+Changes from 7.16 to 7.17
+	Read routines take the "local/global" flags to hide as much of
+	the usage function support as it can from the api.  But not
+	the usage function itself (use static for that).
+
+	Pandered to gcc -Wall to be a good boy.  I still don't like the
+	silly "suggest parentheses around && within ||" thing.  Why not
+	suggest them "around * within +" -- like I can't read the table?
+
+	Changed -E justify to left, it looks better.
+
+	Left and right were *broken* by the "s/d" change.  Don't use
+	mkcmd 7.16 at all.
+
+Changes from 7.15 to 7.16
+	New command line switch -E to explain expander tables,
+	also %<longname> works as an alias for %letter.  Idea from
+	William McVey, code from ksb :-).  Try "mkcmd -E ?".
+
+	In a routines "ends 'tok'" defines an end token and advances
+	to the next hunk, "stop" just advances (user should break; to
+	get to next hunk).  {In mkcmd 8.X use %mA -- ksb.}
+
+	Input routines call the abort attribute if no conversion are
+	done by the template attribute (%mG has data).
+
+	Moved the scratch vector for input routines up to the top.
+	The line counter was (mistakenly) reset between hunks.
+
+	The %R short name for left (right) changes from %< (%>) to %s (%d);
+	as far as I know nobody new them anyway (dexter/sinester BTW).
+	Changes %2 to %P to avoid %number confusion.
+
+Changes from 7.14 to 7.15
+	Added %F for -n's parameter, not that this helps the way
+	I use mkcmd.  (I gen to a temp file, diff and install if changed
+	so make can do minimal rebuilds.)  But in "file.mi" you might
+	be able to use it...
+
+	Added attribute level requires.
+
+	The command line specifys order, required happen at the end
+	of the _first_ file to require them.  {Of course.}
+
+	All files include <sys/type.h> before machine.h now.  No more
+	silly pdp11 check.
+
+Changes from 7.13 to 7.14
+	New file level "requires" which loads a file as if it were
+	presented on the command line.  Note that all files (but stdin)
+	are protected form multiple incorporation.
+
+	Files with one of three special extenders are treated with
+	additional Pixey Dust.
+		.mc	Meta C, copied into prog.c, but lines with a
+			Percent in column1 get expanded (%a=filename)
+		.mh	like .mc, but copied into prog.h
+		.mi	like .mc, but placed higher in prog.c
+
+	Normal file (.m) are included as "requires".
+
+	More escapes (%m stuff, %x stuff) and EmitN() function installed.
+
+	Going to add sockets as templates.
+
+Changes from 7.11 to 7.13
+	New feature "late" forces the conversion from command line data
+	to internal buffers to after the dash options.  This is not for
+	the faint of heart.  Initializers are effected in strange ways.
+	Doesn't mix with accum/toggle (of course).
+
+	Augment grew up: we can augment control points, nested features,
+	and the various "dim" attributes.
+
+	The escapes for time stuff (%Y_) from strftime.
+
+	Escapes %B, %P removed.  Other escapes added for 'read routine'
+	support in 7.15
+
+	The incredible "routine" contruct which read config files.  Yow!
+	 Just add:
+		routine "name" "line-buffer" {
+			template "buffer1" ['delim'] "buffer2"...
+			named "Function"
+		}
+	to the attributes list on a FILE or fd.  {The buffers have to
+	be *global* variable specs.}  Check out the manual page support
+	here too!
+
+	Emit %escapse are better done (error checks and such).
+
+	More templates.
+
+	We output the list buffers in the prog.h header file.
+
+Changes from 7.10 to 7.11	[RELEASED]
+	Bug reported by Greg Becker with part of an option bundle being
+	hidden when the bundle was displayed.  Repaired another bug in the
+	man page generator ("\fB" != "\\fB").  No new fatures.
+
+Changes from 7.9 to 7.10
+	Added a nasty feature/bug that allows emulation of ci/-t or xargs/-e.
+	Just put the parameter in backets.  Yuck.  I'm not sure I can deal
+	with it.  N.B. this requires a single line fix to T.c.
+
+	Bug fix for core dump after left/right justified params failed.
+
+	Thought more about `mkcmd -i'.  We need to clean up the top level
+	data flow so we can read dot-m files to see what options they take.
+	Then build mkcmd with a different main.c and mkcmd.c.  This will have
+	to wait until I get more time.
+
+Changes from 7.8 to 7.9
+	Very minor, but important to the future: %c %h %i can be
+	expresses as a vector `%ch' puts the text in both %c and %h.
+
+	Added the ends concept, but still in play test.
+
+	Used cmd.m in a product so I guess they get to live.  Firmed up
+	the mkcmd <--> Tcl interface in my head.  May add a few notes to
+	the Notes file about that soon.
+
+Changes from 7.6 to 7.8
+	Some augments that used to drop core don't (aliases for example)
+	and augmenting and alias's help (or parameter) attrubute might
+	change the verbose help block a little now.   All exclude and
+	once attributes are moved to the primary alias for an options.
+	All exclude requests are mapped to that same name (aliases just
+	go along for the ride).  The hidden attribute may be applied to
+	individual aliases.
+
+	The global level _initalizer_ attribute collects statements to
+	run before before's before.  Use this to fire up Tcl, or any
+	other extrenal product that requires run-time init.  Viz.:
+		from '"tcl.h"'
+		init "tcl_init(...);"
+
+	Then use the attribute level _before_ to bind variables to the
+	new interp:
+		integer 'i' {
+			named "iSeconds"
+			param "seconds"
+			before 'Tcl_LinkVar(interp, "%p", (char *)&%n, TCL_LINK_INT);'
+			help "delay interval (tcl linked)"
+		}
+
+	More cleanup of alias output in several ways and places.  And
+	-number/+word don't compress the +/- out ever in the help.
+
+Changes from 7.4 to 7.6
+	Escape in usersees looks better.  Some comments in the code make
+	more sense now (that they are spelled correctly).
+
+	Added the whole cmd*m stuff.  This lets mkcmd take user commands
+	like unrm/labc/labwatch want.  Access to the macro (-o) stuff is
+	down-right clever.  It could be argued that mkcmd is not the correct
+	leverage point for a generic input language (like Tcl might be best).
+	I expect that an interface to the Tcl stuff will come soon.
+
+Changes from 7.2 to 7.4
+	Better use and format for `usersees' and `mkdefid', and some other
+	error messages.  We complain about options nested in `every' too.
+	Added `track [variable]' attribute to keep track of when an option
+	is triggered.
+
+Changes from 7.1 to 7.2
+	Some error messages now use progname and usersees() better
+	%<unknown letter> could produce bad code (%:).
+	Last traces of libsrtuniq removed.
+
+Changes from 6.6 to 7.1
+	top level added
+		fd ["O_OPION [, mode]" ] { ... }
+		list integer { ... }
+		basename otherwise "-h"
+		basename "apropos" "-w"
+
+	new syntax to upgrade a template option
+		augment base-type 'L' {
+			extra-attributes
+		}
+
+	lexical
+		%i ... %% to put code at the top of prog.c
+		output quoting done better on `help' attrubute
+		/* .. */ comments are now consumed, in dot-m
+
+	attributes:
+		init dynamic "value"
+		init getenv "NAME"
+
+	code
+		output order of zero/list/every/exit always the same now
+		u_gave_XXX was sometimes wrong (%U)
+		new escape %j, which is not useful in most cases (for user)
+			{expands to a goto label to escape pos. param}
+		some #include order changed	(stdio.h moved up)
+
+	gprof'd and tuned a little bit
+		thanks to kane@cs.purdue.edu
+
+	Bug reports fixed from:
+		dickey@Software.ORG
+		bj@cc.purdue.edu
+		kane@cs.purdue.edu
+		jws@cc.purdue.edu
+		some others I've forgotten
+
+Known bugs:
+	- putting buffers inside options can force them to be listed on
+	lines by themselves -- even though they do not *really* have an
+	alternate usages.  Just move the buffer declaration outside
+	the variable or put in %i ... C code for it %%
+
+
+--
+ksb, 29 May 1997
+ksb@fedex.com, DSPD UNIX Support

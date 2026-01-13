@@ -1,0 +1,127 @@
+`# $Id: Make.host,v 2.6 2000/08/03 13:47:26 ksb Exp $
+# Build the units that run the database leaves -- ksb
+#
+# I am not sure about the -lmapmalloc below, but I think it is safer
+# that way.
+SHELL=/bin/sh
+LIB= ${DESTDIR}/usr/local/lib/rcds
+
+I=/usr/include
+S=/usr/include/sys
+P=
+L=/usr/local/include
+M=../../libexec/rcds
+
+
+CDEFS=-D'HOSTTYPE`'ifelse(
+HOSTTYPE,`SUN5',` -fpic',` -fpic')`
+INCLUDE= -I$L -I$M
+DEBUG=
+CFLAGS=${DEBUG} ${CDEFS} ${INCLUDE}
+CC=gcc
+LDFLAGS=-L/usr/local/lib 'ifelse(
+HOSTTYPE,`SUN5',`-Bdynamic -G -lmapmalloc',
+`-G -Bdynamic -export-dynamic')`
+
+SOURCE=Makefile README TODO utester.m \
+	unit.m unit-post.m \
+	btree.m btree-post.m \
+	gtree.m gtree-post.m
+GENC=unit.c btree.c gtree.c main.c
+GENH=unit.h btree.h gtree.h main.h
+GEN=${GENC} ${GENH}
+DEFUNIT=unit.o
+BTREE=btree.o 
+GTREE=gtree.o 
+UTESTER=utester
+MODS=unit.so btree.so gtree.so
+TREES=prefs.so hist.so addr.so
+
+all: ${MODS} ${UTESTER}
+
+unit.so: ${DEFUNIT}
+	${LD} ${LDFLAGS} ${DEFUNIT} -o $@
+
+unit.h: unit.c
+
+unit.c: unit.m unit-post.m
+	mkcmd -Bshared.m -I$M unit.m
+	-(cmp -s prog.c unit.c || (cp prog.c unit.c && echo unit.c updated))
+	-(cmp -s prog.h unit.h || (cp prog.h unit.h && echo unit.h updated))
+	rm -f prog.[ch]
+
+btree.so: ${BTREE}
+	${LD} ${LDFLAGS} ${BTREE} -o $@ -ldb
+
+btree.h: btree.c
+
+btree.c: btree.m btree-post.m
+	mkcmd -Bshared.m -I$M btree.m
+	-(cmp -s prog.c btree.c || (cp prog.c btree.c && echo btree.c updated))
+	-(cmp -s prog.h btree.h || (cp prog.h btree.h && echo btree.h updated))
+	rm -f prog.[ch]
+
+gtree.so: ${GTREE}
+	${LD} ${LDFLAGS} ${GTREE} -o $@
+
+gtree.h: gtree.c
+
+gtree.c: gtree.m gtree-post.m
+	mkcmd -Bshared.m -I$M gtree.m
+	-(cmp -s prog.c gtree.c || (cp prog.c gtree.c && echo gtree.c updated))
+	-(cmp -s prog.h gtree.h || (cp prog.h gtree.h && echo gtree.h updated))
+	rm -f prog.[ch]
+
+# testing only (never installed)
+utester:$P main.o
+	${CC} -o $@ ${CFLAGS} main.o'ifelse(
+HOSTTYPE,`SUN5',` -lrpcsvc -lnsl ')`
+
+main.h: main.c
+
+main.c: utester.m $M/rcds.x
+	mkcmd -I$M utester.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f *.so *.o ${GEN}
+	${LOOP}
+
+depend distrib:
+	: nada
+
+dirs: ${LIB}
+
+install: dirs all
+	${LOOP}
+	install -c ${MODS} ${LIB}
+	cd ${LIB} && xapply -v "[ -f %1 ] || ln -s gtree.so %1" ${TREES}
+
+lint mkcat tags print:
+
+spotless: clean
+	${LOOP}
+	rcsclean
+
+source: ${SOURCE}
+	${LOOP}
+
+${SOURCE}:
+	co -q $@
+
+${LIB}:
+	install -dr $@
+
+FRC:
+
+unit.o: unit.c unit.h $M/rcds_callback.h
+
+btree.o: btree.c btree.h $M/rcds_callback.h
+
+gtree.o: gtree.c gtree.h btree.h $M/rcds_callback.h
+
+main.o: main.c $M/rcds_callback.h
+
+'dnl

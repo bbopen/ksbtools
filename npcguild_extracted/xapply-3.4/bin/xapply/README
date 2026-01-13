@@ -1,0 +1,23 @@
+# $Id: README,v 3.1 1997/09/21 01:44:31 ksb Exp $
+
+I needed "apply" to do a project under HPUX and HPUX 9.05 didn't have
+it.  So I went to get the FreeBSD one and it uses a _brain_ _damaged_
+err()/errx() hack in crt0.c and libc.  Eak!
+
+So I coded a better one and will just drag it around with me.  Runs
+under (at least) SunOS, AIX, IRIX, HPUX, and FreeBSD.
+
+The -P option is stolen from the Dynix 3 system as I remember it:  if
+you don't give one you get 1 task, -P gives you $PARALLEL with a default
+3 if the variable is not set.  Or -Pn gives you n, of course.  Try -P10
+on most machines.
+
+I use something like
+	find /tmp $cruft_files_spec -print | xapply -fP5 -7 rm - - - - - - -
+to clean up /tmp.  This pumps as it keeps 5 /bin/rm's running and
+keeps reading files the whole time.  Even faster than xargs.
+
+--
+"He who will not reason, is a bigot; he who cannot is a fool;
+ and he who dares not is a slave."     -- Sir William Drummond
+ksb, Kevin Braunsdorf, ksb@fedex.com, work phone (901)922-2451

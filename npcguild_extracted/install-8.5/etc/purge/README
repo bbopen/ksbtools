@@ -1,0 +1,9 @@
+# $Id: README,v 8.0 1996/03/13 15:35:02 kb207252 Dist $
+
+Purge is run my cron at night to remove unwanted (aged) backup files
+from the system OLD dirs.
+
+Here is a suggested crontab line:
+	0 2 * * 1	purge -v -unews -uuucp / >>/usr/adm/purge.log 2>/tmp/prg$$; [ -s /tmp/prg$$ ] && Mail -s "purge failed" root </tmp/prg$$
+
+kayessbee

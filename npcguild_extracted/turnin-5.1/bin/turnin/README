@@ -1,0 +1,25 @@
+# $Id: README,v 5.1 2000/01/06 15:57:23 ksb Exp $
+
+This is an UPGRADED version of the 1993/1997 release of turnin.
+This addresses a silly issue were a grader could read the first
+30 odd lines of /etc/master.passwd (/etc/shadow) in some cases.
+The other "bug" that Wenliang Du reports (that a grader's dot files
+might be changed) is not fixable -- when you run code a student
+wrote that can hurt you.
+
+
+The electronic submission tools are use, primarily, to fill up file
+systems with copies of students files :-).
+
+This is the `send' end of this system.  See INSTALL for deatils.
+
+The Student runs:
+	$ turnin file.c main.c a.c
+
+The Instructor (or grader) can run a command over all the submitted files.
+ Easy.  You _should_ have an "op" rule to drop the student's running
+program to "nobody" or some other vanilla account (or use ssh).
+
+--
+K S Braunsdorf
+ksb@sa.fedex.com, FedEx doesn't use this program.

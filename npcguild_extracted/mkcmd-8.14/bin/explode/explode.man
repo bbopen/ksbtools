@@ -1,0 +1,166 @@
+.TH EXPLODE 1L LOCAL
+.SH NAME
+explode \- unpack \fBMICE\fP archives
+.SH SYNOPSIS
+\fBexplode\fP [\fB\-cfinv\fP] [\fB\-d\fP \fIdelimiter\fP] [\fB\-e\fP \fIextender\fP] [\fB\-I\fP \fIdir\fP] [\fB\-o\fP \fIprefix\fP] [\fB\-u\fP \fIunpack\fP] [\fIfiles\fP]
+.br
+\fBexplode\fP [\fB\-tv\fP] [\fB\-d\fP \fIdelimiter\fP] [\fB\-e\fP \fIextender\fP] [\fB\-I\fP \fIdir\fP] [\fB\-o\fP \fIprefix\fP] [\fB\-u\fP \fIunpack\fP] [\fIfiles\fP]
+.br
+\fBexplode\fP [\fB\-finv\fP] [\fB\-e\fP \fIextender\fP] [\fB\-I\fP \fIdir\fP] [\fB\-o\fP \fIprefix\fP] [\fIfiles\fP]
+.br
+\fBexplode\fP \fB\-h\fP
+.br
+\fBexplode\fP \fB\-H\fP
+.br
+\fBexplode\fP \fB\-T\fP
+.br
+\fBexplode\fP \fB\-V\fP
+.br
+\fBexplode\fP \fB\-s\fP [\fB\-finSv\fP] [\fB\-e\fP \fIextender\fP] [\fB\-I\fP \fIdir\fP] [\fB\-o\fP \fIprefix\fP] [\fIfiles\fP]
+
+.SH DESCRIPTION
+.I Explode
+breaks a source file into separate compilation units.
+The source text should contain control directives of the form
+.br
+	\fIdelimiter\fP\fBdirective\fP \fIargument\fP
+.br
+all of which must begin in column one of a source line.
+.PP
+A \fBMICE\fP \*(lqlibrary\*(rq or family is the most general form of
+an algorithm.  Unlike a run-time configured routine (like qsort(3))
+a MICE family is configured via compile time macros: thus no
+efficiency or functionallity is lost due to a \*(lqbad fit\*(rq.
+.PP
+\fBMICE\fP families come packaged in two files:  a large source file
+and a small header file.
+The C source file, for example, may be compiled with
+a \-DTEST option to provide a simple test program.  The header file
+is intended to provide all the function prototypes needed to use
+the family.  Before the library can be configured for a new application
+the user should run the C source through \fIexplode\fP.
+Of course, any additional make(1) descriptions, manual pages, and/or HTML
+documents for the library may be kept as well.
+.PP
+The \fBExplode\fP directive opens a new output stream according to the
+following \fIname\fP (eg. \*(lq/*@Explode \fIname\fP@*/\*(rq for C text).
+The name is assumed to end at either the first white-space character or
+the first occurrence of the last character in \fIdelimiter\fP.
+The \fIname\fP is prefixed by \fIprefix\fP and extended by \fIextender\fP;
+the resulting string is passed to fopen(3) as a file name.
+.PP
+The \fBAppend\fP directive opens a new output stream according to the
+following \fIname\fP.  The \fIname\fP is treated as if it were for
+an \fBExplode\fP directive, but the file is openned for append and
+no header is prefixed to it.
+.PP
+The \fBHeader\fP directive instructs \fIexplode\fP to begin saving a
+header that should be copied to the beginning of all the output files.
+This directive has no argument (yet).  To remove this from the
+output see \fB\-c\fP below.
+.PP
+The \fBRemove\fP directive diverts text to the null device until another
+directive opens a new destination.
+.PP
+The \fBMessage\fP directive diverts text to the envokers tty until
+another directive opens a new destination.
+.PP
+The \fBInsert\fP directive copies its argument to the current output
+stream.  The first non-white character of the argument is taken to be a
+delimiter that marks the end of the string.
+.PP
+The \fBShell\fP directive copies the output of the given \fIsh\fP(1)
+command to the current output stream.
+The shell command is enclosed in quotes (any non-white character).
+.SH OPTIONS
+.TP
+.B \-H
+Give a short file format reminder.
+.TP
+.H \-c
+Under this flag none of the exploded modules will have the Header
+section included.  This is useful when they are to be susequently
+textually included in another file (via \fIcpp\fP or the like).
+.TP
+.BI \-d delimiter
+Use the given \fIdelimiter\fP rather than the defualt for the current
+extender. Delimiters should
+be short strings. The table below gives some of the default delimiters:
+.br
+.RS +6
+.TS
+c c c.
+extension	language	default delimiter
+c or h	C	/*@
+k	K	/*@
+f	FORTRAN	c@
+p	Pascal	(*@	
+sh	sh	#@
+csh	csh	#@
+.TE
+.RE
+.TP
+.BI \-e extender
+In an \fBExplode\fP directive, the \fIextender\fP will be
+added to the \fIbasename\fP.  By default it is the extender
+of the source file, or \*(lq.c\*(rq if no extender can be found.
+.TP
+.B \-f
+Normally \fIexplode\fP will not overwrite existing files: if this option
+is given it will.
+.TP
+.B \-h
+Output a usage line (only).
+.TP
+.B \-n
+Print what would be done but don't build files.
+This option implies the \*(lq\-v\*(rq option.
+.TP
+.BI \-o prefix
+In an \fBExplode\fP directive the \fIprefix\fP will be
+placed before the \fIbasename\fP.  By default it is the basename of
+the file being read.
+.TP
+.B \-s
+Output only the source module located (do not explode it into the
+parts).
+This option is often used to copy source modules to a temporary directory.
+.TP
+.B \-S
+Just display the path to the source file we located.
+.TP
+.BI \-u unpack
+Cause \fBexplode\fP to unpack only the listed files. \fIUnpack\fP may
+be a list of names separated by commas.  This option my be repeated
+to concatenate the lists.
+.TP
+.B \-v
+Output a running synopsis of \fIexplode\fP's actions.
+
+.SH EXAMPLE
+.TP
+explode \-o /tmp/foo \-e .c kevin
+To unpack the file kevin to /tmp/foo\fIbasename\fP.c
+which should create /tmp/fooone.c and /tmp/footwo.c.
+.TP
+explode \-o /tmp/avl -u ins -u del -u init AVL.c
+Only unpack the insert, delete and init routines from the AVL source
+file.
+
+.SH BUGS
+There is no inverse of the -c option: that is there is no (good) way
+to just get the Header section of the archive.
+
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+Purdue University Computing Center
+.br
+ksb@sa.fedex.com
+.PP
+This is a modification of the original Purdue code, by the original author.
+Since Purdue doesn't distribute explode anymore -- you might have to live
+with this version.
+
+.SH "SEE ALSO"
+explode(5L), make(1), cc(1), sh(1)

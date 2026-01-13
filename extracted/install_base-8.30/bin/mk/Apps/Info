@@ -1,0 +1,17 @@
+#!/bin/sh
+# $Id: Info,v 5.0 1999/02/26 17:42:33 ksb Exp $
+# like file(1) only better
+
+# set paramas for mk
+echo=/bin/echo
+MK=-s
+PATH=/usr/local/bin:$PATH
+export echo MK PATH
+
+# do files
+for file
+do
+	mk -mInfo "$file" | sed -e "s:^:$file\\: :"
+done
+
+exit 0

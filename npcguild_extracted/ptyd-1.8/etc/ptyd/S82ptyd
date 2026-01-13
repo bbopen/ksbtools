@@ -1,0 +1,14 @@
+#!/bin/sh
+# $Id: S82ptyd,v 1.1 1997/11/29 21:50:06 ksb Exp $
+# init script to start/stop ptyd					(ksb)
+
+case ${1-start} in
+start)
+	/usr/local/etc/ptyd  ;;
+stop)
+	/usr/local/etc/ptyd -k ;;
+*)
+	echo "`basename $0`: usage [start]"
+	echo "`basename $0`: usage stop"
+	;;
+esac

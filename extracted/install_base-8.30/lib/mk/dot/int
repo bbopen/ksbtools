@@ -1,0 +1,10 @@
+# a BCPL INTCODE file							(ksb)
+# $Id: int,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	: 'already compiled' && ${false-false}
+
+$Run(*):	${icint-icint} %s %f
+$Run(*):	${icint-icint} %f %s
+$Run(*):	${icint-icint} %f
+
+$Info(*):	${echo-echo} "compiled BCPL (INTCODE)"

@@ -1,0 +1,70 @@
+# $Id: TODO,v 8.6 2000/06/21 17:20:04 ksb Exp $
+
+Bugs:
+   - This backout case didn't work in a test, but I can't repeat it.
+	date >file; mkdir OLD; ln file OLD/f1 ; ln file OLD/f2
+
+
+Features:
+   + In the OLD dir scan if we find a subdirectory, count files, dirs inside:
+	? check for mount point below? [skip]
+	? check that is is not a home directory! [skip]
+	? named "OLD" -- purge might do this as well
+		offer to promote files to this directory
+		? empty -> rmdir it [done]
+		else continue
+	* [count block/char special if any abort this]
+	+ if it is empty offer to rmdir it, win
+	+ if only files in the directory [no subdirs]
+		? offer to promote all the files within into OLD
+		+ and rescan OLD (!)
+	? offer to cpio-compress it into a $DIR.cpio.gz and rm -rf $DIR
+	? offer to cpio/tar it to a tape?
+     that way purge can purge the DIR.cpio file after the 14 day expire, eh?
+
+Ideas:
+   + Better directory mode options
+	An option to inherit modes under -G, especially if g+s on the
+	parent dir.  Or maybe always if g+s, and an option to force?
+	Or is this modecanon land?
+
+   + Better symbolic link compression (in modecanon?)
+	A symbolic link
+		/usr/xpg4/bin/fgrep @/usr/xpg4/bin/egrep
+	should be shorted to
+		/usr/xpg4/bin/fgrep @egrep
+	(the same a "./foo" -> "foo")
+
+	Same thing for hard links?
+
+    + Better code to compress based on .extender in a directory
+	 *.h -> mode, *.so -> mode would be _nice_.
+      The present code only finds one common extender.
+
+Notes:
+
+Instck is still a young tool.  Some of the design lines have been blured
+over the last few years.  For example the -G option should really be
+able to `edit' an existing configuration [but can't].
+
+The format for some of the warnings is not quite what is should be.
+The format should be
+	`file' problem, cause (secondary info)
+like
+	`./Makefiles.tmpl' unchecked directory, mode drwxr-sr-x (group staff)
+
+now the (secondary info) is redundant in most cases (mostly).
+
+
+Know even more about common link strutures (batch, at, aq, atrm).
+But don't hard code them in the binary.  We do that now.
+
+Know about patched and first customer ship stuff?
+	$file.old	$file.FCS	o$file
+	$file.rej	$file.orig	$file~
+	~$file		#$file
+Such information could be use in gen.c and old.c, maybe magic.c?
+Also in backups.c to pick an Orig Target.
+
+--
+KSBraunsdorf, ksb@safedex.com

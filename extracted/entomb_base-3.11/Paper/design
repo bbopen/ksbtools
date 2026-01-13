@@ -1,0 +1,78 @@
+.\" $Id: design,v 3.0 1992/04/22 13:23:00 ksb Stab $
+.\" $Compile: nroff -ms %f | ${PAGER-more}
+.\"
+.LP
+.NH
+Design
+.LP
+The basic premise of a file entombing system is that
+files are copied \*Qsomewhere else\*U instead of being destroyed.
+The user may then restore these files from that place, instead
+of re-creating them from memory or asking the system administrator
+to retrieve them from magnetic tape, assuming they have been
+backed up.
+.LP
+This other place (which we call the \*Qtomb\*U)
+may be either on the same file system as the file
+being destroyed or on a different filesystem.  The advantage of
+putting a tomb on each filesystem is that files to be entombed
+may be moved to the tomb with the \fIrename\fP(2) system call,
+which gives
+a substantial time savings over copying the file to a different
+filesystem.  The disadvantage involves quotas:  since quotas are
+enabled or disabled on a per-filesystem basis, a file entombed for
+a user on the same filesystem as his home directory would have the
+unacceptable side-effect of contributing to his quota.  There are
+also security considerations; having files owned by the user and
+entombed on the same filesystem would probably be implemented with
+a sticky directory in which subdirectories are created for each
+user for whom files are entombed.  A security problem exists because
+users may create subdirectories that others want to use for tombs.
+This solution would probably be suitable for an installation in
+which security issues are not so important, but we settled on having
+files entombed on the same filesystem and having them owned by
+a user who is exempt from quotas.
+.LP
+The disadvantage of having the
+files owned by another user is that programs that entomb files must
+now be set-UID to root (who may call \fIchown\fP(2)).  While this
+may be acceptable for \fIrm\fP, \fIcp\fP, and the like, it is certainly not
+acceptable for a login shell.  The approach we took involves
+extending the functionality of system calls at the user level.  We
+wrote functions with the same names and number and type of arguments
+as certain system calls.  These functions
+would also have the same side-effects as the system calls they
+imitate, with the addition of entombing the file given as an argument.
+The system calls we chose--\fIcreat\fP, \fIopen\fP, \fIrename\fP,
+\fItruncate\fP, and \fIunlink\fP--would
+allow us to make entombing version of \fIcp\fP, \fIrm\fP, \fImv\fP,
+and the shell
+without source code changes.  In order to refrain from making the shell
+set-UID root, these five routines spawn a set-UID program which does
+the actual entombing.  There is an added benefit to this approach; any
+user may compile his application with the library containing these
+imitation system calls to allow it to entomb files, without the help
+of the system administrator.
+.LP
+Another important requirement is a utility to keep entombed files
+from collecting, filling the filesystem.  We weren't very worried
+about people maliciously entombing large files in order to fill
+filesystems, because we can find such people as easily as we can
+find those who maliciously fill filesystems without entombing.  But
+we felt this utility should be clever about keeping the largest number
+of the most valuable files around for the longest amount of time. 
+It should also be
+easily configurable in the clever areas, so that the amount of space
+taken by entombed files may quickly adjustable.  We also decided to
+make it a daemon instead of a cron job, to minimize startup costs.
+.LP
+The last important requirement is a utility used to restore a file
+from the tomb.  Since we expect many novice users to occasionally
+want a file restored, it should insulate the user from the details
+of the implementation; one should not have to know how files are 
+stored in the tomb to use it, and its use should be analogous to
+rm.
+
+.\" Local Variables:
+.\" mode:nroff
+.\" End:

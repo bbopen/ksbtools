@@ -1,0 +1,10 @@
+# $Id: Distfile,v 3.1 1997/04/08 21:24:30 ksb Exp $
+#
+ifelse(MKCMD,`no',`syscmd(`make curly.c curly.h uncurly.c uncurly.h >/dev/null')')dnl
+`( . ) -> ( 'HOST` )
+	except_pat ( /RCS /Makefile /Distfile /Make\\.host );
+	install ${INTO} ;
+
+( @Make.host@ ) -> ( 'HOST` )
+	install -b ${INTO}/Makefile ;
+'dnl

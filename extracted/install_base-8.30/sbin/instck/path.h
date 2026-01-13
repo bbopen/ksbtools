@@ -1,0 +1,49 @@
+/*
+ * $Id: path.h,v 8.0 1996/03/13 15:26:58 kb207252 Dist $
+ * Copyright 1990 Purdue Research Foundation, West Lafayette, Indiana
+ * 47907.  All rights reserved.
+ *
+ * Written by Kevin S Braunsdorf, ksb@cc.purdue.edu, purdue!ksb
+ *
+ * This software is not subject to any license of the American Telephone
+ * and Telegraph Company or the Regents of the University of California.
+ *
+ * Permission is granted to anyone to use this software for any purpose on
+ * any computer system, and to alter it and redistribute it freely, subject
+ * to the following restrictions:
+ *
+ * 1. Neither the authors nor Purdue University are responsible for any
+ *    consequences of the use of this software.
+ *
+ * 2. The origin of this software must not be misrepresented, either by
+ *    explicit claim or by omission.  Credit to the authors and Purdue
+ *    University must appear in documentation and sources.
+ *
+ * 3. Altered versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ *
+ * 4. This notice may not be removed or altered.
+ */
+
+/*
+ * we assume that the user has somehow defined a typedef for PATH_DATA...
+ */
+typedef struct CMnode {
+	struct CMnode *pCMsibling;
+	struct CMnode *pCMchild;
+	char *pccomp;
+	PATH_DATA user_data;
+	short fprint;
+} COMPONENT;
+#define nilCM	((COMPONENT *) 0)
+#define newCM()	((COMPONENT *) malloc(sizeof(COMPONENT)))
+
+extern int chSep;
+
+#if HAVE_PROTO
+extern int ApplyPath(COMPONENT *, int (*)());
+extern PATH_DATA *AddPath(COMPONENT **, char *);
+#else
+extern int ApplyPath();
+extern PATH_DATA *AddPath();
+#endif

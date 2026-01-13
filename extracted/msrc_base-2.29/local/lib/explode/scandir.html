@@ -1,0 +1,43 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Scandir replacement</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: scandir
+<BR>
+Authors: Berkeley Software Distribution, modified by K S Braunsdorf
+<BR>
+Mail: ksb@sa.fedex.com
+<BR>
+Version: 1.2
+<BR>
+Bugs: None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+When you need scandir(3) and you don't have it you need this code.
+
+<H1>Configuration</H1>
+
+None.
+
+<H1>Provides</H1>
+<DL>
+<DT> scandir(char *dirname, struct dirent *(*namelist[]), int (*select)(), int (*dcomp)())
+<DD>
+Just like scandir on a BSD system but it uses the "dirent" rather than
+"direct" structure.
+<DT> alphasort(struct dirent **d1, struct dirent **d2)
+<DD>
+Just like alphasort under BSD.
+</DL>
+
+<H1>To Do List</H1>
+
+Make more portable.
+<HR><PRE>
+$Id: scandir.html,v 6.4 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

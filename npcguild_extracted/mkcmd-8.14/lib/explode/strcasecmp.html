@@ -1,0 +1,44 @@
+<HTML>
+<HEAD><TITLE>Case insensitive string compare</TITLE></HEAD>
+<BODY>
+Family: strcasecmp
+<BR>
+Authors: Berkeley Software Distribution
+<BR>
+Mail: ksb@sa.fedex.com
+<BR>
+Version: 5.0
+<BR>
+Bugs: strange interaction with <CODE>const</CODE> declarations in system files
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+This code is the Berkeley library code for <CODE>strcasecmp</CODE>
+for platforms where that routine is not installed.
+
+<H1>Configuration</H1>
+
+None.
+
+
+<H1>Provides</H1>
+
+The missing routines.
+
+<DL>
+<P><DT>extern int strcasecmp(char *s1, char *s2);
+<DD>
+Compares s1 and s2 with no reguard as to the case of any embedded letters.
+
+<P><DT>extern int strncasecmp(char *s1, char *s2, int n);
+<DD>
+A <CODE>strcmp</CODE> is to <CODE>strncmp</CODE>.
+</DL>
+
+<H1>To Do List</H1>
+
+None.
+</BODY>
+</HTML>

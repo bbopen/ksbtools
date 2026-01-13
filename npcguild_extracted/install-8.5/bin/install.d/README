@@ -1,0 +1,83 @@
+# $Id: README,v 8.1 1996/12/13 16:51:53 kb207252 Exp $
+
+Install is a tool for updating system files in a  controlled
+environment.   The  design philosophy of install is to automate the
+installation process and put  it  as  much  out  of reach  of  human
+carelessness as possible, while providing a flexible, easy to use
+tool.
+
+Install provides the  following features:
+
+ o    Install increases system security by providing  a  con-
+      trolled   installation   environment.   It  checks  the
+      actions of the superuser against a  configuration  file
+      that  you  build  (either by hand or using instck(1L)),
+      and can prevent grievous mistakes such as installing  a
+      shell  setuid  to  a  privileged  user, or installing a
+      world-writable password file.   An  appropriate  confi-
+      guration  file  can  guarantee that files are installed
+      with correct owner, group and mode,  that  strip(1)  is
+      run  on  binaries  and  ranlib(1)  is run on libraries.
+      Regardless of whether you create a configuration  file,
+      install  warns  you of many possible errors, unless you
+      make it quiet with its -q option.  For instance, if you
+      install a new version of the ex(1) editor and forget to
+      update its links, install will notice the  extra  links
+      to  the existing version and warn you that you might be
+      making a mistake.
+
+ o    Installed files do not overwrite current versions.  The
+      current  version  is backed up to a subdirectory of its
+      dot directory (named "OLD" by default), where it may be
+      easily  re-installed  in  the case of an unforseen bug.
+      The companion program purge(1L) removes these backed-up
+      files  after a user-specified interval.  By default, if
+      you repeatedly install new versions of a file,  install
+      creates a series of backups, providing a primitive form
+      of version control.
+
+ o    Install increases accountability by logging the actions
+      of  the  superuser.  This makes it easier to track down
+      errors after the fact.
+
+ o    Install simplifies Makefiles by allowing you to combine
+      operations that would require several steps into a sin-
+      gle one (e.g., you can specify in a single command line
+      a   file's  ownership,  group,  mode,  whether  to  run
+      strip(1) or ranlib(1), and which  hard  or  soft  links
+      should be made).
+
+ o    Despite its power and potential complexity, install  is
+      easy  to use interactively because it intuits appropri-
+      ate installation parameters for you,  either  by  using
+      those   associated  with  the  existing  file,  or  its
+      compilation-dependent defaults.  In most cases  you  do
+      not  have  to  specify  a  file's owner, group, or mode
+      unless you want them to be different from  an  existing
+      file.   Typical  interactive  usage  is simply "install
+      file destination."
+
+ o    Install is as careful as  it  can  be  to  complete  an
+      installation once it is begun.  There is a point in the
+      code where unlink(2) and rename(2) must be executed  in
+      close  succession, and that is the only window in which
+      a system crash or a signal might leave system files  in
+      an  inconsistent state (unfortunately, this is not true
+      under operating systems that do not provide  an  atomic
+      rename(2) system call).  This is true even when install
+      must copy files across file system boundaries.
+
+ o    Install may also be used to remove  (de-install)  files
+      in a controlled manner.
+
+ o    Finally, install currently runs on a variety of  archi-
+      tectures  and  operating systems and is easy to port to
+      new platforms.
+
+
+Known bugs, or problems:
+
+None.
+
+--
+kayessbee, ksb@fedex.com, Kevin S Braunsdorf

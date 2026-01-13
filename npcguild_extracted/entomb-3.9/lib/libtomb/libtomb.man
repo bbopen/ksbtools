@@ -1,0 +1,139 @@
+.\" $Id: libtomb.man,v 3.1 1992/11/06 10:20:42 becker Exp $
+.\" man page for libtomb
+.\" by Matthew Bradburn, PUCC Unix Group
+.\" Copyright 1988, 1992 Purdue Research Foundation
+.\" $Compile: tbl %f | nroff -man | colcrt | ${PAGER-more}
+.\" $Laser: ltroff -tbl -man %f
+.TH LIBTOMB 3X PUCC
+.SH NAME
+creat, open, rename, truncate, unlink \- subroutines to entomb a file
+.SH SYNOPSIS
+.B ${CC} \fIfiles\fP -ltomb
+.sp
+.B creat(name, mode)
+.br
+.B char *name;
+.br
+.B int mode;
+.sp
+.B open(name, flags, mode)
+.br
+.B char *name;
+.br
+.B int flags, mode;
+.sp
+.B rename(from, to)
+.br
+.B char *from, *to;
+.sp
+.B #include <sys/types.h>
+.br
+.B truncate(path, length)
+.br
+.B char *path;
+.br
+.B off_t length;
+.sp
+.B unlink(name)
+.br
+.B char *name;
+.SH DESCRIPTION
+The entombing library,
+.IR libtomb.a (3x),
+contains routines named
+.IR creat ,
+.IR open ,
+.IR rename ,
+.IR truncate ,
+and 
+.I unlink
+that are call-compatible with the system calls of the same names, but
+which as a side effect may execute
+.I /usr/local/lib/entomb
+to arrange for the file in question to be entombed.
+
+.PP
+The user may specify which files should be entombed based on file
+name.  To do so, one must introduce a list of file names and/or glob
+patterns to the system through the environment variable named
+\fBENTOMB\fP.  \fBENTOMB\fP will default to an internal setting if
+it is not defined in the user's environment.
+
+.PP
+The
+.B ENTOMB
+variable must be set according to the following rules:
+.TP
+1.
+.B ENTOMB
+must be a list of colon separated fields.
+.TP
+2.
+Arguments in the first field of \fBENTOMB\fP modify the action taken when a
+match is found.  The field may be empty (a semicolon in the first character
+position), or may be a comma separated list consisting of the following
+modifiers:
+.RS
+.TP
+.I yes
+Entomb only if a match is found.  This is the default.
+.TP
+.I no
+Entomb only if a match is not found.
+.TP
+.I copy
+Copy the file to the tomb instead of using \fIlink\fP(1) and \fIunlink\fP(1).
+Because copying is slow, this option should only be used
+for networked mounted file systems that do not grant their clients root
+access.
+
+.RE
+.TP
+3.
+Subsequent fields may contain explicit file names and/or glob patterns
+to be used when trying to match a given file name. (A glob pattern
+uses the special characters `*', `?', and `[' to generate lists of files.
+See the man page for \fBsh\fP(1) under the heading "File name generation"
+for more information on glob patterns.)
+
+.PP
+If the \fBENTOMB\fP environment variable is not set, entombing
+proceeds as if \fBENTOMB\fP were set to the pattern:
+
+.RS
+\*(lqno:*.o:a.out:core:y.output:y.tab.?:lex.yy.?\*(rq
+.RE
+
+.PP
+In the example above, no files ending in \*(lq.o\*(rq will be entombed,
+no files named \*(lqa.out\*(rq will be entombed, no files named
+\*(lqcore\*(rq will be
+entombed, and so forth.  Files whose names do not match at least one
+of the patterns in \fBENTOMB\fP will be entombed, and can be restored from the
+tomb with \fIunrm\fP.
+
+.PP
+.TS
+center box;
+l l.
+Variable setting	Action
+_
+\*(lqno\*(rq	no files are entombed
+\*(lqyes\*(rq (the default)	all files are entombed
+\*(lqyes,copy\*(rq	all files are entombed (copied to the tomb)
+\*(lqyes:\fIpattern\fP\*(rq	only files matching \fIpattern\fP are entombed
+\*(lqno:\fIpattern\fP\*(rq	all files except those matching \fIpattern\fP are entombed
+\*(lqyes,copy:\fIpattern\fP\*(rq	files matching \fIpattern\fP are copied to the tomb
+.TE
+.PP
+If the \fBENTOMB\fP environment variable indicates that the file should not
+be entombed, or if there is no tomb directory
+on the file system that contains the given file, the routines in this
+library simply invoke the corresponding system call.
+
+.SH AUTHOR
+Matthew Bradburn, Purdue University Computing Center
+
+.SH "SEE ALSO"
+creat(2), entomb(8L), environ(7), file_recover(7L), link(2),
+open(2), rename(2), sh(1), truncate(2), unlink(2), unrm(1L)

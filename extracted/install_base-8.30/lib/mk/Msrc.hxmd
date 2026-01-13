@@ -1,0 +1,12 @@
+# $Id: Msrc.hxmd,v 1.6 2009/10/06 23:49:08 ksb Exp $
+# A generic hxmd option list to make msrc work for the subdirs, without
+# typing an additional 260 characters on the command-line every time. (ksb)
+#
+# Don't pass this down more than 1 level:
+-z
+#
+# Build an aggregated configuration to tell subdirs which hosts to process:
+-o "RSH_PATH ENTRY_DEFS ENTRY_LOGIN"
+#
+# Provision and select a descend target from the makefile for each host:
+-D!PRE_CMD="make -f ${2} DOWN_CFG=-C\ HXMD_U_MERGED`'ifdef(`HXMD_OPT_Z',`\ -Z\ HXMD_OPT_Z')`'ifdef(`HXMD_OPT_C',`\ -X\ HXMD_OPT_C')`'ifdef(`HXMD_OPT_X',`\ -X\ HXMD_OPT_X') LINTO=${1} THOST=HOST TINTO=${5} ${3}_descend"

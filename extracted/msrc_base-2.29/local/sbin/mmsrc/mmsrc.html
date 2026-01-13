@@ -1,0 +1,274 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head>
+<title>mmsrc - mini-master source bootstrap, version 2008</title>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</head><body>
+<H1 id="known">What you need to know to understand this document</H1>
+
+This document assumes you are quite familiar with the
+standard UNIX tools
+<code class="sh">make</code>(1), <code class="sh">m4</code>(1),
+and the shell <code class="sh">sh</code>(1).  In addition you
+should have a working understanding of
+the build process for a program.
+Some experience building large software structures would be helpful.
+
+<p>
+The <code class="sh">mmsrc</code> program is largely used to
+boot-strap the ksb tool-chain.  There should be a make recipe
+file in the root of the distribution you unpacked that told you
+to come to this directory to install <code class="sh">mmsrc</code>.
+That task is described in <A href="boot.html">the boot-strap HTML document</A>,
+not in this (more general) document.
+
+<P>
+<code class="sh">Mmsrc</code> is a replacement for the program
+<code class="sh">makeme</code>, which is included in this directory
+with some modifications.  If you use that script at your local
+site you should install the new one over the top of the old one.
+Check for any "ports" edits to the file, like setting "HOSTTYPE"
+to avoid the <code class="sh">zsh</code> bug as well.
+
+<h2 id="ref">The command line options to mmsrc</h2>
+
+For the purposes of this document you don't have to understand
+many of the command-line options to <code class="sh">mmsrc</code>, or
+even why they are included in the program.
+We present the command-line usage summary below for
+quick reference (we'll use this later):
+<blockquote>
+mmsrc
+[<code class="opt">-z</code>]
+[<code class="opt">-d</code>&nbsp;<code class="param">flags</code>]
+[<code class="opt">-f</code>&nbsp;<code class="param">makefile</code>]
+[<code class="opt">-m</code>&nbsp;<code class="param">prereq</code>][<code class="markup">:</code><code class="param">postreq</code>]
+[<code class="opt">-u</code>&nbsp;<code class="param">login</code>]
+[<code class="opt">-P</code><code class="param">jobs</code>]
+[<code class="opt">-y</code>&nbsp;<code class="param">yoke</code>]
+[<code class="param">hxmd-opts</code>]
+[<code class="param">utility</code>]<br>
+mmsrc
+<code class="opt">-b</code>
+[<code class="opt">-d</code>&nbsp;<code class="param">flags</code>]
+[<code class="opt">-f</code>&nbsp;<code class="param">makefile</code>]
+[<code class="opt">-m</code>&nbsp;<code class="param">prereq</code>]
+[<code class="opt">-y</code>&nbsp;<code class="param">yoke</code>]
+[<code class="param">macros</code>]<br>
+mmsrc <code class="opt">-h</code><br>
+mmsrc <code class="opt">-V</code><br>
+</blockquote>
+
+<P>
+After you've installed the real tool-chain and have done
+<A href="../../lib/hxmd/site.html">a site configuration</A>
+the <code class="param">hxmd-opts</code>
+(<code class="sh">hxmd</code> options) below become far more useful:
+<blockquote>
+[<code class="opt">-B</code>&nbsp;<code class="param">macros</code>]
+[<code class="opt">-C</code>&nbsp;<code class="param">configs</code>]
+[<code class="opt">-D</code>&nbsp;<code class="param">name=value</code>]
+[<code class="opt">-E</code>&nbsp;<code class="param">compares</code>]
+[<code class="opt">-G</code>&nbsp;<code class="param">guard</code>]
+[<code class="opt">-I</code>&nbsp;<code class="param">dirname</code>]
+[<code class="opt">-j</code>&nbsp;<code class="param">m4prep</code>]
+[<code class="opt">-k</code>&nbsp;<code class="param">key</code>]
+[<code class="opt">-o</code>&nbsp;<code class="param">attributes</code>]
+[<code class="opt">-U</code>&nbsp;<code class="param">name</code>]
+[<code class="opt">-X</code>&nbsp;<code class="param">ex-configs</code>]
+[<code class="opt">-Y</code>&nbsp;<code class="param">top</code>]
+[<code class="opt">-Z</code>&nbsp;<code class="param">zero-config</code>]
+</blockquote>
+
+<h2 id="outline">The flow of a master source build</h2>
+
+The master source structure runs the same program
+on many hosts in a common environment.  Think of this as
+a network-aware version of <code class="sh">ssh</code> and
+some <code class="sh">rsync</code> or <code class="sh">rdist</code>
+magic.
+In
+<A href="../../sbin/msrc/msrc.html">the msrc HTML document</A>
+you will read about the whole master source structure, but for now
+you only need the out-line.
+
+<p>
+Each master source directory has at least 1 file in it:
+a <code class="sh">make</code> recipe file.
+Said file could even be zero-length, but it must exist.
+This recipe file (called <code class="param">makefile</code>
+in the command-line usage) controls which files get sent
+to the target environment, and which files get left behind.
+It also may specify that some files should be "mapped"
+as they are sent to the target through <code class="sh">m4</code>.
+
+<p>
+The key difference between the full version of this
+program, spelled with one "m" (as <code class="sh">msrc</code>) and
+this version spelled with 2 "m"'s (as <code class="sh">mmsrc</code>)
+is that this version is not network aware -- it only works on the
+local machine and doesn't use any special tools, not
+even <code class="sh">ssh</code>.  The other difference is that
+the real version is way, way more powerful.
+
+<p>
+Since the whole environment is built from itself you need this version
+to get the ball rolling on the first host you touch.  The "genesis"
+process for other local nodes is much simpler (and is covered in another
+document). <!-- ZZZ -->
+
+<h2 id="strap">Using mmsrc as a master source boot-strap tool</h2>
+
+Any master source directory with a "Make.host" and a "Distfile"
+is the older version and still uses "makeme" to build.
+Others <em>without those</em> two files are the 2008 version
+and need either <code class="sh">msrc</code> or
+<code class="sh">mmsrc</code> to operate.
+
+<p>
+Version 2008 directories have a make recipe file named either "Msrc.mk",
+"msrc.mk", "makefile", "Makefile", or a script that specifies
+a different <code class="param">makefile</code> under
+<code class="opt">-f</code>.  Usually I call the recipe file
+"Makefile" to let it sort to the top of
+any <code class="sh">ls</code> output.
+
+<p>
+To boot-strap a 2008-style directory in a local environment use
+<code class="sh">mmsrc</code>.
+To do that you'll need to pick a local directory where you
+can make a shadow-copy of the directory.  This mocks the
+normal flow where we would copy the source to a remote machine,
+but without the use of another host or the network.
+Normally one would use a subdirectory of <code class="path">/tmp</code>.
+I'm going to use <code class="file">/tmp/boot.me</code>,
+you might replace <code class="path">me</code> with your login name.
+
+
+<P>
+Build the directory to contain the environment:
+<blockquote class="file"><pre><code >$ mkdir -m 0750 /tmp/boot.me</code></pre></blockquote>
+
+Change your current working directory to the directory you'd like to invoke:
+<blockquote class="file"><pre><code >$ cd /usr/msrc/local/sbin/hxmd
+</code></pre></blockquote>
+
+<P>
+There are macro attributes for a host that you might not have until
+you build <A href="../../lib/hxmd/site.html">a site configuration</A>,
+For example, to build a ksb tool we need to know the <em>build-type</em> of
+the local host (which is normally an attribute in the site configuration).
+But we'll hope that the directory in question doesn't
+break (in a bad way) when those are not set, or that
+you know which <code class="opt">-D</code> options to specify
+on the command-line.
+
+<P>
+In this example I'm building one of my tools so I'm
+forcing the "HOSTTYPE" to be the one for FreeBSD on the command-line.
+Run <code class="sh">mmsrc</code> to build the local environment under
+your preferred temporary directory (using <code class="opt">-y</code>):
+<blockquote class="file"><pre><code >mmsrc -y INTO=/tmp/boot.me/hxmd -DHOST=localhost -DHOSTTYPE=FREEBSD ls
+</code></pre></blockquote>
+you should receive a plausible output from <code class="sh">ls</code>,
+which doesn't contain the "Makefile.host".  This is because the
+contents of "Makefile" are the mapped contents of "Makefile.host".
+That is how the master source structure customizes files for
+each target environment.
+
+<P>
+At this point you can build the program in one of two ways:
+cd to the newly updated directory and run <code class="sh">make</code>,
+or use <code class="sh">mmsrc</code> to run the build by replacing
+the "ls" command with "make all install".  If you need to run
+<code class="sh">sudo</code>, <code class="sh">op</code> or
+<code class="sh">su</code> to finish the installation you might
+choose to <code class="sh">cd</code> there.  If you are already
+able to write in the destination you might just run the installation
+command on the end of the <code class="sh">msrc</code> line.
+
+<P>
+After you've built all the stuff you like you can remove
+the temporary directory, as it was just built as a shadow-copy
+of the master copy (and may be re-created at any time):
+<blockquote class="file"><pre><code >rm -rf /tmp/boot.me
+</code></pre></blockquote>
+
+<H2>This is not the only use of <code class="sh">mmsrc</code></H2>
+
+In some cases it is clever to pass <code class="sh">hxmd</code>
+configuration files on to a remote host (possibly from more
+than one source) to merge them on a neutral or common host.
+On that host one might not have the entire ksb tool chain
+installed, but <code class="sh">mmsrc</code> doesn't require
+the whole chain to build.
+
+<P>
+In other cases the full-blown <code class="sh">msrc</code>, under the
+<code class="opt">-l</code> option is more versatile, and
+allows access to the <code class="sh">xapply</code>-stack
+as well.
+
+<H2>The <code class="attr">ENTRY_LOGIN</code> and <code class="attr">ENTRY_DEFS</code> attributes</H2>
+
+Since there is no actual remote shell started by <code class="sh">mmsrc</code>
+one might think that the entry attributes are useless.
+This is not always the case, in that they are presented to
+<code class="sh">m4</code> and may be included in any customized
+file and used on the local machine to reach across to the target host
+by some means beyond the grasp of the normal <code class="sh">msrc</code>
+tactics.
+
+<P>
+To allow better command-line compatibility
+with <code class="sh">msrc</code>, the command-line option
+<code class="opt">-u</code> accepts a default <code class="param">login</code>
+for <code class="attr">ENTRY_LOGIN</code>.
+
+<P>
+An example of this use would be data collection from the master source
+host to each target host.  A local script would be customized with
+<code class="sh">m4</code> markup to sample a single host from the
+target's shadow directory, then report the recovered data in the
+desired format to <code class="param">stdout</code>.
+
+<H2>The <code class="opt">-b</code> option</H2>
+
+Some versions of <code class="sh">make</code> have a command-line option
+that requests the output of just the value of a macro.  Under FreeBSD this
+option is <code class="opt">-V</code>.  Since later tools in the chain
+depend on this feature, and <code class="sh">mmsrc</code> has the code
+to extract macro definitions from <code class="sh">make</code> recipe
+files, we put the functionality in <code class="sh">mmsrc</code>.
+
+<P>
+The command-line option <code class="opt">-V</code> is reserved in the
+ksb tool chains for version, so I moved it to <code class="opt">-b</code>.
+
+<P>
+Under <code class="opt">-b</code> the default <code class="param">prereq</code>
+value is hard-code to <code class="markup">__msync</code>, unless <code class="opt">-m</code>
+is specified (usual default of the program's base-name is ignored).
+
+<h2>The default <code class="param">prereq</code> matches <code class="sh">msrc</code></h2>
+
+The default prerequisite update target matches the
+<code class="sh">msrc</code> program name (as otherwise we would use our
+program name prefixed with 2 underscores -- <code class="sh">__mmsrc</code>) to
+make it much easier to use this program as a replacement for
+<code class="sh">msrc</code>.  If you would like it use the current
+program name to generate the <code class="param">prereq</code> specify
+the double-colon target.  For example:
+
+<blockquote class="file"><pre><code >$ mmsrc -m :: -V
+<i>...</i>
+mmsrc: make hook: __mmsrc
+<i>...</i>
+</code></pre></blockquote>
+
+<P>
+I'm not sure why you'd want to do this, but you should be able to.
+
+<hr>
+<pre>
+$Id: mmsrc.html,v 1.15 2010/08/14 18:36:06 ksb Exp $</pre>
+</body></html>

@@ -1,0 +1,7 @@
+/* $Id: xdr_Cstring.mi,v 8.12 1998/09/30 12:19:52 ksb Exp $
+ */
+%extern bool_t %K<Cstring>2ev()%;
+%#if !defined(%K<Cstring>3ev)
+%#define %K<Cstring>3ev	2
+%typedef char *%K<Cstring>1ev%;
+#endif

@@ -1,0 +1,6 @@
+/* $Id: mkcmd.mh,v 8.7 1997/10/18 12:58:14 ksb Exp $
+ */
+
+/* mkcmd interface to produce unique tokens for mkcmd's scanner		(ksb)
+ */
+%%K<token>(cut)h/#define /oh/ (/Jh/-1)/.ki/%+/e(loop)

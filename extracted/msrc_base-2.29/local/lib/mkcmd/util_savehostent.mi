@@ -1,0 +1,4 @@
+/* $Id: util_savehostent.mi,v 8.3 2004/12/15 22:20:18 ksb Exp $
+ */
+
+%extern struct hostent *%K<util_savehostent>1v()%;

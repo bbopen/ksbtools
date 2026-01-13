@@ -1,0 +1,9 @@
+# $Id: TODO,v 2.2 2000/06/12 19:21:31 ksb Exp $
+
+Write "text.m" as well.  For the std #commented NVP file. Add them to the
+end and always take the last.  Use the "info" control to do a maint sweep?
+
+Tune default btree 16k filesize?
+
+--
+ksb

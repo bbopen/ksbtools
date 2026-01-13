@@ -1,0 +1,158 @@
+.\" $Id: explode.man,v 6.0 2000/07/30 15:57:11 ksb Exp $
+.TH EXPLODE 5L PUCC
+.SH NAME
+explode \- file format for MICE archives
+.SH DESCRIPTION
+.PP
+A \fBMICE\fP ``library''or family is the most general form of
+an algorithm. Unlike a run-time configured routine (like qsort(3))
+a MICE family is configured via compile time macros: thus no
+efficiency or functionallity is lost due to a ``bad fit''.
+\fBMICE\fP families come packaged in two files:  a large source file
+and a small header file.
+.PP
+See
+.IR explode (1L)
+for a complete description \fIexplode\fP's usage.
+.PP
+.I Explode
+directives are hidden from the native processor (viz. the C compiler
+or mkcmd) in in-line comments.
+An escape sequence including the native comment introducer and some
+additional noise activates
+.I explode
+as it scans the input file.
+The delimiter is spelled backwards on the end of the line as a sanity check.
+.PP
+Lexically explode looks at each source line as a potential command.
+Only treating the input line as a command
+when it finds the in-line comment sequence followed by a directive.
+Directives may have a single parameter.
+When this parameter is a string it is quoted by the first non-space
+character after the directive keyword.
+.PP
+Most commonly a C source file will only contain a few
+.I explode
+directives:
+.RS
+.nf
+/*@Header@*/
+#include <stdio.h>
+#include "me.h"
+#include "my_config.h"
+
+/*@Insert \`extern int global_variable;\`@*/
+
+/*@Explode routine1@*/
+/*@Message "globals are in routine1"@*/
+int global_variable;
+int
+routine1()
+{
+	...
+}
+
+/*@Explode routine2@*/
+int
+routine2()
+{
+}
+.fi
+.RE
+
+.SH DIRECTIVES
+.TP
+/*@Message %This package requires the header file "tool_cfg.h".%@*/
+Notify the user that the package requires a special header file.
+.TP
+/*@Header@*/
+Divert the following lines to the common prologue for all
+modules.
+.TP
+/*@Shell %echo "/* this was extracted on \`date\` by ${NAME-${USER-${LOGNAME-root}}} *""/"%@*/
+Insert the date of extraction into the currect file.
+This is normally done only once in each Header section.
+.TP
+/*@Insert %extern int errno;%@*/
+Add a declaration for \fIerrno\fP to this module.
+.TP
+/*@Explode gen@*/
+Copy the current Header to the ``gen'' module, begin diverting
+text to that module.
+.TP
+/*@Remove@*/
+Remove documentation or example usage from the file.  (Divert to /dev/null.)
+.TP
+/*@Append gen@*/
+Redivert text to the ``gen'' module.
+.TP
+/*@Version: $Id:... @*/
+Provide a version header for -t option.
+.TP
+c@Explode regress@c
+A FORTRAN explode directive.
+
+.SH CULTURE
+.PP
+Most of the modules included in the \fBMICE\fP archive are coded
+by a small group of pundits.
+All these pundits follow a few naming and format rules that make
+their code look similar in shape and style.
+
+.SH "Variable names and Paints"
+Most variable names start with a \fIpaint\fP which dscribes the
+variables type (maybe not all the type, just the smell).
+The rules for paints are described on the painted types Web page.
+
+.SH "Layout of the code"
+
+.PP
+A MICE archive is broken into sections by convention and by \fBexplode\fP.
+The first section has stuff in it that describes the archive itself,
+its version, its \fBmk\fP marked lines, or some comments about the
+usage and history of the part [citations for the algorythms used].
+
+.PP
+That section ends with the \fBexplode\fP directive \fBHeader\fP.
+The header itself begins with a notice that the extracted part is
+not to be edited because the real source is the whole part (which
+is version controlled as a unit)!
+
+.PP
+Each subsequent section is one of the other \fBexplode\fP hunks.
+Each function that might stand on its own is broken into a separate
+file.  Some functions are combined into a single file (for example
+if they are mutually recursive).
+
+.PP
+The last hunk in the file is usually a test driver.  Here is the
+an example driver boiler plate:
+.RS
+.nf
+/*@Remove@*/
+#if defined(TEST)
+			
+/*@Explode main@*/
+
+char *progname = "\fIpkgname\fP-main";
+
+int
+main(argc, argv)
+{
+	\fImain function\fP
+}
+/*@Remove@*/
+#endif /* test driver */
+.fi
+.RE
+
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+ksb@sa.fedex.com
+.PP
+This is a modification of the code the author wrote at Purdue.
+Purdue has no (stated) interest in this software anymore.
+
+.SH "SEE ALSO"
+explode(1L), mkcmd(1L), sh(1), mk(1L)

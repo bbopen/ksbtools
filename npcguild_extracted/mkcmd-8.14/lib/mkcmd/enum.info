@@ -1,0 +1,24 @@
+/* $Id: enum.info,v 8.8 1997/10/18 19:54:41 ksb Beta $
+ * Give C a nicer enum interface:					(ksb)
+ *	+ record enum name as a string for the user to see
+ *	+ build a conversion to/from strings
+ *	+ build a "max" macro for loops (u = 0; u < thing_max; ++u) ...
+ * And when we do not have an enum type fall back to defines.
+ */
+%@foreach "enum_clients"
+%#if !defined(%K<enum_names>4ev)
+%#define %K<enum_names>4ev
+#if USE_ENUMS
+typedef enum {
+%	%ZxZKl
+%%} %K<enum_names>2ev%;
+#else
+%typedef unsigned %K<enum_names>2ev%;
+%%ZxZK(cut)h/#define /oh/ (/Jh/-1)/.ki/%+/e(loop)
+#endif
+#endif
+%#if !defined(%K<enum_names>3ev)
+%#define %K<enum_names>3ev %ZxZKj
+#endif
+
+%@endfor

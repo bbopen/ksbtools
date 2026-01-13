@@ -1,0 +1,4 @@
+%extern char acDumpPath[];
+%extern char acRestorePath[];
+%extern char acFstabPath[];
+%extern char acInstallPath[];

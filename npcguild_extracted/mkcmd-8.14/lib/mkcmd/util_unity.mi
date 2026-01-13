@@ -1,0 +1,12 @@
+/* $Id: util_unity.mi,v 1.2 1999/06/13 18:17:13 ksb Exp $
+ */
+%static char *pcUnityRR = %K<unity_rr>1v%;
+static struct hostent *pHEUnityRR = (struct hostent *)0;
+static struct servent *pSEUnity = (struct servent *)0;
+static int iUnityScan;			/* where we are in the RR record */
+
+extern int unity_init();
+extern char *unity_recover();
+extern void unity_free();
+extern void unity_close();
+extern void unity_offload();

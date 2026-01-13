@@ -1,0 +1,84 @@
+`# $Id: Makefile.host,v 6.11 2008/11/15 04:01:44 ksb Exp $
+# platform Makefile for explode library
+
+SHELL=/bin/sh
+LIB=	${DESTDIR}/usr/local/lib/explode
+DOC=	${DESTDIR}/usr/local/man
+
+SRC=	README index.html \
+	avl.html avl.c avl.h \
+	binpack.html binpack.c binpack.h \
+	ckpass.html ckpass.c ckpass.h \
+	dicer.html dicer.c dicer.h \
+	fdrights.html fdrights.c fdrights.h \
+	identd.html identd.c identd.h \
+	pipering.html pipering.c pipering.h \
+	scandir.html scandir.c scandir.h \
+	setenv.html setenv.c setenv.h \
+	sparse.html sparse.c sparse.h \
+	strcasecmp.html strcasecmp.c strcasecmp.h \
+	srtunq.html srtunq.c srtunq.h \
+	mk.html mk.c mk.h \
+	wise.html wise.c wise.h \
+	cred.html cred.c cred.h \
+	unctime.html unctime.c unctime.h
+MAN=	explode.man dicer.man
+SOURCE=	Makefile ${MAN} ${SRC}
+
+
+all: ${SRC}
+
+${LIB}:
+	install -d -r -m 755 $@
+
+boot: all ${SRC}
+	-[ -d ${LIB} ] || mkdir -p ${LIB}
+	-for file in ${SRC} ; do \
+		cmp -s $$file ${LIB}/$$file && continue ;\
+		cp $$file ${LIB}/$$file ;\
+		chmod o-w ${LIB}/$$file ;\
+	done
+
+clean: FRC
+	rm -f Makefile.bak a.out core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	for dink in ${SRC} ;\
+	do \
+		install -Rm 644 ${LIB}/$$dink ;\
+	done
+	mkcat -r${DOC} -D ${MAN}
+
+depend: FRC
+
+dirs: ${LIB}
+
+distrib: FRC
+	distrib -c ${LIB} HOST:
+
+install: all dirs ${SRC} ${LIB} FRC
+	-for file in ${SRC} ; do \
+		cmp -s $$file ${LIB}/$$file && continue ;\
+		install -c -m 644 $$file ${LIB} ;\
+	done
+
+lint: FRC
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"explode source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: FRC
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+'dnl

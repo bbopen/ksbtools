@@ -1,0 +1,4 @@
+# A TCL auto loader index file						(ksb)
+# $Id: tclIndex,v 5.0 1996/09/09 20:59:59 kb207252 Exp $
+
+$Info(*):	${echo-echo} 'tcl autoload index database'

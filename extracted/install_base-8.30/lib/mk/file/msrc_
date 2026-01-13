@@ -1,0 +1,14 @@
+# a Makefile for msrc2008						(ksb)
+# $Id: msrc_,v 1.1 2008/04/05 18:23:34 ksb Exp $
+# mapped from Msrc.mk and msrc.mk
+
+$Compile(*):	Msrc%h
+
+$Msrc(*):	${msrc-msrc} -f %f %s
+$Msrc(*):	${mmsrc-mmsrc} -f %f -DHOST=localhost %s
+$Msrc(*):	${msrc-msrc} -l -f %f %s
+
+$Clean(*):	${make-make} -f %f %s clean
+$Clean(*):	${make-make} -f %f clean
+
+$Info(*):	${echo-echo} "a make recipe file for msrc or mmsrc"

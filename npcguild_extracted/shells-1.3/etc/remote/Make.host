@@ -1,0 +1,96 @@
+`#	$Id: Make.host,v 1.13 2000/06/20 14:04:50 ksb Exp $
+#
+#	Makefile for remote
+#
+
+SHELL=/bin/sh
+PROG=	remote
+BIN=	${DESTDIR}/usr/local/etc
+LIB=	${DESTDIR}/usr/local/lib/remote
+DOC=	${DESTDIR}/usr/local/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/local/include
+X='ifelse(HOSTTYPE,SUN5,`/usr/openwin',`/usr/local/X11R6')`
+F=/usr/X11R6
+P=
+
+INCLUDE= 'ifelse(
+HOSTTYPE,`FREEBSD',`-I$F/`include'',
+HOSTTYPE,`SUN5',`-I$X/`include'')` -I$L
+DEBUG=	-O
+CDEFS=  -D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	xdm-p.h
+SRC=	remote.c xdm-p.c
+OBJ=	remote.o xdm-p.o
+MAN=	remote.man
+OTHER=	README
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}'ifelse(
+HOSTTYPE,`BSDI',` -L$F/lib',
+HOSTTYPE,`FREEBSD',` -L$F/lib',
+HOSTTYPE,`SUN5',` -L$X/lib -lgen -lnsl -lsocket')`'ifelse(
+HOSTTYPE,`BSDI',`',
+HOSTTYPE,`HPUX9',` -lc -lPW',` -lXdmcp')`
+
+home: ${LIB} permok motd
+	install -c -m 644 permok motd ${LIB}
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} a.out *.o core errs lint.out tags
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${BIN}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${HDR} ${SRC} FRC
+	maketd ${CDEFS} ${INCLUDE} ${SRC}
+
+dirs: ${BIN} ${LIB}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all dirs FRC
+	install -cs ${PROG} ${BIN}/${PROG}
+
+lint: ${HDR} ${SRC} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${SRC}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC}
+	ctags -t ${HDR} ${SRC}
+
+${BIN} ${LIB}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+remote.o: machine.h remote.c xdm-p.h
+
+xdm-p.o: machine.h xdm-p.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

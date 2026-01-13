@@ -1,0 +1,45 @@
+# $Id: TODO,v 2.8 2009/10/15 17:50:36 ksb Exp $
+
+Nits
+
+Use the explode version of fdrights.{c,h}
+
+
+Bugs:
+
+When a .owners file exists in /home/ksb/testing/.owners, and it lists
+"thing/	ksb.* -d -m ...."  and /home/ksb/testing/thing/ exists with
+the wrong owner, and the cwd of my installus is "thing".  Then a request
+to update "." fails.
+
+
+Features:
+
+I think installus needs to be able to install a symbolic link.  The best
+thing I can come up with is:
+	file/glob/control	owner.group	@linkname
+
+Which doesn't make me Happy because a glob match needs to be able to
+pick off parts of the match to substitute in the "linkname".  For example
+a simple one:
+	rc3.s/S[0-9][0-9]local.*	*.staff	@../local.*
+and I don't want to put an RE in the @ field because install/installus
+uses globs and where is enough confusion on that topic.
+
+So for now: use "op" to do this.
+
+
+It we figure that out we might go for block/characters as well, via
+instck's code for same.  Or just use "op".
+
+
+installus -i, run mkowner.ksh and install [vinst even better] the output
+	as .owners, or put mkowner.ksh in vinst (of all places)!
+
+
+Document Installus.pl and add a hook to allow it to ask for the Customer's
+	password once, then feed it to all the sub-installus processes.
+
+
+--
+KSBraunsdorf, Oct 2009, install@ksb.npcguild.org

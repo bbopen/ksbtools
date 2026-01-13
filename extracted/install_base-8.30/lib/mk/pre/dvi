@@ -1,0 +1,7 @@
+#  $Header: /usr/msrc/usr/local/lib/mk/pre/RCS/dvi,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+#
+#  Verify that this is a DVI file				(nuspl)
+# $Id: dvi,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+#
+
+$*(*):		%=/92c0/%#1@4%04xw/%g%~/is/dvi

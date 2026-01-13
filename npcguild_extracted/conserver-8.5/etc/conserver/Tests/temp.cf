@@ -1,0 +1,11 @@
+# Test conserver config file
+# $Id: temp.cf,v 8.3 2000/05/09 00:09:47 ksb Exp $
+# name : epass : tty[@host] : baud[parity] : device : group [:key :power]
+shell::|sh -i:9600p:/tmp/shell.log:0:A1:power
+#power::|./power:9600p:/dev/null:1
+%%
+# list of clients we allow
+# type machines
+allowed: 127.0.0.1
+allowed: fedex.com
+allowed: 161.135 170.5 146.18 199.81.74 199.81.124 192.189.186.201

@@ -1,0 +1,929 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>How to use mk's expander</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+
+<H1>Usage</H1>
+
+Without any special characters <code class="sh">mk</code> is pretty useful.  With the
+addition of some printf-like expansions <code class="sh">mk</code> is a
+<strong>much</strong> more
+powerful processor.  By snipping bits of text from the target filename,
+target file, a lookup table, the environment and the command line
+options passed to <code class="sh">mk</code> itself
+we construct a more specific and powerful shell command.
+<P>
+The compact notation presented here is used to
+express the same string operations that are commonly done with
+<code class="sh">sed</code>, <code class="sh">expr</code>, <code class="sh">basename</code>, or <code class="sh">dirname</code>
+in a shell script.  The intent is to remove clutter from the command
+in the source file, and to make the
+customized command more portable and precise.
+<P>
+The other purpose of the expander is to enable some "meta" operations,
+like changing the marker or the submarker <code class="sh">mk</code> is processing.
+In some cases a file might not meet a criteria for the marker
+presented, <code class="sh">mk</code> offers expanders to prevent execution of any
+command in that case.
+
+<H2>Purpose</H2>
+
+By locating shell commands in the comments for the enclosing processor
+we keep those commands with the file (they can't get lost).  The other
+common practice of using a Makefile (see make(1)) to keep recipe
+information is great, but it tells us how to combine the file with
+others into a product:
+the commands the author embeds with <code class="sh">mk</code> are often used to
+process the file as a stand-alone module.
+
+<P>
+The commands are selected and extracted from the target file,
+expanded for the present context,
+then passed to a shell for execution.
+This usefulness of this tool, like <code class="sh">make</code>, is driven by the
+use to which it is put.  There are few limits placed on the tool
+by the implementation.
+
+<H2>Common conventions</H2>
+
+It is common convention to "comment" marked lines, even in a plain
+text file.  This helps the reader ignore them while reading the
+document.  The shell's comment style is used as a default by the
+author.
+<P>
+It is also common to keep the marked lines at the top of the file,
+<code class="sh">mk</code> only reads about 99 lines of the file by default while
+searching for marked lines.  This prevents <code class="sh">mk</code> from reading a
+whole binary file (only to find gibberish at the end).
+<P>
+It is also common convention to use a shell variable
+to reference the "main" program we are about to run.  For example
+<code class="markup">${cc-cc}</code> to mean run "$cc if set, else find cc in $PATH"
+(see sh(1)).  This allows the User's environment to replace "cc" with
+"gcc", "acc", or "bsdcc" as needed.
+
+
+<H2>Markers and submarkers</H2>
+
+A line <code class="sh">mk</code> is reading from the input file is
+called <em>marked</em> if it contains the marker specified, in
+the correct context.
+
+<P>
+A marker can be thought of as a verb, a message, a recipe, or just a name for
+a command hidden in the target file.  A submarker can be thought of
+as a direct object, detail, ingredient, or a specific destination for the
+marker to act on (or against) the target file.
+The difference is in how you
+view <code class="sh">mk</code>'s relation to the target, or the target's relation
+to the context in which it exists.
+
+<P>
+The <code class="param">marker</code> <code class="sh">mk</code> searches for is specified with the
+-m command line option, or defaults to
+the name <code class="sh">mk</code> was called (in argv[0]), or the word "Compile" if
+the programs is called "mk".
+
+<P>
+The <code class="param">submarker</code> <code class="sh">mk</code> searches for is specified with
+the -d command line option.  The default is none.
+
+<P>
+When <code class="sh">mk</code> is processing a file it is searching either a template
+or the file itself for a line formatted like either:
+<DL>
+<DT> ... $<I>marker</I>: <I>template</I> $$ ...
+<DT> ... $<I>marker</I>: <I>template</I>
+<DD>
+Looking for a marker with no submarker given.
+<DT> ... $<I>marker</I>(<I>submarker</I>): <I>template</I> $$ ...
+<DT> ... $<I>marker</I>(<I>submarker</I>): <I>template</I>
+<DD>
+Looking for a marker with a specific submarker.
+</DL>
+
+<P>
+In each case the leading "..." is usually a comment delimiter, or
+white space (which is ignored).  The trailing "$$ ..." is a trick to
+delete closing comment delimited for any enclosing processors that
+requires them.
+The <code class="param">template</code> is expanded to form
+the <code class="param">command</code>.
+<P>
+Examples:
+<DL>
+<DT>/* $Compile: ${cc-gcc} -Wall -g -DDEBUG main.c -o main $$ */</DT>
+<DD>
+A C program (a common case) with a line to compile a debug version
+of the program.
+<DT>&lt;!-- $Print: lynx -dump myself.html $$ --&gt;
+<DD>
+An SGML comment to convert an HTML file to text, via lynx.
+</DL>
+On both cases the closing comment delimiter could moved to the
+next line and the double-dollar token removed.  In some other
+processors this is harder to do.
+<P>
+Other examples:
+<DL>
+<DT># $Compile: Plunder%h
+<DD>
+Map the marker "Compile" to "Plunder" for this file
+<DT>/* $Compile(debug): ${cc-gcc} -Wall -g -DDEBUG %f -o %F
+<DT>&nbsp;* $Compile: ${cc-gcc} -Wall %f -o %F
+<DT>&nbsp;*/
+<DD>
+A common C comment to allow a debug version and a production version
+of the compile directive for the module.
+</DL>
+
+
+<H2>Control expansions</H2>
+
+We'll start with the control expansions.  These are used to control
+the flow of execution inside <code class="sh">mk</code>, or the sequence of data sources
+selected and searched.
+
+<DL>
+<DT><code class="markup">%.</code>
+<DD>
+Fail the target.  The file is incompatible with the marker, submarker,
+or whole idea of this application.
+
+<DT><code class="markup">%;</code>
+<DD>
+Fail the target, if this command is rejected (last eligible command).
+The target could only ever match this command under this marker.
+This prevents any subsequent commands, which might match the marker,
+from taking an action that would be really destructive (like removing
+a device file).
+
+<DT><code class="markup">%^</code>
+<DD>
+Reject the template, but not the file.
+The command this marked line would execute is not correct, skip to
+another marked line.  This can be used
+with the here document (<code class="markup">%J</code>) to build a temporary file for use in other
+templates marked commands (as <code class="markup">%j</code> is not reset per template).
+<blockquote class="file"><PRE><code >$Test(*): %J: build %j%^
+%m	Bar	no
+%m	Test	yes
+.	.	default
+$Test(*): echo %&lt;%0&gt; $$%j
+</code></PRE></blockquote>
+In that code <code class="markup">%0</code> is the first here document in the file,
+so "mk -mTest" on that file outputs "yes".
+To make this even more useful use <A href="#filter"><code class="markup">%|</code></A> to remove leading
+comment symbols.
+
+<DT><code class="markup">%g</code>
+<DD>
+Use the expanded command as a new <em>file to search</em>, do not
+continue reading the present file.  The example below tells
+<code class="sh">mk</code> to search the <code class="path">Makefile</code> for a command
+marked with "Compile", rather than this file:
+<blockquote class="file"><PRE><code >// $Compile: Makefile%g
+</code></PRE></blockquote>
+<DD>
+In the context of the result to a <code class="param">mapfile</code>
+<code class="markup">%g</code> replaces
+the current <code class="param">mapfile</code> with
+the result string, and starts the search over again.
+
+<DT><code class="markup">%h</code>
+<DD>
+Look for the expanded command as the new "marker(submarker)".  If the
+parenthesized part is missing only change the marker.  This example
+redirects <code class="sh">mk</code> to change the default "Compile" marker to
+the "Display" marker for the nroff format file:
+<blockquote class="file"><PRE><code >.\" $Compile: Display%h
+.\" $Display: groff -man -tbl %f
+</code></PRE></blockquote>
+
+<DT><code class="markup">%H</code>
+<DD>
+Look for the expanded command as the new submarker.
+For example we might map all submarkers to "debug" with:
+<blockquote class="file"><pre><code ># $*(*): debug%H
+</code></pre></blockquote>
+
+<DT><code class="markup">%=/</code><code class="param">exp1</code><code class="markup">/</code><code class="param">exp2</code><code class="markup">/</code>
+<DD>
+Fail unless the expansion of <i>exp1</i> is the same string as
+the expansion of <i>exp2</i>.
+<UL>
+<LI>expansion is limited to 2 times MAXPATHLEN characters for each string
+<LI>note that slash (<code class="markup">/</code>) may be any character that
+doesn't appear in <code class="param">exp1</code> or
+<code class="param">exp2</code>
+</UL>
+
+<DT><code class="markup">%!/</code><code class="param">exp1</code><code class="markup">/</code><code class="param">exp2</code><code class="markup">/</code>
+<DD>
+Fail if the expansion of <code class="param">exp1</code> is the same string as the expansion of
+<code class="param">exp2</code>.
+
+<DT><code class="markup">%&lt;</code><code class="param">mapexp</code><code class="markup">&gt;</code>
+<DD>
+Expand the <code class="param">mapexp</code>, use that as a mapfile
+(see <A href="#maps">below</A>)
+<UL>
+<LI><code class="param">mapexp</code> must expand to less than MAXPATHLEN characters
+<LI>the angle brackets must balance
+<LI>any <code class="markup">%.</code> or <code class="markup">%;</code> in the expansion of mapfile is honored for this expansion
+<LI>the use of <code class="markup">%g</code> replaces the current <code class="param">mapfile</code>, not the current template file
+</UL>
+<DT><code class="markup">%0</code>, <code class="markup">%1</code>, <code class="markup">%2</code> through <code class="markup">%9</code>
+<DD>
+Replaced with the subexpression matched in the RE in a mapfiles, below.
+This is context sensitive, and only works in the context of <I>result</I>
+part of the matching line.
+<DD>
+In the context of an inline here-document (<code class="markup">%J</code> to <code class="markup">%j</code>) this may be used
+to access more than one document.  In that case <code class="markup">%1</code> is the first <code class="markup">%J</code>
+document, <code class="markup">%2</code> is the second and so on (even beyond <code class="markup">%9</code>).
+</DL>
+
+<H2>Access <code class="sh">mk</code>'s options</H2>
+
+Since <code class="sh">mk</code> is going to run a shell command it stands to
+reason that is might want to call itself, or a program that looks
+a lot like itself.
+<P>
+In that case being able to pass our command line options on would
+be clever.
+
+Access to <code class="sh">mk</code>'s command line options, and state:
+
+<DL>
+<DT><code class="markup">%a</code>
+<DD>
+"-a" if <code class="sh">mk</code> has -a in effect, else the empty string.
+<DT><code class="markup">%A</code>
+<DD>
+"a" if <code class="sh">mk</code> has -a in effect, else the empty string.
+Using the mixer, one might also write this as <code class="markup">%(a,$)</code>.
+<DT><code class="markup">%+</code>
+<DD>
+Proceed with this file (only) as if -a were specified on the command line.
+This is called <em>step mode</em>, see <A href="#steps">below</A>.
+<DT><code class="markup">%-</code>
+<DD>
+Proceed with this file (only) as if -a were removed from the command line.
+This also turns off <em>step mode</em>.
+
+<DT><code class="markup">%b</code>
+<DD>
+The path to <code class="sh">Mk</code>'s, that is as much of the path
+as <code class="sh">mk</code> was provided in argv[0].
+<DT><code class="markup">%B</code>
+<DT><code class="markup">%[b/$]</code>
+<DD>
+The basename <code class="sh">mk</code> was called with.
+The name <code class="sh">mk</code> was called at execution time.  Some subsystems
+call <code class="sh">mk</code> by several symbolic links: "Compile", "Run", "Clean",
+"Test", thus using <code class="sh">mk</code> as an "object oriented" message passing
+agent.  This escape allows passing the "message" on to another program.
+
+<DT><code class="markup">%c</code>
+<DD>
+"-c", if <code class="sh">mk</code> has -c in effect, else the empty string.
+<DT><code class="markup">%C</code>
+<DD>
+"c", if <code class="sh">mk</code> has -c in effect, else the empty string.
+
+<DT><code class="markup">%e</code>
+<DD>
+"-e" and the templates list provided if -e is in effect, else the empty string.
+<DT><code class="markup">%E</code>
+<DD>
+the templates list provided if -e is in effect, else the empty string.
+
+<DT><code class="markup">%i</code>
+<DD>
+"-i", if <code class="sh">mk</code> has -i in effect, else the empty string.
+<DT><code class="markup">%I</code>
+<DD>
+"i", if <code class="sh">mk</code> has -i in effect, else the empty string.
+
+<DT><code class="markup">%k</code>
+<DD>
+"$", which is <code class="sh">mk</code>'s marker prefix.
+<DT><code class="markup">%K</code>
+<DT><code class="markup">%k%k</code>
+<DD>
+"$$", which <code class="sh">mk</code>'s end marker token.
+
+<DT><code class="markup">%l</code>
+<DD>
+"-l" lines, or the default number of lines <code class="sh">mk</code>'s searches from
+each target file.
+<DT><code class="markup">%L</code>
+<DD>
+lines, <code class="sh">mk</code>'s active notion of how many lines to search from
+each target file.
+
+<DT><code class="markup">%m</code>
+<DD>
+marker, <code class="sh">mk</code>'s active marker.
+<DT><code class="markup">%M</code>
+<DD>
+lowercase(marker), <code class="sh">mk</code>'s active marker in all lowercase.
+
+<DT><code class="markup">%n</code>
+<DD>
+"-n" if <code class="sh">mk</code>'s -n option is active, else the empty string
+<DT><code class="markup">%N</code>
+<DD>
+"n" if <code class="sh">mk</code>'s -n option is active, else the empty string
+<DT><code class="markup">%o</code>
+<DT>-<code class="markup">%A%C%I%N%V</code>
+<DD>
+all the single letter options to <code class="sh">mk</code> in a bundle
+<DT><code class="markup">%O</code>
+<DT><code class="markup">%A%C%I%N%V</code>
+<DD>
+same as <code class="markup">%o</code> without the leading dash.
+
+<DT><code class="markup">%s</code>
+<DD>
+<code class="sh">mk</code>'s active submarker
+<DT><code class="markup">%S</code>
+<DD>
+lowercase(submarker), <code class="sh">mk</code>'s active submarker in all lowercase
+
+<DT><code class="markup">%t</code>
+<DD>
+"<code class="opt">-t</code> <code class="param">templates</code>",
+the active templates option as a command-line specification
+<DT><code class="markup">%T</code>
+<DD>
+the active templates option without "-t" prepended.
+
+<DT><code class="markup">%v</code>
+<DD>
+"-v", if <code class="sh">mk</code> has verbose set, else "-s"
+<DT><code class="markup">%V</code>
+<DD>
+"v", if <code class="sh">mk</code> has verbose set, else "s"
+
+<DT><code class="markup">%w</code>
+<DD>
+directory, the template directory the active template came from.
+As <code class="sh">mk</code> searches for a template under -t or -e this
+expansion record which directory we are presently checking.
+<DT><code class="markup">%W</code>
+<DD>
+Same as <code class="markup">%w</code>, but if we are not
+searching the template options reject the command.
+Thus one <em>could</em> tell the difference between a template file
+as a template, or as a target itself.  I doubt anyone would use that
+distinction.
+
+<DT><code class="markup">%z</code>
+<DD>
+The template we are searching.
+<DT><code class="markup">%Z</code>
+<DT><code class="markup">%[z/$]</code>
+<DD>
+The basename of the template we are searching.
+
+<DT><code class="markup">%~</code>
+<DD>
+The default template directory <code class="sh">mk</code> searches, like <code class="sh">mk</code>'s home directory.
+</DL>
+
+<H2>Access to the target file</H2>
+
+The name and contents of the target file are often useful to derive
+an apropos command.  Most clues come from the name of the file, for
+example the extension after the last dot (e.g. "c" in "/tmp/main.c").
+<P>
+Functions of the target file:
+<DL>
+<DT><code class="markup">%d</code>
+<DD>
+The directory the target file is in, or the empty string.
+<DT><code class="markup">%D</code>
+<DD>
+Same as <code class="markup">%d</code> above, but reject the command rather than present the empty string.
+<DT><code class="markup">%f</code>
+<DD>
+Full path to target.
+<DT><code class="markup">%F</code>
+<DD>
+Basename of target (without leading path and dot extender).
+<DT><code class="markup">%G</code>
+<DD>
+Tail of target (last component, starting after the last slash).
+<DT><code class="markup">%p</code>
+<DD>
+The target name, up to the last '.' including any directory part (also spelled <code class="markup">%q.</code>).
+<DT><code class="markup">%P</code>
+<DD>
+The target basename, up to the last '.', reject the command if no '.' in target (also spelled <code class="markup">%Q.</code>).
+<DT><code class="markup">%q</code><code class="param">x</code>
+<DD>
+The target name, up to the last <code class="param">x</code>, reject the command if no <code class="param">x</code> in target.
+<DT><code class="markup">%Q</code><code class="param">x</code>
+<DD>
+The target basename, up to the last <code class="param">x</code>, reject the command if no <code class="param">x</code> in target.
+<DT><code class="markup">%r</code>
+<DD>
+The name RCS would call the cache file for the target.
+<DT><code class="markup">%R</code>
+<DD>
+The name RCS would call the cache file for tail of the target.
+<DT><code class="markup">%u</code><code class="param">x</code>
+<DD>
+The target name after the last <code class="param">x</code>, reject the command if no <code class="param">x</code> in target.
+<DT><code class="markup">%U</code><code class="param">x</code>
+<DD>
+The target basename after the last <code class="param">x</code>, reject the command if no <code class="param">x</code> in target.
+<DT><code class="markup">%X</code>
+<DT><code class="markup">%x</code>
+<DD>
+The extension on the target (also spelled <code class="markup">%u.</code> or <code class="markup">%U.</code>).
+<DT><code class="markup">%y</code>
+<DD>One letter from "f", "c", "b", "d", "p", "s", or "l"
+depending on type of the target
+(file, character special, block special, directory, FIFO, socket,
+ or symbolic link).
+<DT><code class="markup">%Y</code><code class="param">x</code>
+<DD>
+Fail if the type of the target is <code class="param">x</code>.
+<DT><code class="markup">%Y~</code><code class="param">x</code>
+<DD>
+Fail if the type of the target is not <I>x</I>.
+<DT><code class="markup">%#!</code>
+<DD>
+Full load path, if file is type 'f' and loaded with "#!".
+<DT><code class="markup">%#/</code>
+<DD>
+Tail of load path, if file is type 'f' and loaded with "#!",
+(also spelled <code class="markup">%[#!/$]</code>).
+<DT><code class="markup">%#</code> [<code class="param">nbytes</code>] [<code class="markup">@</code><code class="param">seek</code>] [<code class="markup">%</code>] <code class="param">fmt</code> [<code class="param">size</code
+<DD>
+Insert data from the target file.
+Read nbytes of data (taken as a decimal integer)
+at position seek (default 0).
+Then use the printf formatted fmt to output
+them in units of size (b for byte, w for word, or l for long).
+Note that fmt cannot contain a '*', since there is not a way to pass
+the width parameter to sprintf(3).
+<DD>
+That deserves and example.  If we know the target name ends in ".C"
+it might be compact'd data, or some other type.
+To confirm it is compact output we look for compact's
+magic number (0x1fff) as the first two bytes in the file:
+<blockquote class="file"><pre><code >	$Info: %=/1fff/%#%04xw/echo %f is in compact format
+</code></pre></blockquote>
+<DT><code class="markup">%{</code><code class="param">ENV</code><code class="markup">}</code>
+<DT><code class="markup">%`</code><code class="param">ENV</code><code class="markup">`</code>
+<DT><code class="markup">%"</code><code class="param">ENV</code><code class="markup">"</code>
+<DD>expands to "${<code class="param">ENV</code>}", reject the command when $<code class="param">ENV</code> is not set.
+<P>
+This is largely used to
+see if an X11 DISPLAY environment variable is available, to avoid
+forking failed X client application.
+Since the command is rejected when the variable is not set we can
+prefer the X version of an application (e.g. browser or spread sheet)
+then the text only version.
+</DD>
+<DT><code class="markup">%[</code><code class="param">expression</code> <code class="param">separator</code> <code class="param">field</code>...]
+<DD>
+Expand the <I>expression</I> as normal, then apply the
+<code class="sh">xapply</code> dicer rules starting with <I>separator</I>
+and <I>field</I>, as in <code class="sh">xapply</code> the separator and
+field specification may be repeated as needed.
+<P>
+The expansion is broken into fields at each occurrence of
+the character <I>separator</I>, then field number <I>field</I>
+is selected.  A negative fields inverts the selection to
+mean "all but <I>field</I>".  In the case of a literal blank
+the separator is any non-zero number of white space characters.
+A backslash may be used to remove special meaning from
+space, backslash, digits, and close bracket.
+
+<DT><code class="markup">%(</code><code class="param">expression</code> <code class="param">mixer</code><code class="markup">)</code>
+<DD>
+As in <code class="sh">xapply</code>, process the
+<code class="param">expression</code> then select characters from
+it with the mixer.
+The rules for the mixer are too complex to fully explain here
+(see explode's <code class="path">dicer.html</code> for details).
+In brief, ranges of characters indexed from 1 to the end of
+the string are selected by index from
+the left (<code class="param">integer</code>), index from
+the right (<code class="markup">~</code><code class="param">integer</code>),
+last character (<code class="markup">$</code>),
+the whole range (<code class="markup">*</code>),
+or augmented with a quoted string
+(<code class="markup">`</code><code class="param">text</code><code class="markup">'</code>, or
+<code class="markup">"</code><code class="param">text</code><code class="markup">"</code>).
+Results may be filtered again with repeated application of these expressions
+in parenthesis.
+</DL>
+
+
+<H2 id="maps">Mapfiles</H2>
+
+These little "lens" files are used to map strings via regular
+expressions to other strings, and are accessed via <code class="markup">%&lt;</code><code class="param">mapexp</code><code class="markup">&gt;</code>.
+For example a files magic number to the name of the program
+that builds that type, or unpacks that type of file.
+See the default templates for many clever uses.
+
+<P>
+Blank lines and lines that start with a hash (#) are ignored.
+All the other lines in the file should be matching lines.
+
+<P>
+Matching lines have three columns separated by white space,
+all of which are expanded before being used:
+<OL>
+<LI>a "test string", an missing value is taken to mean the last one
+specified
+<LI>the regular expression to match against, which always has case insensitive set
+<LI>the result, if the RE matched the test string
+</OL>
+<P>
+If any of the expansions rejects the expansion the next matching line in the file is tested.
+If no line matches the expansion rejects the command.  To put a
+literal hash or white space in the test string or the RE
+use the backslash escapes below.
+<P>
+As a bonus the strings matched by \(..\) pairs are available as
+<code class="markup">%1</code>, <code class="markup">%2</code>, <code class="markup">%3</code>... to <code class="markup">%9</code>.
+And <code class="markup">%0</code> is the whole matched string.
+<P>
+As a corner-case the empty string may be specified as
+<code class="markup">\e</code>.
+
+<H2 id="backslash">Backslash processing</H2>
+
+Since it is hard to embed a newline in a line oriented command processor
+<code class="sh">mk</code> supports the standard C backslash (\) escapes.
+This might also allow the comment character(s), from the
+file's native processor, to be included in the embedded command.
+For example if double-dash (--) is
+the comment ending token, and the command needs a double-dash option
+(e.g. --help) in it
+one could use any of these expander forms:
+<blockquote class="file"><pre><code>	\055-help
+	-\055help
+	-\e-help
+</code></pre></blockquote>
+To break up multi-character tokens I prefer <code class="markup">\e</code>, viz. "*\e/"
+to avoid a C comment termination.
+
+<P>
+In some files the comment character is all but impossible to include
+in a comment.  For example a hash (#) character might have to be
+expressed as a \043 to hide it from the native processor,
+viz. <code class="sh">make</code>.
+
+<H3>The list of backslash escapes</H3>
+<TABLE summary="C-style escape sequences">
+<TR><TH>spelling</TH><TH>expands to</TH></TR>
+<TR><TD>\\</TD><TD>	a literal backslash</TD></TR>
+<TR><TD>\n</TD><TD>	newline</TD></TR>
+<TR><TD>\t</TD><TD>	tab</TD></TR>
+<TR><TD>\s</TD><TD>	space</TD></TR>
+<TR><TD>\b</TD><TD>	bell</TD></TR>
+<TR><TD>\r</TD><TD>	carriage return</TD></TR>
+<TR><TD>\f</TD><TD>	form-feed</TD></TR>
+<TR><TD>\v</TD><TD>	vertical tab</TD></TR>
+<TR><TD>\e</TD><TD>	the empty string</TD></TR>
+<TR><TD>\$</TD><TD>	a literal dollar, often used to defeat $$</TD></TR>
+<TR><TD>\000 .. \777</TD><TD>	literal octal ASCII codes</TD></TR>
+<TR><TD>\<I>else</I></TD><TD>any other character is taken as a literal</TD></TR>
+</TABLE>
+
+<H2>Extended data access</H2>
+
+<DL>
+<DT><code class="markup">%*</code>
+<DD>
+The actual marker and submarker found to match the ones specified.
+These are given as <strong>marker</strong> or
+<strong>marker</strong>(<strong>submarker</strong>).
+Note that this expander will <em>always</em> fail in the
+context of a <code class="opt">-E</code> option, as there is no actual marker.
+<DT><code class="markup">%j</code>
+<DD>
+The name of the filename of the current here document.
+A line with a <code class="markup">%j</code> and no <strong>preceding</strong>
+<code class="markup">%J</code> is always rejected.
+This prevents the null command from being selected at the end
+of a here document.
+<DT><code class="markup">%J</code>
+<DD>
+A marked line with a <code class="markup">%J</code> in it builds a temporary file much as a
+shell "here document".
+Lines from the current file are copied to the temporary file
+up to the next marked line (matching the same marker and submarker)
+with a <code class="markup">%j</code> <strong>anywhere</strong> in it is read.
+By anywhere we mean before the marker, in the command, or after the
+end token <code class="markup">$$</code>.
+These lines (not including the last) are presented in the filename
+reported by <code class="markup">%j</code>.
+<P>
+Consumed lines are not re-inspected for marked lines.
+The example below outputs lines numbered from 1 to 4.
+<blockquote class="file"><PRE><code >$Here: %J tail -r %j
+4
+3
+2
+1
+$Here(*): %.%j thing
+</code></PRE></blockquote>
+<P>
+The line which ended the here document <strong>is</strong> inspected
+for a command if the controlling line is rejected,
+even when it ended the previous document.
+Mapfiles get their here document data from the marked file,
+not the mapfile (<code class="markup">%J</code> is not allowed in
+a mapfile, but <code class="markup">%j</code> is).
+<DT id="filter"><code class="markup">%|/</code><code class="param">expr</code><code class="markup">/</code>
+<DD>
+Remove a leading string from each line in every subsequent here document
+(see above).
+The slash delimiter may actually be any character.  The expression specified
+is expanded to produce the text to remove.  This is often used to remove
+leading comment characters from the here document for other processors.
+<blockquote class="file"><PRE><code ># $Here: %|/#/%J tail -r %j
+#4
+#3
+#2
+#1
+# $Here(*): %.%j thing
+</code></PRE></blockquote>
+
+<DT><code class="markup">%?</code>
+<DD>
+Under the influence of <code class="markup">%J</code>, <code class="markup">%?</code> expands to
+the text which follows the <code class="markup">%j</code> which terminates the
+here document.  In the example above it would be "thing".  Note that
+leading white space is consumed.  A good use of this is to fetch
+data from the end of a block that was computed as the block was produced,
+e.g. the standard deviation and mean of a list of numbers.
+<P>
+This is also a good use of <code class="markup">$$</code>, we can end the current
+here document, and use the <code class="markup">$$</code> feature to prevent the
+interpretation of the <code class="markup">%j</code> if that command is ever expanded.
+<blockquote class="file"><PRE><code ><I>...</I>
+$*(*): ${false-false}%; $$ %j end of the world
+</code></PRE></blockquote>
+
+<DT><code class="markup">%$</code>
+<DD>
+If the marked line ends with a $$ token the text after that token
+is available as <code class="markup">%$</code>.  When there was no $$ token this
+expansion rejects the command.  In the example above the
+result would be " <code class="markup">%j</code> end of the world".
+<P>
+A strange side-effect of <code class="markup">%J</code> is
+that this expander sees the text on the end of
+the marked line <em>that ends the here document</em>,
+not the text on the end of the current template.  This is thought to
+be a feature rather than a bug.
+</DL>
+
+<H3 id="steps">Step mode</H3>
+
+Under the <tt>-a</tt> switch <code class="sh">mk</code> looks for all the matching
+marked commands.  This is culturally used to follow a step-by-step recipe,
+much as a make(1) file, but the steps might also be stand-alone
+targets themselves.
+
+<P>
+There are two expanders that are used strictly for their side-effects
+to set and end "step mode": <code class="markup">%+</code> to turn it on,
+and <code class="markup">%-</code> to end turn it off.
+
+<P>
+Here is an example from the regression tests:
+<blockquote class="file"><PRE><code >$Compile: %+Step(*)%h
+# This file checks to be sure mk honors %+ to do multistep tasks
+$Step(1): true
+$Step(2)=~0: false
+$Step(3): exit 0
+$Step(4): true%-
+$Step(fail): false
+</code></PRE></blockquote>
+
+When we are asked to "Compile" the file we shift the marker to
+"Step" and the submarker to "*", so we'll match al the "Step(<i>n</i>)"
+lines below.  We also set -a (via <code class="markup">%+</code>) so we do not stop at the first
+one.  On step four (<code class="markup">Step(4)</code>) we execute "true" and
+end the step mode so we don't fail on
+the next marked step (<code class="markup">Step(fail)</code>)
+
+<P>
+Other applications might just search for a specific <code class="markup">Step</code> for
+another purpose, since they would all work a "stand alone" commands (even <code class="markup">Step(4)</code>).
+
+<H3>Taking advantage of here documents</H3>
+
+There are some subtle uses of <code class="sh">mk</code>, and then
+some there are other <strong>really</strong> subtle uses.
+The here documents are an if-then-elif-else-endif type construction.
+In this outline we see the three alternatives (submarkers 1, 2, 3),
+each of which has a here document block.  The last alternative
+doesn't start a here document, but does end the third one.
+<blockquote class="file"><PRE><code >$Test(1): %J something %j
+	first block
+$Test(2): %J something other %j
+	second block
+$Test(3): %J another way %j
+	third block
+$Test(*): default case $$ %j
+</code></PRE></blockquote>
+Use "mk -VmTest -i" on a file with those lines to see it go.  If you
+quit from the command prompt <code class="sh">mk</code> leaves the file in /tmp
+for you, that might be a feature or a bug, see <code class="sh">untmp</code>(1).
+
+<P>
+The other way to view a here document set is like a shell archive.
+The sections could be installed into other filenames (then processed
+with <code class="sh">mk</code> or even executed).  It is not an error to
+remove or rename the here document files (<code class="markup">%j</code>) in your command.
+
+<P>
+Under -a (all matched commands) we can unpack all the here document
+data in the file, which makes mk into a pretty smart archive unpacker.
+I would use uudecode or perl to unpack the data to be safer.
+
+<P>
+The 2 additional forms (<code class="markup">%$</code> and
+<code class="markup">%?</code>) are largely used for automation.
+Assume that some processor only knows the total of the numbers it
+it producing after it has written them out.  It can put the
+total on the end of the here block:
+<blockquote class="file"><PRE><code >$Numbers: %Jecho Total %$ ; cat %j
+100
+200
+300
+$Numbers: %j %^ $$ 600
+</code></PRE></blockquote>
+Then "mk -mNumbers $file" outputs the header line and the list.
+
+
+<H3>Unused expanders</H3>
+
+As if <tt>mk</tt> didn't have enough expanders, we have some
+ideas for using the symbols left on the 101 key I/O device.
+
+<DL>
+<DT><code class="markup">%_</code>
+<DD>
+The filename and line number of the current marked line, as "file:line".
+Never really needed this, but in templates it makes more sense.
+<DT><code class="markup">%,</code> or <code class="markup">%&amp;</code>
+<DD>
+Under <code class="opt">-A</code> continue with the next marked line
+when this one succeeded.  Group marked lines into a script, kind of the
+opposite of <code class="markup">%.</code>.
+<DT><code class="markup">%\</code>, <code class="markup">%&gt;</code>,
+<code class="markup">%)</code>, <code class="markup">%]</code>, <code class="markup">%}</code>
+<DD>
+More than likely I'll never use these, as the backslash itself is
+already special, and the close punctuation would confuse everyone.
+</DL>
+
+<H2>More examples</H2>
+
+While <code class="sh">mk</code> has all of the expander magic above, we still fall-back
+on the shell variable expansion to trap the main program.
+This allows the calling application to
+replace <code class="sh">xterm</code> with <code class="sh">echo</code> to debug, or with
+a script to trace actions, then execute the <code class="sh">xterm</code>.
+
+<P>
+Here are some examples to clear-up some of the expansions:
+<DL>
+<DT>$Page: ${xterm-xterm} -display %{DISPLAY} -cr green -e ${PAGER-less} %f
+<DD>
+Under the marker "Page" run an <code class="sh">xterm</code> for the file
+with a pager in it, default to "less" if $PAGER is not set.  Don't
+try this unless $DISPLAY is set in the environment.
+<DT>$Page(*): ${xterm-xterm} -display %{DISPLAY} -cr %s -e ${PAGER-less} %f
+<DD>
+A re-play of the first example with the submarker used as a color
+selector for the curser color.  If this is put <em>above</em>
+the first example
+it will take effect when <code class="sh">mk</code> is run with "-d color".
+<DT>$Page: ${PAGER-less} %f
+<DD>
+Under the marker "Page" fall-back to a local pager ($PAGER) or less
+if that is not set.
+<DT>$Compile(*): %;${echo-echo} "%G: cannot %m myself" 2&gt;&amp;1 &amp;&amp; ${false-false}
+<DD>
+This file can't be compiled.  Warn <code class="markup"><code class="markup">stderr</code></code> and fail.  If this command is
+not picked then fail anyway.
+<DT>$Compile: ${lex-lex} %f &amp;&amp; %b %O -d" -ll" lex.yy.c &amp;&amp; %b %O -mUpdate %f
+<DT>$Update: %=/%C/c/${rm-rm} lex.yy.c &amp;&amp; ${mv-mv} a.out %F
+<DT>$Update: %!/%C/c/${rm-rm} lex.yy.c &amp;&amp; ${mv-mv} -i a.out %F
+<DD>
+Run <code class="sh">lex</code> over this file, recursively call <code class="sh">mk</code> by
+the name provided with the single letter options given on the output
+C file, then remove the output C file, and move the a.out build to
+our name without an extender.
+<P>
+Used mv -i if we don't confirm the Update marker.
+</DL>
+
+<H2>A more complete example</H2>
+
+Say we want to run a <code class="sh">cron</code> based task every hour to poll a list of
+hosts.  Using <code class="sh">mk</code> we might break this problem down like this:
+<DL>
+<DT>Write a script to poll 1 host
+<DD>
+Which we can test for each host and re-use for other similar tasks.
+There might be a list of test cases (using mk) in the file to debug it.
+<DT>Build a list of the hosts to poll
+<DD>
+Call it "poll.list" and include a comment line like:
+<blockquote class="file"><PRE># $Poll: grep -v '\043' %f |xapply -P3 -f '$HOME/libexec/pollme' -
+host1
+host2
+<i>...</i>
+</PRE></blockquote>
+<DT>The crontab line calls <code class="sh">mk</code> on the list of hosts
+<DD>
+<blockquote class="file"><PRE>27 * * * *  /usr/local/bin/mk -smPoll $HOME/lib/poll.list
+</PRE></blockquote>
+</DL>
+
+<P>
+This has several advantages over combining the loop with the list of
+hosts.
+<DL>
+<DT>Reuse
+<DD>
+We can use the same <code class="sh">pollme</code> script with a different
+list of hosts for other tasks or to diagnose failed polls.
+With another marker in the poll.list file we can reuse the host
+list for a different task.  We can mark the poll.list with
+RCS/CVS/SVN keywords, as long as we comment them.
+<DT>Speed
+<DD>
+We poll 3 hosts in parallel with <code class="sh">xapply</code>'s <code class="opt">-P</code>, option but
+we don't have to change the crontab to tune that factor.  And we
+know what the list of hosts is used for by reading the file.
+<DT>Clarity
+<DD>
+Basically this factors the parts of the work in clear blocks.
+The code to poll in a script, the list of hosts in a file, and
+the trigger in the crontab.
+<P>
+If we don't do these we risk loosing track of what the list of
+hosts does, or which program uses it.
+</DL>
+
+<H2>Conclusion</H2>
+
+<code class="sh">Mk</code> treats the comments in
+a file as compacted shell commands.
+These commands are extracted by matching a "marker" name to a token
+prefix, then expanding a lot of percent expressions into a shell
+command.  The command is passed to the shell to do what ever the
+marker means. Any "meaning" assigned to a marked command is
+from the perspective of the person that wrote the markup:
+<code class="sh">mk</code> doesn't pretend to assign <em>intent</em>
+to such names, much as <code class="sh">make</code> doesn't.
+
+<P>
+This puts the details about a files <strong>use</strong> in the file,
+rather than someplace harder to locate (like a crontab, Makefile, or
+script in another directory).
+
+<P>
+<code class="sh">Mk</code> has a strong templating structure which allows files to only
+include the marker commands that are different than the customary versions.
+
+<P>
+The culture around <tt>mk</tt> includes heavy use of shell code as
+well as recursive calls to <tt>mk</tt>.
+
+<H2>Uses in the ksb tool chain</H2>
+<code class="sh">Mk</code> is used as a back-end for:
+<DL>
+<DT>man - to format and install manual pages
+<DT>system install scripts - to select many optional parts
+<DT>sbp - to select commands to build empty filesystems
+<DT>sudop - to emulate sudo under op
+<DT>valid - to run regression test code
+<DT>Level 1 CM policy - to build, install, and test source files
+<DT>Level 5 CM policy - to pick hosts and options for software configuration
+<DT>shell scripts - the provide example usage hints, for common instances
+<DT>README file - suggest commands to run configure and/or make
+</DL>
+
+<HR>
+<pre>Version identifier: $Id: expand.html,v 5.28 2010/08/13 19:26:04 ksb Exp $
+</pre>
+</BODY></HTML>

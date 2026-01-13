@@ -1,0 +1,12 @@
+# $Id: Distfile,v 3.3 1992/06/05 08:47:03 ksb Dist $
+#
+dnl  If we need main.c and main.h build them here
+dnl
+ifelse(MKCMD,`no',`syscmd(`make main.h main.c >/dev/null')')dnl
+dnl
+( . ) -> ( HOST )
+	except_pat ( /RCS /Makefile /Distfile /Make.host /Fake.cf );
+	install ${INTO} ;
+
+( @Make.host@ ) -> ( HOST )
+	install -b ${INTO}/Makefile ;

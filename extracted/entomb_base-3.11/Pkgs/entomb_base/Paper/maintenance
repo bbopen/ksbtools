@@ -1,0 +1,50 @@
+.\" $Id: maintenance,v 3.0 1992/04/22 13:23:06 ksb Stab $
+.\" $Compile: nroff -ms %f | ${PAGER-more}
+.\" $Laser: ltroff -ms %f
+.LP
+.NH
+Program Maintenance
+.LP
+The biggest maintenance problem we have experienced occurred when we
+tried to entomb files from our diskless Sun clients.  Since the
+program which does the actual entombing (\*Qentomb\*U) runs as root,
+and because UID 0 is mapped to UID -2 during NFS operations, we had to
+write an RPC server which ran as root on the disk server
+(\*Qentombd\*U).  When \fIentomb\fP finds that it is running on an NFS
+client, it calls \fIentombd\fP with the name of the file to be
+entombed and the user for whom to entomb it.  \fIEntombd\fP makes sure
+that the caller runs as root and that the filesystem being entombed
+upon is exported to the caller's host.
+.LP
+Another problem is caused by the way we impersonate system calls:
+since we need to have a function named, say \fIunlink\fP, but we need
+to make the \fIunlink\fP system call, we need to create another
+name for \fIunlink\fP (\fIunlink_r\fP) which does whatever the unlink
+system call normally does.  The makefile accomplishes this by running
+\fIsed\fP(1) on the source to the library portion of the system call,
+which generally pushes a value on the stack and generates an
+interrupt, to change \fIunlink\fP to \fIunlink_r\fP, and compiles the
+result.  But the location of this file varies widely, if it exists
+at all.  A better solution has yet to be found.
+.LP
+We found a \*Qmisfeature\*U in the interaction of \fImv\fP and the
+entombing library.  When the source and destination given to \fImv\fP
+are on different filesystems, the file is copied instead of renamed.
+After the copy is made, the original is removed with \fIunlink\fP(2).
+This causes the original to be entombed.  In our environment this
+hasn't presented too many problems, and our response has been
+documentation instead of source code changes to \fImv\fP.
+.LP
+An interesting problem occurred when we made \fI/bin/rm\fP entomb,
+but put the \fIentomb\fP program in \fI/usr/local/lib\fP, which is not
+on the root filesystem.  When in single-user mode, such as when
+executing \fI/etc/rc\fP, neither the configuration file nor the
+\fIentomb\fP program are mounted.  This originally caused the library
+routine to print an error message and exit with a non-zero status.
+Unfortunately, files (like \fI/fastboot\fP and \fI/etc/nologin\fP)
+were not removed.  The solution to this problem was simple: errors
+when opening the configuration file no longer cause an \fIexit\fP(2).
+
+.\" Local Variables:
+.\" mode:nroff
+.\" End:

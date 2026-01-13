@@ -1,0 +1,121 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Start a process group connected together by pipes</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: PipeRing
+<BR>
+Authors: KSB Braunsdorf
+<BR>
+Mail: ksb@npcguild.org
+<BR>
+Version: 1.6
+<BR>
+Bugs: None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+This module provides a function that starts a ring of process
+connected together by pipes (see pipe(2)).  On some systems these
+are actually implemented as pairs of connected sockets (see socketpair(2))
+
+<H1>Configuration</H1>
+
+<dl>
+<DT>#define PIPERING_STALL	20
+<DD>
+When a fork(2) system call returns EAGAIN the ring-builder sleep(3)'s
+for a Fibonacci number of seconds in the hopes that some system resources
+may come available.  This stall value is the longest allowed sleep.
+<P>
+In the default case of 20, the code sleeps for 1, 2, 3, 5, 8, and 13
+seconds for a total delay of 32 seconds before it failes.  (The next sleep
+value would be 21, which exceeds the stall parameter.)
+</dl>
+
+<H1>Description</H1>
+
+A ring of processes connected by pipes is a very useful
+abstraction.  Since modern (BSD and post SYSVr3) pipes are
+actually bi-directional the peers can send short messages
+"up stream" and long messages "down stream" to synchronize
+protocols and actions.
+
+<P>
+This is cool for double-buffered I/O, rendering of tiled data
+(such as maps, or video frames), or finite element analysis.
+Any problem that requires synchronization with a fixed, repeated
+order will fit the pipe-ring gang paradigm.
+
+<P>
+Scaling a ring when you find more processors on
+a host just makes the ring a little bigger, no code changes.
+
+<H1>Provides</H1>
+
+<DL>
+<DT><code>extern int PipeRing(int (*pfiTask)(), int iCount, void *pvData, int *piRet, char *pcStart);</code>
+<DD>
+This function builds the ring, <code class="libc">fork</code>ing Count child
+processes with pipes between them.  The C function Task is
+declared (in detail) as
+<blockquote><code>int (*pfiTask)(int iWorker, int iFdIn, int iFdOut, void *pvData);
+</code></blockquote>
+Where FdIn is a descriptor on the "up stream" process, and FdOut
+is a descriptor on the "down stream" process.  In the case where there
+is a gang-of-1 these are two ends of the same pipe.  The Worker interger
+represents the workers position in the ring, it is an
+interger from 0 to (iCount-1).
+
+<P>
+The Data pointer is passed as a parameter to
+each worker as presented to the ring-builder.
+This could be a vector which might be indexed in the worker.
+It is strongly suggested that an explicit <code class="markup">(void *)0</code>
+be passed if the parameter is unused in the Task function.
+
+<P>
+If the ring-build fails each Worker will see an EOF on the first read
+of the FdIn pipe.
+This only happens when the builder process ran out
+of resources (viz. pipes or processes).
+As a <strong>best practice</strong>, the Task code should send
+some token around the pipe ring (once) to
+be certian a stable gang has been established.  This is why
+the Start string is injected into the ring by the builder, after
+a successful ring construction.
+
+<DT><code>extern int PipePump(int iWorker, int fdIn, int fdOut, void *pvData);</code>
+<DD>
+An example function to "double buffer" <i>stdin</i> to <i>stdout</i>.
+If the Data pointer is not <code class="markup">(void *)0</code> it must be a
+<code class="markup">(int *)</code> to the number of bytes to copy in each worker.
+</DL>
+
+
+<H1>EXAMPLE</H1>
+See the test driver embedded in the module, via:
+<BlOCKQUOTE>
+explode -s pipering.h
+<BR>
+explode pipering.c
+<BR>
+more piperingtest.c
+</BlOCKQUOTE>
+
+
+<H1>Diagnostics</H1>
+None.
+
+<H1>See Also</H1>
+read(2), write(2), pipe(2), socketpair(2).
+
+<H1>To Do List</H1>
+None.
+
+<HR><PRE>
+$Id: pipering.html,v 1.7 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

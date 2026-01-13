@@ -1,0 +1,24 @@
+#  TeXinfo files						(nuspl)
+#  $Id: texinfo,v 5.0 1996/09/09 21:05:58 kb207252 Exp $
+
+$Link(*):       ${makeinfo-makeinfo} %f
+
+$Run(*):        %b %o -mLink %f && ${info-info} -f %F
+
+$Page(*):       %b %o -mRun %f
+
+$Dvi(*):        ${texi2dvi-texi2dvi} %f
+
+$Clean(*):	${rm-rm} -i %F.aux %F.cp %F.cps %F.dvi %F.fn %F.info %F.info-* %F.ky %F.kys %F.log %F.pg %F.ps %F.toc %F.tp %F.vr
+
+$Preview(*):    %b %o -mDvi %f && %b %o -m%m %F.dvi
+
+$Laser(*):      %b %o -mDvi %f && %b %o -m%m -d%s %F.dvi      
+$Laser(*):      %b %o -mDvi %f && %b %o -m%m %F.dvi      
+
+$Ps(*):		%b %o -mDvi %f && %b %o -m%m %F.dvi
+
+$Info(*):       ${echo-echo} "%f: TeXinfo source"
+
+$*(*):		${echo-echo} "%f:  %m(%s) is ambiguous for a TeXinfo file"
+$*(*):		${echo-echo} "%f:  %m is ambiguous for a TeXinfo file"

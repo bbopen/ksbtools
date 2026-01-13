@@ -1,0 +1,22 @@
+include(`../Machine.m4')dnl
+changequote(+,@)dnl
++# a manual page source file						(ksb)
+# $Id: man.host,v 5.1 2004/12/07 13:55:18 ksb Exp $
+
+$Compile(*):	${tbl-@TBL+} %f |${nroff-@NROFF+} -%x %s |${PAGER-${more-more}}
+$Compile(*):	${tbl-@TBL+} %f |${nroff-@NROFF+} -%x |${PAGER-${more-more}}
+$Compile(*):	${tbl-@TBL+} %f |${nroff-@NROFF+} -%x %s >%f.fmt
+$Compile(*):	${tbl-@TBL+} %f |${nroff-@NROFF+} -%x >%f.fmt
+
+$Display(*):	: 'on %{DISPLAY}'\n\t ${tbl-@TBL+} %f | /usr/local/lib/troff -%x %s -Tps -t - | /usr/local/lib/devps/devps > /tmp/mkt$\$.ps && %b %o /tmp/mkt$\$.ps && rm -f /tmp/mkt$\$.ps
+$Display(*):	: 'on %{DISPLAY}'\n\t ${tbl-@TBL+} %f | /usr/local/lib/troff -%x -Tps -t - | /usr/local/lib/devps/devps > /tmp/mkt$\$.ps && %b %o /tmp/mkt$\$.ps && rm -f /tmp/mkt$\$.ps
+$Display(*):	${tbl-@TBL+} %f |${nroff-@NROFF+} -%x %s |${PAGER-${more-more}}
+$Display(*):	${tbl-@TBL+} %f |${nroff-@NROFF+} -%x |${PAGER-${more-more}}
+$Laser(*):	${tbl-@TBL+} %f |${ltroff-ltroff} -%x %s
+$Laser(*):	${tbl-@TBL+} %f |${ltroff-ltroff} -%x
+
+$Clean(*):	${rm-rm} -f %F.fmt
+$Mkcat(*):	${tbl-@TBL+} /usr/local/lib/man/pagelen.n %f|${nroff-@NROFF+}@NROFF_TAB_OPT+ -%x|@COLCRT+ @USE_NEWCOLCRT+| cat @CAT_S_OPTION+
+
+$Info(*):	${echo-echo} "nroff/troff -%x source"
+@dnl

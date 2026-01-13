@@ -1,0 +1,19 @@
+# $Id: README,v 1.3 1997/11/17 01:17:37 ksb Exp $
+
+This is my little job system.  It keeps a machine loaded with jobs,
+but doesn't let too many run at once.   It is great for queue for
+Crack runs, or lots of Ada compiles.  If you use an NFS (or AFS)
+mounted common queue area you can even spread the load out over
+multiple hosts.
+
+Not as fancy as NQS or any of those Monsters.  Only requires *setgid*
+to a unique group.  No setuid root work is done (in fact the stuff
+is launched as `daemon' just to be sure).
+
+The docs are not great, but follow a long and you'll get the idea.
+Each part has a README telling how it fits into the whole and a manual
+page telling what you can do with it.
+
+--
+kayessbee, Nov 1997
+Kevin Braunsdorf, ksb@fedex.com, SAC UNIX support at FedEx

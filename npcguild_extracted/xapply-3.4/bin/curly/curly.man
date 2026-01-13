@@ -1,0 +1,72 @@
+.\" $Id: curly.man,v 3.0 1995/08/27 16:26:23 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH CURLY 1L LOCAL
+
+.SH NAME
+curly, uncurly \- expand or build csh-like path expressions
+
+.SH SYNOPSIS
+\fBcurly\fP [\fIexpressions\fP]
+.br
+\fBuncurly\fP [\-\fIdepth\fP] [\fInames\fP]
+
+.SH DESCRIPTION
+.B Curly
+expands a \fBcsh\fP(1) curly brace expression.
+Such an expression is of the form
+.sp
+	prefix{E1,E2,E3}suffix
+.sp
+which expands to
+.sp
+	prefixE1suffix
+.br
+	prefixE2suffix
+.br
+	prefixE3suffix
+.sp
+any subexpressions are also expanded.
+.PP
+.B Uncurly
+compresses a given path expression into a minimal curly expression.
+Thus
+.sp
+	uncurly ab.c ab.h de.c de.h ef.c ef.h
+.sp
+produces this output
+.sp
+	{ab,de,ef}.{c,h}
+.sp
+.PP
+Either product will run in a filter mode if no arguments are provided.
+
+.SH OPTIONS
+Both programs take the standard help (\fB\-h\fP) and version (\fB\-V\fP)
+options.
+In addition \fIuncurly\fP takes an integer \-\fIdepth\fP option to limit the
+depth of the compression search.
+
+.SH EXAMPLES
+.TP
+cd; find . -depth -print | uncurly >/tmp/files.u
+save a compressed list of the files in my home directory in /tmp/files.u.
+.TP
+curly </tmp/files.u | xargs my-tool
+Use \fIxargs\fP to run my-tool on each of the saved names in /tmp/files.u.
+.TP
+sort /tmp/mylist | uncurly -2 >/tmp/mylist.u
+Compress a sorted list of the names in /tmp/mylist, but limit the compression
+to 2 nested levels of curlies.
+
+.SH BUGS
+Files with curly braces in their names are problems.
+
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+Distributed Systems Process Development
+.br
+ksbrauns@fedex.com
+
+.SH "SEE ALSO"
+csh(1), find(1), xargs(1)

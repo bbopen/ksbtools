@@ -1,0 +1,16 @@
+# extract cpio files							(ksb)
+# $Id: cpio,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+# here is winner, we check all four CPIO magic numbers with an RE map...
+$*(*):		%!/cpio/%<%~/map/cpio>/ %.
+
+$Compile(*):	${%x-%x} ${cpio_debug--icvm} %s <%f
+$Compile(*):	${%x-%x} ${cpio_debug--icvm} <%f
+$Clean(*):	${rm-rm} -rf %P
+$Run(*):	${%x-%x} ${cpio_debug--icvm} %s <%f
+$Run(*):	${%x-%x} ${cpio_debug--icvm} <%f
+
+$Display(*):	${%x-%x} ${cpio_debug--icvmt} %s <%f |${PAGER-${more-more}}
+$Display(*):	${%x-%x} ${cpio_debug--icvmt} <%f |${PAGER-${more-more}}
+
+$Info(*):	${echo-echo} "cpio archive"

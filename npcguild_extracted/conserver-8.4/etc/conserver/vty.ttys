@@ -1,0 +1,56 @@
+# Hacked by ksb and gcr for console server use.
+# $Id: vty.ttys,v 8.1 1998/06/07 16:24:55 ksb Exp $
+#
+# This entry needed for asking password when init goes to single-user mode
+# If you want to be asked for password, change "secure" to "insecure" here
+console	none				unknown	off	insecure
+#
+# Virtual terminals
+ttyv0	"/usr/libexec/getty Pc"		cons25	on	insecure
+ttyv1	"/usr/libexec/getty Pc"		cons25	on	insecure
+ttyv2	"/usr/libexec/getty Pc"		cons25	on	insecure
+ttyv3	"/usr/libexec/getty Pc"		cons25	on	insecure
+ttyv4	"/usr/libexec/getty Pc"		cons25	on	insecure
+ttyv5	"/usr/libexec/getty Pc"		cons25	on	insecure
+ttyv6	"/usr/libexec/getty Pc"		cons25	on	secure
+ttyv7	"/usr/local/etc/cons.boot"	cons25	on	insecure
+#
+# Serial terminals
+ttyd0	"/usr/libexec/getty std.9600"	unknown	off	insecure
+ttyd1	"/usr/libexec/getty std.9600"	unknown	off	insecure
+ttyd2	"/usr/libexec/getty std.9600"	unknown	off	insecure
+ttyd3	"/usr/libexec/getty std.9600"	unknown	off	insecure
+#
+# Pseudo terminals
+ttyp0	none				network		insecure
+ttyp1	none				network		insecure
+ttyp2	none				network		insecure
+ttyp3	none				network		insecure
+ttyp4	none				network		insecure
+ttyp5	none				network		insecure
+ttyp6	none				network		insecure
+ttyp7	none				network		insecure
+ttyp8	none				network		insecure
+ttyp9	none				network		insecure
+ttypa	none				network		insecure
+ttypb	none				network		insecure
+ttypc	none				network		insecure
+ttypd	none				network		insecure
+ttype	none				network		insecure
+ttypf	none				network		insecure
+ttypg	none				network		insecure
+ttyph	none				network		insecure
+ttypi	none				network		insecure
+ttypj	none				network		insecure
+ttypk	none				network		insecure
+ttypl	none				network		insecure
+ttypm	none				network		insecure
+ttypn	none				network		insecure
+ttypo	none				network		insecure
+ttypp	none				network		insecure
+ttypq	none				network		insecure
+ttypr	none				network		insecure
+ttyps	none				network		insecure
+ttypt	none				network		insecure
+ttypu	none				network		insecure
+ttypv	none				network		insecure

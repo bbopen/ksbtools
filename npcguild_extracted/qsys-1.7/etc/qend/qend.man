@@ -1,0 +1,69 @@
+.\" $Id: qend.man,v 1.3 1997/01/06 02:35:50 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH QEND 1L LOCAL
+.SH NAME
+qend \- shutdown a queue system job queue
+.SH SYNOPSIS
+.ds PN "qend
+\fI\*(PN\fP [\-\fIprio\fP] [\fIqueues\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.sp
+.SH DESCRIPTION
+.PP
+\fBQend\fP places a job in each of the specified \fIqueues\fP
+to gracefully shut the flow of jobs off.
+The ``posion pill'' placed in the queue is a shell script that
+sends a TERM signal to the parent \fIqmgr\fP.
+This script depends on /bin/ksh (which has \fB$PPID\fP).
+.PP
+When the \fIqmgr\fP receives a TERM signal it refrains from
+starting any more jobs from the queue it is managing.
+After all the jobs already started exit the \fIqmgr\fP
+exits.
+
+.SH OPTIONS
+.TP
+.BI \- prio
+The end of production job is scheduled at priority \-5 normally.
+Thus jobs which must be done before a system shutdown should be
+started at a priority less then \-5, or this option may specify
+a termination priority greater (or lesser).
+.TP
+.BI \-h 
+Print a brief help message.
+.TP
+.BI \-V 
+Show version information.
+.TP
+.I queues
+Specify the spool directory the queue lives in.  This directory
+must be built with \fIqinit\fP(8L).
+Be default take all the queues \fIqstart\fP would start.
+.SH EXAMPLES
+.TP
+qend \-\-2
+End production for the whole system is after all the \-2 jobs finish.
+.TP
+qend \-0 modems
+End the ``modems'' queue after all the non-positive priority jobs
+finish.
+.TP
+qend --20 compile
+End the ``compile'' queue as soon as possible.
+.SH FILE
+\fI/usr/spool/qsys\fP	or
+.br
+\fI/var/spool/qsys\fP	the default job queue
+.SH BUGS
+None known.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+FedEx UNIX Group
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+qinit(8L), qmgr(1L), qstart(1L), kill(1), ksh(1)

@@ -1,0 +1,102 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<link rel="stylesheet" type="text/css" href="code.css"/>
+<TITLE>The mark-up used in my HTML documents</TITLE>
+</HEAD><BODY>
+
+These are the mark-ups I use to help make the documentation
+for all my tools easier to read.
+
+<H2>Code mark-up</H2>
+<DL>
+<DT>code.file {background-color: #cccc00}
+<DD>
+A section of code that comes from a file renders as a block element
+as:
+<blockquote><pre><code class="file">
+# This is an example comment in a file mark-up
+And this would be a line of code in the example file.
+</code></pre></blockquote>
+<DT>code.attr {color: #EE00EE }
+<DD>
+I have several features a call "attributes".  These are all
+marked-up with this class.  Usually an attribute is a macro of
+some kind (<code class="sh">m4</code>, or some processor I wrote)
+and is marked-up in-line.  For example an attribute named "HUE"
+would look like <code class="attr">HUE</code>.
+<DT>code.sh {color: #00DD00 }
+<DD>
+A shell command might be taken for an English word, if it were
+not identified with mark-up.  For example the shell command "halt"
+is written as <code class="sh">halt</code>.
+<DT>code.opt {color: #0000DD }
+<DD>
+A command line option to a shell command is given as <code class="opt">-o</code>.
+<DT>code.param {font-style: italic}
+<DD>
+A parameter to a shell program is given as <code class="param">param</code>.
+This is the same markup used to an option specification, for example
+<code class="sh">make</code>'s recipe file under <code class="opt">-f</code>
+is given as <code class="param">makefile</code>.
+<DT>code.make {color: #DD0000 }
+<DD>
+I use a lot of <code class="sh">make</code> recipe files, so I've
+had to give the macros in a <code class="param">makefile</code> special
+markup.  The common "CFLAGS" macro is given as <code class="make">CFLAGS</code>.
+<DT>code.env {color: #00CCCC }
+<DD>
+To show the difference between <code class="sh">make</code>'s macros
+and shell environment variables we mark the latter with a different
+markup.
+The "PATH" environment variable is marked as <code class="env">PATH</code>.
+<DT>code.libc {font-style: italic ; color: #CCCC00 }
+<DD>
+Some library functions and system calls might be mistaken for English
+works without markup.  For example the "shutdown" system call is
+marked as <code class="lib">shutdown</code>.
+<DT>code.path { text-decoration: underline }
+<DD>
+A path through the filesystem may be marked as
+<code class="path">/dev/null</code>.  This is not always
+included, when it is clear that every element in a list must be
+a filename.
+<DT>code.rdist {color: #CCCC00 }
+<DD>
+Like <code class="sh">make</code>'s <code class="param">makefile</code>,
+<code class="sh">rdist</code>'s <code class="param">distfile</code>
+contains macros that might be mistaken for shell variables.
+I mark these with <code class="rdist">INTO</code>.
+<DT>code.markup {font-style: italic ; color: #00CC66 }
+<DD>
+To explain any other markup I would use the general purpose class "markup".
+For example to explain the use of the commercial at sign in a
+<code class="sh">scp</code> target.
+<blockquote>
+The commercial at (<code class="markup">@</code>) is placed
+between the <code class="param">user</code> and <code>host</code>
+parameters as <code class="param">user</code><code class="markup">@</code><code class="param">host</code>.
+</blockquote>
+</DL>
+
+<H2>Emphasis</H2>
+I limit the use of emphasis to really dangerous errors, for example
+commands that would destroy data (which one would never execute), and
+to new text in an old document while my proof readers are still
+reviewing the draft.
+<DL>
+<DT>em.error { color: red }
+<DD>
+Text that is a never-type example.  For example:
+<blockquote>
+This would run <em class="error">sudo rm -rf /usr</em>, which is
+not what we want to happen.
+</blockquote>
+<DT>em.new { color: #00cc33 }
+<DD>
+Updates that I want a proof reader to comment on.
+<em class="new">This is the new example.</em>
+</DL>
+<hr>
+<pre>
+$Id: code.html,v 1.4 2010/08/13 17:33:34 ksb Exp $</pre>
+</BODY></HTML>

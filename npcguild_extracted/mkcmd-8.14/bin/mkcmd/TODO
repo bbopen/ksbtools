@@ -1,0 +1,108 @@
+# $Id: TODO,v 8.6 1999/06/18 18:28:53 ksb Exp $
+
+Bugs:	Exclusive every and option trigger breaks -- no repeat-by.  Ends
+	track is wrong, we don't have to be an "ENDS" to need checking
+	in this case.
+
+	If two options want the same ending (same "every") they can't
+	get it now.  In "installus" "-W" and "-d" want the same every.
+	Now they _exclude_ each other, which is sad.  We need a way to
+	say "either -W or -d make this ending".  I've not figured that
+	out yet (in a clean way).  "... 'w' { ends 'd' }" is close.
+	In the code it would trigger "if (u_gave_d || u_gave_W)..."
+
+Fixes:	An invisible option trigger "%" needs to be forced to own the top
+	level parameter processing so we can make it exclude the other options
+	that have special actions.  Or some such.  This code along with
+	the bug above.
+
+
+The %c ... %% structure would be more useful if you could include meta code:
++ %@c ... %@% might work, encode the 3 temp files as meta-code and
+use the expander on them?  Oh, My.
+
+Final type work:
+      + C++ style (kinda) template types would be _way_ cool.
+	Allow a synthetic type to require a <type> in the decls?
+	Might be more than a little over-kill.  Use the list attribute?
+	How would we expand?  What would we declare/define?
+
+	For example a "unique list of ..." might be nifty, allow the
+	User to specify "-n 1 -n 2 -n 1" to get "1, 2" in as a vector
+	of integers.  Mkcmd doesn't have a (good) way to make this
+	generic.  If a type could take a compile-time parameter list
+	(like C++ class's take <T>) we could instance stuff via the
+	type name.  It is just too much work to go back and make the
+	type name an expander string every place in mkcmd.
+
+Add the "output" contruct:
+	A format to let mkcmd output a file other than "%n.c" and "%n.h".
+	This is what the manual page thing _should_ be based on.  And the
+	case without the body of attributes should set the name of the
+	output file (-n) and set overwrite.
+
+	See output.c for more notes.
+
+Move the type conversion code into a template file
+	Like cvt.{mi,mc,mh} would have the code in them and we'd extract
+	it from the files.  The hard coded stuff is clunky and I'd like
+	to be able to replace check code as well.
+
+Our command line:
+     +	Add an option to turn _on/off_ #lines in the generated code.
+
+     +	Add an expander buffer size option (default 10k now).
+
+Manual pages generation:
+     +	Polish manual page code for routines for file readers.
+	Put in the help message from the pORMaster option
+        Put in everything from the RG node
+        For each hunk:
+                put in the whole line with a hunk baner
+                put in TP for each field
+	In the "See Also" section put in a .\" to remind the editor
+	to put in apropos section 5 file description pages.
+
+      + Make the manual page system output HTML optionally in .html file.
+
+
+File readers:
+     +  Routines should complain if the conversion throws away the end of
+	the line...  It complains now if you toss only the whole line.
+	(Also check for function/action column as the last one?)
+
+     +	Routines should be first class attributes, have names so that two
+	options could use the same parser.  Requires a top level way to
+	build a routine and a way to link it to a trigger
+		routine global "name" ...	<in top level>
+		file ... {
+			routine named "named"
+		}
+	would we expand it once for each client trigger?  I think so.
+
+     -	This becomes problematic when the routines code for different
+	converted types.  We do have to expand for each converted type
+	or bound object and that is a pain (no good way in mkcmd to make
+	sure the names of the expanded routines are unique.
+
+     +	When we read a "boolean" "toggle" or "action" from a file we
+	should do something more clever than we do (like look at
+	the data spec rather than ignoring it).
+	At least suggest a "Boolean" enum in the docs.
+
+     +  Booleans look for "0", "f"[nocase], "no", "false"[nocase], or
+	all spaces, for "0" and anything else is "1".  Toggle I'm not
+	sure!  Xor with what the boolean sez?  Hehehe.  Action we should
+	do as we do, I believe (set the keep and call down).}
+
+     !	File writers are too easy.  Just do it yourself (with printf).
+
+Mkcmd Templates:
+     +	ask for templates from the people who use mkcmd.
+
+     +	write the fvwm template for its module interface
+
+     +  do the other kinda templates (typeless ones)
+
+--
+kayessbee, Mar 1999 ksb@sa.fedex.com (SA+C UNIX Support)

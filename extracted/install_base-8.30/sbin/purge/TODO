@@ -1,0 +1,31 @@
+# $Id: TODO,v 8.8 2009/10/15 17:01:06 ksb Exp $
+
+Purge should not report unlink failure of "No such file" as it is usually a
+race with another copy of purge, or install/installus.
+
+It has been suggested that purge might get a slightly different criteria to
+under other's site policy.  Viz. an option to force all but one copy of each
+preserved file to be removed (with little or no reguard to age).
+
+	$ purge -h
+	...
+	1	keep only one backup with the same name as each original
+
+I'm not so sure this is a great idea.  There is a good chance that the one
+you want to get back is the *older* of the backups -- not the previous
+botched version.  Save me from `purge -i'?  I think it is better than I
+thought before, but I still don't know which one to keep.  Thoughts:
+	+ the largest?
+	+ the oldest (let a purge w/o -1 clean that one up)?
+	+ the newest one with a different owner, group mode?
+	+ the newest one with a different magic number?
+	+ the oldest one with the same magic number?
+
+
+If we did `purge -i' we could fork the `instck -i' we tell the user to run.
+Doing this would make us look much more intelligent (than we really are).
+All this is beyond the scope of the original shell script we are emulating,
+but would be used once in a while.
+
+--
+kayessbee, Kevin Braunsdorf, purge@ksb.npcguild.org

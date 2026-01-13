@@ -1,0 +1,1599 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>op: authorization elements via helmets and jackets</TITLE>
+<link rel="stylesheet" type="text/css" href="https://carrera.databits.net/~ksb/msrc/css/code.css" />
+</HEAD><BODY>
+<h2 id="top">Authorization is not authentication</h2>
+<code class="sh">Op</code> uses <code class="sh">pam</code> to
+authenticate access requests, and that works most of the time.
+It also sanity checks parameters, all the better.  But sometimes
+you need another <strong>person</strong> or <strong>process</strong> to
+authorize command the makes a meaningful change to the instance.
+
+<h1 id="known">To understand this document</h1>
+Some configuration experience with <code class="sh">op</code> rules
+and in-line scripts, to understand why one might need a helmet.
+A clear understanding of the UNIX&trade; process model would be really
+helpful, because we are using <code class="libc">wait</code>(2) and
+<code class="libc">pipe</code>(2) here clever in ways.
+
+<h2 id="authorize">Helmets allow authorization checks before an escalation</h2>
+
+<code class="sh">Op</code> does a pretty good job of limiting access to
+privilege escalation rules in the configuration file to
+authentic logins (the session is owned by the correct login, in an
+allowed group or netgroup, and they might know the right password).
+But sometimes a rule should only be accessed based on some criteria that
+<code class="sh">op</code> doesn't understand.  For example, the time
+of day, or the lack of a key process, or a missing, full, or read-only
+filesystem.  Or a permission credential provide by another user.
+<p>
+Many other examples are be ridiculously site specific, so there is
+no way anyone could code for all of them.
+
+<p>
+Even more to the point, all of those possible rules would be impossible to
+express in the limits of the declarative <code class="sh">op</code>
+configuration file's language.  That format is otherwise adequate to
+describe escalation rules: so I don't want to change it.
+But most of these limits are easy to check in a shell or perl script, or
+a C program.
+Thus <code class="sh">op</code> out-sources the work to a co-process that
+should be coded in the most appropriate style for the task at hand.
+
+<p>
+That leaves a simple set of data-flow tasks:
+<ul>
+<li>How does <code class="sh">op</code> get <A href="#param">context information</A> to the helmet?
+<li>How does the helmet change the <A href="#action">parameters of the escalation</A>?
+<li>How does the helmet get the <A href="#final">go/no-go information back</A> to <code class="sh">op</code>?
+</ul>
+
+<p>
+Each of those tasks is described below.
+
+<h3 id="param">Parameters passed to a helmet define context</h3>
+
+This is all in <href="bin/op/op.html#external">op's HTML page</A>
+for an overview of the mechanism.  In this section we are going to
+talk about the parameters passed to a helmet, and why you might need
+each of them:
+<blockquote class="file"><code class="sh"><i>helmet</i></code> [<code class="opt">-C</code> <code class="param">config</code>] [<code class="opt">-f</code> <code class="param">file</code>] [<code class="opt">-g</code> <code class="param">group</code>] [<code class="opt">-j</code> <code class="param">job</code>] [<code class="opt">-m</code> <code class="param">mac</code>] [<code class="opt">-R</code> <code class="param">root</code>] [<code class="opt">-u</code> <code class="param">user</code>] <code class="param">mnemonic</code> <code class="param">program</code> <code class="param">euid</code>:<code class="param">egid</code> <code class="param">cred_type</code>:<code class="param">cred</code></blockquote>
+
+<dl>
+<dt id="exec"><code class="sh"><i>helmet</i></code>
+<dd>
+This is the program to execute.  Of course we need that.
+
+<dt id="source"><code class="opt">-C</code> <code class="param">config</code>
+<dd>
+This provides the configuration file that authorized the escalation.
+You could look for meta information in the file with <code class="sh">mk</code>,
+or you could only allow escalation from that file in a time-box.
+
+<dt id="file"><code class="opt">-f</code> <code class="param">file</code>
+<dd>
+This provides the file specification given under <code class="opt">-f</code>,
+which has already passed any <code class="markup">%f</code> or
+<code class="markup">!f</code> checks.
+Since <code class="sh">op</code> has a fairly complete set of checks for
+files, I can only guess why you'd need this.  I suppose it could be
+a local domain socket that you need to chat with, heck I'd do that.
+
+<dt id="group"><code class="opt">-g</code> <code class="param">group</code>
+<dd>
+This provides the group specification given under <code class="opt">-g</code>,
+which has already passed any <code class="markup">%g</code> or
+<code class="markup">!g</code> checks.
+I don't know what you might check with a group, but I'm sure you'll
+think of something.
+
+<dt id="job"><em class="error"><code class="opt">-j</code> <code class="param">job</code></em>
+<dd>
+This provides the job specification given under <code class="opt">-j</code>,
+which is only available in <code class="sh">op</code> version 3.
+
+<dt id="mac"><code class="opt">-m</code> <code class="param">mac</code>
+<dd>
+This is the MAC specification given under <code class="opt">-m</code>.
+
+<dt id="root"><code class="opt">-R</code> <code class="param">root</code>
+<dd>
+This is the value <code class="markup">chroot</code> derived from
+the formula given (which might include <code class="markup">$f</code>
+or <code class="markup">$d</code>, for example).
+Since this might tell you where to <code class="sh">mount</code>
+a file system, or install a wrapper socket, it might be the most useful
+data passed to a helmet.
+
+<dt id="user"><code class="opt">-u</code> <code class="param">user</code>
+<dd>
+This provides the user specification given under <code class="opt">-u</code>,
+which has already passed any <code class="markup">%u</code> or
+<code class="markup">!u</code> checks.  I have heard of sites that
+use a RADIUS service for passwords, but I think I'd use
+the <code class="libc">pam</code> module before I'd use
+a <code class="sh">perl</code> script.
+
+<dt id="mnemonic"><code class="param">mnemonic</code>
+<dd>
+This provides the name of the selected mnemonic.  This could be used an
+a submarker (or marker) for <code class="sh">mk</code>, for example.
+
+<dt id="program"><code class="param">program</code>
+<dd>
+This is the path to the selected program, which might be in a chroot,
+so take care if you are going to <code class="libc">stat</code>(2) it.
+With all the checks <code class="sh">op</code> does under
+<code class="markup">%_</code> and <code class="markup">!_</code> I
+don't really know what else you might be looking at.
+
+<dt id="target"><code class="param">euid</code>:<code class="param">egid</code>
+<dd>
+The provide escalated effective user and group ids (as decimal numbers).
+I don't know what you'd check these against in a helmet, but
+you might know more than I do about that.  Which is the whole point
+of a helmet.
+
+<dt id="cred"><code class="param">cred_type</code>:<code class="param">cred</code>
+<dd>
+Which of the three credentials types allowed the access:
+<dl>
+<dt id="byGroup">groups
+<dd>
+The name (or gid) of the group that allows the access.  Note that if
+the group is allowed by number you will get the number, not the name.
+<dt id="byLogin">users
+<dd>
+The name (or uid) the the user that allows the access.  Like a group
+you may get the uid, rather than the name.
+<dt id="byNetgroup">netgroup
+<dd>
+The name of the netgroup that allows the access.  If you use netgroups
+you should know how this could be used.
+</dl>
+<p>
+In all of these cases you could make some other local check on the
+attribute that allows the escalation, or check the <em>other</em>
+credential (viz. check user if group allowed) since <code class="sh">op</code>
+uses "or" logic to allow access, and you might prefer "and" logic.
+</dl>
+
+<p>
+All of the parameters listed above are provided to give a complete
+description of the context of the escalation.  Other information is
+always passed in the environment.  This allows every helmet to have
+a separate set of specifications that do not overlap any other (so
+multiple helmets could be chained together (see the helmet named
+<code class="sh">coat</code>, which does just that).
+
+<p>
+The additional environment variables usually start with the name of the
+helmet (or jacket) that reads them and an
+under-bar (<code class="markup">_</code>).  As they are consumed the
+helmet process requests that <code class="sh">op</code> delete them from
+the escalated environment.  This reduces the radiation of information to
+black-hat crackers who are trying to suborn an escalation rule.
+These bits are still in the process table (for the life of the helmet),
+but there is little to be done about that.  Should we use a pipe?
+That forces all the helmets read and parse a stream?  I think not.
+
+<p>
+For example, the <code class="sh">stamp</code> helmet reads
+<code class="env">STAMP_SPEC</code> for the specification of the
+required authorization.
+
+<h3 id="specification">The <code class="markup">jacket</code> specification</h3>
+
+A jacket process is a more advanced version of a helmet.  Other than an
+additional command-line option it has exactly the same interface as
+a helmet:
+<blockquote class="file"><code class="sh"><i>jacket</i></code> <em class="new"><code class="opt">-P</code> <code class="param">pid</code></em> [<code class="opt">-C</code> <code class="param">config</code>]<i>...same options...</i> <code class="param">mnemonic</code> <code class="param">program</code> <code class="param">euid</code>:<code class="param">egid</code> <code class="param">cred_type</code>:<code class="param">cred</code></blockquote>
+<dl>
+<dt id="pid"><code class="opt">-P</code> <code class="param">pid</code>
+<dd>
+The the escalated process-id.
+</dl>
+
+<p>
+The jacket program runs after the helmet, it is expected to start
+the escalated process (which is waiting for the jacket to
+<code class="libc">close</code> <code class="param">stdout</code>).
+Once the process is running the jacket may
+take any actions required to manage the escalation.
+When the escalated process <code class="libc">exit</code>'s the
+jacket should <code class="libc">wait</code> for the process and
+produce an apropos <code class="libc">exit</code> code based on
+the <code class="param">status</code> returned from the escalation.
+
+<p>
+A jacket has only 2 more clues than a helmet: it knows the process-id of
+the proposed escalation (which has not changed effective uid or gid yet)
+and it can see the environment proposed by the helmet.  These are
+not (generally) useful to make any new authorization decisions, but
+it is possible to use a jacket to reject or modify the access, see
+<A href="code">below</A>.
+
+Many jackets work as helmets without the <code class="opt">-P</code> option.
+
+<h4 id="goButton">How to start the jacketed process</h4>
+The jacket starts the escalation process by closing
+<code class="param">stdout</code>.  After which
+<strong>the jacket continues to run</strong> in parallel with
+the escalated process.  But how does one do this in the common
+scripting languages?
+
+<p>
+In <code class="sh">perl</code> one may:
+<blockquote class="file"><pre><code >open STDOUT, ">/dev/null";</code></pre></blockquote>
+In <code class="sh">sh</code> one may:
+<blockquote class="file"><pre><code >exec 1&gt;&amp;-</code></pre></blockquote>
+In C one would:
+<blockquote class="file"><pre><code >close(1);</code></pre></blockquote>
+or
+<blockquote class="file"><pre><code >fclose(stdout);</code></pre></blockquote>
+
+<p>
+If the last suggested exit code is 0 (or none were suggested),
+<code class="sh">op</code> starts the process under
+the <code class="param">pid</code> specified under <code class="opt">-P</code>.
+This process is a child of the jacket process, so it is the
+jacket's task to wait for the child process and interpret the
+success/failure of the escalated child.
+
+<p>
+In addition the jacket may provide services to the process, may
+clean-up any pre-escalation setup, or may <code class="libc">kill</code>
+the escalated process after some time limit or event.
+
+<h4 id="actions">Jacket credentials</h4>
+
+Note that both helmets and jackets run with the setuid
+(and/or setgid) permissions that <code class="sh">op</code> gained when
+executed, or those assumed by any sentinel configuration.
+If you need to drop effective as the client process did, then consult the
+<code class="param">euid</code>:<code class="param">egid</code>
+specified on the command-line.
+
+<p>
+In the rest of the text assume that anything a helmet can do a
+jacket can do just the same.  The only special feature the jacket has
+is the ability to start the escalation, and run as a co-process for
+that escalated process.  The last action of the jacket should be to
+<code class="libc">wait</code> for the escalated process to
+return an <code class="libc">exit</code> code based on the
+<code class="param">status</code> returned.
+
+<h3 id="action">Taking action to allow, modify, or deny access</h3>
+
+There are several actions a helmet might take.  Each of them has a
+specific use-case (goal).  We'll start with the output stream from
+the helmet, then the exit code.
+
+<p>
+Every output to <code class="param">stdout</code> by a helmet is
+read by <code class="sh">op</code> for single-line commands.
+Each command is processed in the order read.
+<dl>
+<dt id="passVar"><code class="markup">#</code> <code class="param">comment</code>
+<dd>
+Comments are only used for debugging: if <code class="sh">op</code> is
+compiled for debugging the comments from helmets are output to
+<code class="param">stderr</code> to help debug the configuration
+and processing of the helmet (or jacket).
+<dt id="rmVar"><code class="markup">-</code><code class="param">VAR</code>
+<dd>
+Remove the specified environment variable from the escalated process's
+environment list.
+<dt id="setVar"><code class="markup">$</code><code class="param">VAR</code><code class="markup">=</code><code class="param">value</code>
+<dd>
+Force the given value for the specified environment variable.
+<dt id="copyVar"><code class="markup">$</code><code class="param">VAR</code>
+<dd>
+Copy the specified environment value from the original list.
+<dt id="revealVar"><code class="markup">~</code><code class="param">prefix</code>
+<dd>
+Remove the given prefix from any matching environment variables.
+For example, the variable "hide_PATH" becomes "PATH" after
+a <code class="markup">~hide_</code> command.  This allows the helmet to
+have a different forced <code class="env">PATH</code> from the
+escalated process, while both are specified in the configuration of
+the rule.
+While this is a little strange, the operation makes some specifications
+much more clear, and easier to understand.
+<dt id="stdin"><code class="markup">&amp;</code>0<code class="param">redirection</code>
+<dt id="stdout"><code class="markup">&amp;</code>1<code class="param">redirection</code>
+<dt id="stderr"><code class="markup">&amp;</code>2<code class="param">redirection</code>
+<dd>
+Redirect one of the standard I/O channels to/from
+the given <code class="param">redirection</code>, which has one of
+the following forms (mocking the shell):
+<dl>
+<dt id="open"><code class="param">file</code>
+<dd>
+The default redirection is sane for the specified descriptor, but you can
+override that.
+<dt id="read"><code class="markup">&lt;</code><code class="param">file</code>
+<dd>
+Force read-only.
+<dt id="write"><code class="markup">&gt;</code><code class="param">file</code>
+<dd>
+Force write-only.
+<dt id="readwrite"><code class="markup">&lt;&gt;</code><code class="param">file</code>
+<dd>
+Force read-write.
+<dt id="append"><code class="markup">&gt;&gt;</code><code class="param">file</code>
+<dd>
+Force append-only.
+<dt id="socket"><code class="param">socket</code>
+<dd>
+Connect to the named local (UNIX) domain socket.
+</dl>
+<dt id="fdLimit"><code class="markup">&amp;</code> <code class="param">fd</code>
+<dd>
+Close all file descriptors above <code class="param">fd</code>.
+The typical value of <code class="param">fd</code> is 3.
+This prevents escalated processes from finding unexpected open files.
+Because almost no program expects non-standard open descriptors
+there is no way (in a helmet) to redirect other fds.
+<dt id="code"><code class="param">exit-code</code> (a decimal number)
+<dd>
+Provide a proposed exit code for the helmet.
+Any non-zero exit code denies the escalation.  The last proposed code is
+the one that matters.
+<dt id="quotes"><code class="markup">"</code><code class="param">cmd</code><code class="markup">"</code>
+<dd>
+Any of the above commands may be enclosed in double-quotes to quote
+internal newlines and double-quote.
+To protect the special characters <code class="sh">op</code>
+might confuse in the authorization stream, these characters should be
+replaced as follows:
+<ul>
+<li><code class="markup">"</code> with <code class="markup">\d</code> (for <strong>d</strong>ouble quote)
+<li><code class="markup">`</code> with <code class="markup">\o</code> (for <strong>o</strong>pen <code class="sh">m4</code> quote)
+<li><code class="markup">'</code> with <code class="markup">\q</code> (for <strong>q</strong>uotes closed, in <code class="sh">m4</code>)
+<li>a literal newline with <code class="markup">\n</code>
+<li>a literal tab with <code class="markup">\t</code>
+</ul>
+<p>
+Other single letter C escapes (e.g. <code class="markup">\r</code>)
+may be optionally replaced, as <code class="sh">op</code> doesn't
+treat these characters as special.
+<p>
+Note that octal escapes are <em class="error">not supported</em>.
+This does limit the use of non-Roman languages or 8-bit character in
+the text of environment variables.  This limitation may be removed
+in the 3.1 release of <code class="sh">op</code>.
+<p>
+Also note that the terminating newline must follow the closing quote,
+trailing white-space is not allowed.
+</dl>
+
+<h3 id="final">On exit make the final call</h3>
+
+The final word from the helmet is the exit code.  Any non-zero
+<code class="libc">exit</code> fails the escalation.
+If the program is a jacket specification, them the code represents the
+success of the escalated process.
+
+<h2 id="config">Configuration of helmets and jackets</h2>
+
+Each escalation rule may have 1 helmet and 1 jacket configured.
+The keywords <code class="markup">helmet</code> and
+<code class="markup">jacket</code> specify the path to
+the <strong>trusted</strong> program that acts on behalf of the
+superuser (or sentinel user), so we generally expect an
+absolute path to be specified.
+
+<p>
+Later we'll see that there is a way to get more than one helmet and
+jacket, but that hinders some of the features of the native structure.
+
+<p>
+<strong>The examples in this section do not provide any authorization
+services.</strong>
+These are designed to be easy to read and understand, not to provide
+much additional functionality.  Which is not to say they are
+useless, just not super useful for authorization.
+
+<h3 id="timebox">An example helmet <code class="sh">timebox</code></h3>
+
+If we want to limit an escalation base on the time of day we can use
+the <code class="sh">timebox</code> helmet, which does exactly that.
+Most of the helmets and jackets I've coded use the standard
+<code class="opt">-H</code> and <code class="opt">-V</code> options to
+output usage and version information.  The version information includes
+the names of the environment variables each expects as specifications:
+<blockquote class="file"><pre><code >$ <em class="new">/usr/local/libexec/jacket/timebox -V</em>
+timebox: ...timebox,v 1.7 2012/<i>...</i>
+timebox: <em class="new">TIMEBOX_REVEAL, TIMEBOX_INSIDE, TIMEBOX_FORBID, TIMEBOX_WARN</em></code></pre></blockquote>
+That doesn't give you the format of the specification, or the
+semantics -- but it is a good reminder of what to look for in the
+documentation or code.  Some helmets take <code class="opt">-H</code> to
+output a better reminder of the configuration options.
+<blockquote class="file"><pre><code >$ <em class="new">/usr/local/libexec/jacket/timebox -H</em>
+TIMEBOX_FORBID   comma separated list of excluded times: [!]*strftime[!=]=strftime
+TIMEBOX_INSIDE   comma separated list of time relations: [!]strftime(<=?strftime)+;
+TIMEBOX_REVEAL   remove prefix from environment entries
+TIMEBOX_WARNING  escalation denied message for the customer (Sorry)</code></pre></blockquote>
+
+<p>
+I've used the same suffix to mean the same thing in each helmet that
+supports them:
+These conventions are not mandatory: your local site policy may vary.
+<dl>
+<dt id="anyReveal"><code class="markup">_REVEAL</code>
+<dd>
+This string is sent back in the output commands to <code class="sh">op</code>
+prefixed with the <code class="markup">~</code> command, the name of
+the variable is sent prefixed with a <code class="markup">-</code> command.
+The effect of this is to reveal some environment variables and remove
+the one that did it.
+<dt id="anyWarn"><code class="markup">_WARN</code>
+<dd>
+If set this is the message sent to <code class="param">stderr</code>
+when the client access is rejected.  Otherwise some common default
+like the vanilla "Sorry." or "Access denied." is output.
+<dt id="anyStall"><code class="markup">_STALL</code>
+<dd>
+The number of seconds allowed to wait for access.  If a lock is
+required, the time of day matters, or some other issue requires
+a re-attempt the check will only block approximately this many
+seconds.
+</dl>
+
+The <code class="sh">timebox</code> helmet uses 2 of the above and
+2 specific to the task at hand: <code class="env">TIMEBOX_FORBID</code>
+and <code class="env">TIMEBOX_INSIDE</code>.
+
+<p>
+Here is a base example of an <code class="sh">op</code> rule that allows
+anyone in group <code class="group">wheel</code> (aka group 0) to
+get a superuser shell:
+<blockquote class="file"><pre><code >su	MAGIC_SHELL ;			# what
+	groups=^wheel$,#^0$		# whom
+	uid=0 gid=0 initgroups=root	# escalation
+	PERP=$l RCSINIT=-w$l		# details</code></pre></blockquote>
+
+<p>
+That rule could be run anytime by any Admin.  If we want to limit it to
+off-peak hours (for our fish store peak 10:30 to 16:30) we can
+install a <code class="sh">timebox</code> helmet specification into that
+rule:
+<blockquote class="file"><pre><code >	<i>...</i>
+	PERP=$l RCSINIT=-w$l		# details
+	<em class="new">helmet=/usr/local/libexec/jacket/timebox
+	$TZ=America/Denver
+	$TIMEBOX_INSIDE=!1030.00<=%H%M.%S<1630.00
+	$TIMEBOX_WARN=Peak$.hours,$.try$.later.</em></code></pre></blockquote>
+Note that we explicitly set a time zone, so that we don't take the
+system default.  You might want to force $TZ in
+a <code class="markup">DEFAULT</code> stanza for your rule-base.
+
+<p>
+If we would rather not have any changes on Thursday, because the boss
+is not in the store to help, we would use this helmet:
+<blockquote class="file"><pre><code >	<i>...</i>
+	<em class="new">helmet=/usr/local/libexec/jacket/timebox
+	$TZ=America/Denver
+	$TIMEBOX_FORBID=%u!=Thu
+	$TIMEBOX_WARN=No$.su$.on$.Thursday.</em></code></pre></blockquote>
+This takes advantage of the fact that <code class="sh">timebox</code> converts
+day of week (in English) into a number for
+comparison (following <code class="markup">%u</code>'s rules).
+<p>
+The <code class="sh">timebox</code> helmet lets you deny access based on
+the current time.  That's all it does, but there are other helmets to
+do other things.
+
+<p>
+Also note that long running processes are not killed when they leave
+the specified time-range.  That could be implemented as a
+jacket, but it was never needed (as starting a service should not
+leave a time-bomb in the process table).  If someone is leaving a
+superuser shell around there are other ways to deal with that.
+
+<h3 id="xdisplay">An example jacket: <code class="sh">xdisplay</code></h3>
+
+If we want a superuser shell with access to our X display we might
+be able to just set the <code class="env">DISPLAY</code> environment
+variable and lie about <code class="env">HOME</code> to find the
+<code class="path">.xauth</code> database.  But when we want to become
+a different mortal login we need to copy the authentication data to
+the new login's authentication database.
+
+<p>
+That's what the <code class="sh">xdisplay</code> jacket does.  To
+do this it requires some specific configuration.  The jacket
+requires the current display name (in <code class="env">DISPLAY</code>)
+and the target login's home directory (in <code class="env">HOME</code>):
+<blockquote class="file"><pre><code ><i>...</i>
+	<em class="new">$DISPLAY $HOME=$H</em>
+	jacket=/usr/local/libexec/helmet/<em class="new">xdisplay</em></code></pre></blockquote>
+That extracts the current key from
+the active <code class="path">.Xauthority</code> and installs it
+into the target login's <code class="path">.Xauthority</code> (as
+the same display name).
+After the escalation <code class="libc">exit</code>s is may remove the
+installed data (when used as a jacket, the helmet usage cannot).
+
+<h2 id="persist">Authorization via a <code class="path">stamp</code></h2>
+
+First we need to distinguish authentication from authorization.
+<code class="sh">Op</code> does a good job of authentication: it
+assures that the login, group membership or netgroup membership
+required is met by the calling process.  It makes sure that
+the parameters provides meet any restrictions that would make them
+unsafe (aka not `authentic').  It consults <code class="libc">PAM</code> to
+make sure the person at the keyboard is the person represented.
+
+<p>
+All the work above is matching the person to the task.  That's authentication
+in a nut-shell: matching a person to the escalation.
+
+<p>
+Authorization means that another person or process agrees that <strong>now is
+the time to act</strong>.
+This is very different from knowing <strong>who</strong> is acting.
+You could think of the <code class="sh">timebox</code> helmet as using
+the clock to authorize an action (or possibly to deny it when, the
+escalation would be inappropriate).
+
+<p id="opsExample">
+As an example where people take action: imagine that there is a 24 hour by
+365.24 day monitoring group at a major data center for example.com.
+They get alerts when an application service sends a error messages.
+The monitors then filter those alerts, only calling application support when
+there is an actual service disruption.
+
+<p>
+The management at example.com doesn't want application support to randomly or
+accidentally stop or restart running applications.  They do want them to
+be able to act when the service is not working correctly.  So they give
+the operations monitoring team a rule to enable the application support
+members to control the application on a given host for a fixed time.
+The theory here is that the operations team only calls the production
+support for the application when their is a service disruption, so
+restarting the application might be better than no service.
+
+<p>
+So the application team has a control rule ("tiger stop", "tiger restart",
+and so forth).  But those rules <strong>only</strong> work for
+the application support account "joe" when an operations team member runs
+"tiger enable joe" <em>and</em> joe is a member of the support team.  This enchantment
+lasts for some fixed window, or until it has not been used for some idle
+time limit.
+The notion above is that an interactive session might be granted a window of
+time in which repeated authorizations are not needed.  Otherwise the
+operators would have to type 1 command for each escalation required to
+bring the service back on-line (which is also possible, but has proved to
+be a really bad usage pattern).
+
+<p id="peers">
+It is also common to use a 2 key commit style of authorization.  In this
+case any <strong>two</strong> people from a group are required to run the
+escalated command.  One creates a stamp for himself via a group access
+rule, with a <code class="opt">-u</code> option to specify the team member
+that will use the stamp.
+The stamp-check allows any stamp built by <strong>someone else</strong> to
+authorize the action (viz. <code class="markup">Owner!$l:Allow=$l</code>).
+This prevents anyone from authorizing their own changes.
+See <a href="/~ksb/cgi-bin/manpage.cgi?stamp&amp;7l">stamp(7l)</a>.
+
+<p id="frankage">
+This might also be used by a person to authorize themselves to access
+a rule-base repeatedly.  This is parallel to the "timestamp" feature
+built-in to the popular <code class="sh">sudo</code> escalation program.
+But it is not "part" of <code class="sh">op</code>, and it requires
+a specific escalation (via local site policy) to build the timed stamp.
+It does make almost the same thing possible, and adds some features that
+add security and a <em>lot</em> of versatility.
+
+<h3 id="stamps">How stamps are made and destroyed</h3>
+
+Under <code class="sh">op</code> the <code class="sh">stamp</code> helmet
+connects to an existing socket in a specific place in the filesystem.
+The process listening on that socket is (usually) created with the
+<code class="sh">stampctl</code> program, which has several modes of
+operation (see <a href="/~ksb/cgi-bin/manpage.cgi?stampctl&amp;8">stampctl(8l)</a>):
+<dl>
+<dt id="version"><code class="sh">stampctl</code> -V
+<dd>
+<p>
+Output all the version information compiled into <code class="sh">stampctl</code>.
+<dt id="topLevel"><code class="sh">stampctl</code> -V | tr -s '\t ' '  '| sed -n -e 's/.*cache directory: \([^ ]*\).*/\1/p'
+<dd>
+<p>
+Output the top-level stamp directory.  This is often used to
+purge the stamp directory of dead domain sockets at system boot.
+<!-- the dynamic helmet might use it too -->
+<dt id="mkdir"><code class="sh">stampctl</code>
+[<code class="opt">-g</code> <code class="param">group</code>]
+[<code class="opt">-m</code> <code class="param">mode</code>]
+[<code class="opt">-u</code> <code class="param">user</code>]
+[<code class="param">facilities</code>]
+<dd>
+<p>
+At system boot time an init.d (<acronym title="also known as">aka</acronym> rc.d) script
+should make a call to the helmet (as the superuser) to setup the
+stamp directory structure.  The <code class="param">facilities</code> are
+simply the names of subdirectories that must be instanced.
+The optional <code class="param">owner</code>,
+<code class="param">group</code>, <code class="param">mode</code> may be
+mixed with the names of directories (the last one set is used in each case).
+<blockquote class="file"><pre><code >PATH=/usr/local/libexec/jacket:$PATH
+STAMP_FACILITY=. stampctl -B -m 755 -u root -g 0 . \
+	-m  750  su \				# sudo-like root stamps
+	-m 1777 -g daemon stamps \		# test stamps for mortals
+	-m  750 -g cats  tiger puma \		# applications
+	-m  700 -u source -g staff  msrc	# master source</code></pre></blockquote>
+Note that dot (<code class="markup">.</code>) is a synonym for the
+top-level directory which sets the default mode, uid, and gid if it
+exists, otherwise the default mode is 750, uid 0, gid 0.
+Existing unmentioned directories are not changed, so multiple start-up scripts
+may each build their own facility.  Absolute paths are allowed, but
+discouraged.  The code will not build implied directories, this is
+a safety feature, since the modes of any such directory cannot be specified.
+Modes may contain optional bits is in
+<A href="/~ksb/cgi-bin/manpage.cgi?instck&amp;8l"><code class="sh">instck</code>(8l)</A>
+(as 750/1 or rwxr-x--?), the modes on the enclosing directory are used to
+mask optional bits (which is local site policy).
+<p>
+Since that the environment variable <code class="env">STAMP_FACILITY</code>
+specifies the default top-level directory (absolute) or subdirectory (relative),
+it is always a good idea to explicitly set it in any superuser run script.
+<p>
+It is poor form to use the facility name "OLD", since
+<code class="sh">install</code> might build a backup directory by
+that name.  It would also be a bad idea to
+let the Customer specify a stamp path in an arbitrary directory.
+
+<dt id="make"><code class="sh">stampctl</code> <code class="opt">-M</code> <code class="param">name</code> [<code class="opt">-n</code>] [<code class="markup">-</code><code class="param">max</code>][<code class="opt">-E</code> <code class="param">end</code>] [<code class="opt">-I</code> <code class="param">idle</code>] [<code class="param">name</code>=<code class="param">value</code>s]
+<dd>
+<p id="dashum">
+This creates a new stamp entry for <code class="sh">name</code>, the name is
+taken relative to either <code class="env">STAMP_FACILITY</code> or
+the hard-coded directory that all stamps are under,
+unless it starts with a leading slash.  Most applications use the name of
+the facility followed by the Customer's login name or uid.  This allows
+other <code class="sh">op</code> rules to find that same stamp by name.
+<p id="dashn">
+The <code class="opt">-n</code> switch does the opposite: it builds a stamp
+that denys every authorization request.  This is called "penalty mode".
+I'm not sure why you'd want to lock escalations for a limited time,
+but you may.
+<p id="max">
+The <code class="param">max</code> integer specifies a limit on the number of
+authorizations allowed (denied) by the stamp.  Common values are less than 3,
+for a single-shot access, usually with an idle time limit of
+<code class="markup">20m</code> or so.
+<p id="locks">
+Lock escalations more permanently by building a plain file where the
+stamp would be placed.  The file is displayed as a rejection message for
+every escalation request that would open the stamp, and is not removed
+by <code class="sh">stampctl</code> (use <code class="sh">rm</code> to
+remove the lock).
+<p>
+Note that running <code class="sh">stampctl</code> itself is usually
+an escalated operation, and that action may, itself, require a stamp:
+this allows as many "sign-off" levels as required.
+<dt id="remote"><code class="sh">stampctl</code> <code class="opt">-M</code> <code class="param">name</code> <em class="new"><code class="opt">-R</code> <code class="param">remote</code>[<code class="markup">:</code><code class="param">roap</code>]</em> [<code class="opt">-n<em class="new">X</em></code>] [<code class="markup">-</code><code class="param">max</code>] [<code class="opt">-E</code> <code class="param">end</code>] [<code class="opt">-I</code> <code class="param">idle</code>] [<em class="new"><code class="opt">-T</code> <code class="param">timeout</code></em>] [<code class="param">name</code>=<code class="param">value</code>s]
+<dd>
+<p>
+Build a stamp which includes tableau entries from an off-host service.
+The <code class="param">remote</code> host <strong>must</strong> provide a
+<code class="sh">tcpmux</code> service which accepts credential information from
+the client. See <A href="http://tools.ietf.org/rfc/rfc1918.txt">RFC 1918.</A>
+Any proposed tokens from the command-line are replace by those sent
+from the remote service.  (Under <code class="opt">-X</code> this measure
+is reversed, then the command-line overrides the remote service.)
+<p>
+The <code class="param">remote</code> specification may include the
+name of the <code class="sh">tcpmux</code> service after a colon
+(<code class="markup">:</code>).  The default service name is
+<code class="markup">roapmux</code>, which happens to be a real program.
+See <A href="/~ksb/cgi-bin/manpage.cgi?roapmux&amp;7l"><code class="sh">roapmux</code></A>, and the
+<A href="../roapmux/roapmux.html">HTML document</A> for it.  The
+<acronym title="application/programmer interface">API</acronym> for
+the service requires: the client to connect, the server replies with
+a positive connect message (like any <code class="sh">tcpmux</code>
+service) or a failure; the client sends single line:
+<blockquote class="file"><pre><code class="param">login</code><code class="markup">:</code><code class="param">groups</code><code class="markup">:</code><code class="param">netgroups</code><code class="markup">:</code><code class="param">domain</code><code class="markup">:</code><code class="param">query</code></pre></blockquote>
+The five parameters sent <strong>should</strong> be valid, but the
+remote service is allowed to reject even valid request.  Note that
+plural elements are separated by spaces.
+<p>
+Unauthorized clients get a negative reply.  This starts with a
+leading dash (<code class="markup">-</code>) followed by a rejection
+message, terminated with a newline.  Any <code class="libc">isspace</code>
+character may be removed from the end of the reply.  For example, to
+disallow without radiating any useful information a service may
+reply with:
+<blockquote class="file"><pre><code >-Sorry</code></pre></blockquote>
+<p>
+Authorized clients get a positive reply, which may begin with three integer
+values, like this:
+<blockquote class="file"><pre><code class="markup">+</code><code class="param">max</code>,<code class="param">idle</code>,<code class="param">timeout</code> <code class="param">ignored-text</code></pre></blockquote>
+These values limit the values specified on the command-line.
+Values of zero are ignored.
+<p>
+The service then produces a tableau list (one per line), then closes
+the connection.  Each tableau entry may be enclosed in double quotes to
+allow embedded newlines and the common <code class="markup">C</code>
+single-letter backslash escapes.
+<p>
+For example to allow 10 escalated commands with an idle timeout of
+13 minutes, while keeping the local <code class="param">timeout</code>
+the reply might look like:
+<blockquote class="file"><pre><code >+10,780,0
+MAY_SHOVEL=yes
+MAY_START_tiger=yes
+MAY_STOP_tiger=no</code></pre></blockquote>
+<p>
+A value of <code class="markup">-1</code> for <code class="param">max</code>
+forces the stamp into <strong>penalty</strong> mode
+(which forbids any access until the stamp timeout expires).
+For example we might reject a invalid login for a kilosecond with:
+<blockquote class="file"><pre><code >+-1,1000,1000 no login john
+REASON="You do not exist.\nSee an admin, john."</code></pre></blockquote>
+<p>
+Note that <code class="sh">stampctl</code> removes 1 carriage return character
+from the end of each line, to compensate for 1918 network encoding.  Missing
+carriage returns are silently ignored.
+
+<dt id="close"><code class="sh">stampctl</code> <code class="opt">-k</code> [<code class="param">stamps</code>]
+<dt id="signal"><code class="sh">stampctl</code> <code class="opt">-K</code> [<code class="param">stamps</code>]
+<dd>
+<p>
+Kill the sessions which are associated with each name.  When none are
+specified, the implied one is a session named for the real uid.  Note
+that this is mostly useful to kill sessions at logout time.  Sockets
+owned by the real uid or spelled with the real uid or login name as
+the name of the socket are terminated, if
+<code class="libc">connect</code>(2) allows the access and
+the stamp is not in penalty mode.  The uppercase version tries to
+signal the stamp to quit to overcome any penalty restrictions, but
+requires a connection to the socket to find the process ID.
+<dt id="penalize"><code class="sh">stampctl</code> <code class="opt">-N</code> [<code class="param">stamps</code>]
+<dd>
+<p>
+Convert the given stamp to penalty mode.  Thus blocking any future
+escalations with that authorization until the stamp times out, or
+it is destroyed via <code class="opt">-K</code>.
+<dt id="query"><code class="sh">stampctl</code> <code class="opt">-Q</code> <code class="param">stamp</code> [<code class="opt">-F</code>] <code class="param">tableaus</code>
+<dd>
+Output the values for each of the requested <code class="param">tableau</code>
+entries.  If any of those entries do not exist fail.  Under the
+<code class="opt">-F</code> option the format of each entry (1 per line)
+is the format <code class="sh">op</code> expects from a helmet to
+force an environment variable to a known value, otherwise it is the
+decoded values separated by spaces.
+</dl>
+
+<p>
+Usually there is an escalation rule to control the stamp creation, and
+one to end the session explicitly.  There may also be other services
+that create stamps as part of a work-flow process.  These tend to be
+owned by an application login that has ownership of a facility
+directory reserved for the application.
+<p>
+There may also be an escalation rule that allow an application login to
+create the directory on system (or application) startup.  These rules
+are usually also available to operations to restore service after
+a storage or service failure.
+
+<h3 id="stamp">How stamps are used to provide authorization services</h3>
+
+The helmet <code class="sh">stamp</code> checks a specific stamp for
+access, tableau values, and possibly for environment information.
+It accepts only the standard helmet options, so any specifications
+are provided in the environment.  (This is quite common for helmets.)
+
+<p>
+Each socket represents an active session, via a process which is
+attached to the socket. The "credentials" the stamp are 3 fold:
+<dl>
+<dt id="existence">The existence of the stamp and the process attached to it
+<dd>
+<p>
+If no stamp exists then no authorization is implied.  So the
+a successful connection to the stamp at the required location means that the
+question of authorization has been asked and answered.  But we have to
+query the socket for that answer.
+<p>
+An unresponsive stamp (the process has exited or the system start-up
+did not removed the dead domain socket) gives us an answer without
+any follow up: the <code class="sh">stamp</code> request always fails.
+A plain file is taken as a failed request, so <code class="sh">stamp</code>
+presents the contents of the file as an failure message on
+<code class="param">stderr</code>.
+
+<dt id="hasTableau">The existence and values in the tableau
+<dd>
+<p>
+The <code class="sh">stamp</code> jacket may request the verification of
+tableau entries, either by existence or by value.  Thus a stamp might
+only be authorized for a particular tty, login name, parent process-id,
+or day of the week -- or perhaps the intersection of all of those.
+Note that there is no disjunction operation included for this specification.
+<p>
+If any required entries or values fail to match the specification the
+escalation fails.  There is no practical way to tell a configuration error
+from a legitimately denied authorization.  This is because creating
+a stamp that could never allow any access is not necessarily an error.
+<p>
+There should be local site policy conventions for meaning of common
+tableau names.  I use <code class="markup">Owner</code>,
+<code class="markup">Perp</code>, and some others, but you might
+choose terms that are already common at your site.
+
+<dt id="status">The status of the stamp (penalty or authorized)
+<dd>
+<p>
+The <code class="sh">stamp</code> helmet requests the authorization
+status each stamp (actually that's the last thing it does).  If the reply is
+"y" (yes), it allows the escalation.  Other replies might include "p"
+(penalty) an "n" (no such stamp) -- they all fail the escalation.
+</dl>
+
+<p>
+Five environment variables are consulted for
+a <code class="sh">stamp</code> helmet request (these are documented
+in the <code class="sh">stamp</code>(7l) <A href="/~ksb/cgi-bin/manpage.cgi?stamp&amp;7l">manual page</A> as well):
+<dl>
+<dt id="facility"><code class="env">STAMP_FACILITY</code>=<code class="param">path</code>
+<dd>
+<p>
+This specifies subdirectory under the system stamp directory (usually
+<code class="path">/var/op</code> which should contain the specified
+stamp.  It may be an absolute path, but that is poor form.
+<dt id="spec"><code class="env">STAMP_SPEC</code>=<code class="param">stamp</code>[<code class="markup">:</code><code class="param">name</code>=<code class="param">value</code>]*
+<dd>
+<p>
+This specifies the path to the <code class="sh">stamp</code>, which may
+contain slashes, but <em class="error">never</em>
+dot-dot (<code class="markup">..</code>).  This may also be an absolute
+path, but you might guess that I think that's a bad idea.
+<p>
+The name-value check actually allows 5 forms:
+<dl>
+<dt id="exists"><code class="param">name</code>
+<dd>
+The given <code class="param">name</code> must exist in the tableau.
+<dt id="isEq"><code class="param">name</code><em class="new">=</em><code class="param">value</code>
+<dd>
+The given <code class="param">name</code> must exist in the tableau and
+must have exactly the specified <code class="param">value</code>.
+<dt id="notEq"><code class="param">name</code><em class="new">!</em><code class="param">value</code>
+<dd>
+The given <code class="param">name</code> must exist in the tableau and
+must not have the specified <code class="param">value</code>.
+<dt id="relop"><code class="param">name</code><em class="new"><code class="param">relop</code></em><code class="param">value</code>
+<dd>
+Where <code class="param">relop</code> is one of the C numeric relational
+operators: <code class="markup">&lt;</code>,
+<code class="markup">&lt;=</code>,
+<code class="markup">&gt;</code>,
+<code class="markup">&gt;=</code>,
+<code class="markup">==</code>, or
+<code class="markup">!=</code>.
+In this case leading integers are converted from text to their
+numeric values.  The given relational operator must be true between
+the values.  Any trailing characters are also compared with
+<code class="libc">strcmp</code>, when provided.
+<dt id="matchop"><code class="param">name</code><em class="new"><code class="param">matchop</code></em><code class="param">RE</code>
+<dd>
+Where <code class="param">matchop</code> is one of the perl matching operators:
+<code class="markup">=~</code> or <code class="markup">!~</code>.
+The given tableau entry must match (=~) or not match (!~) the given
+regular expression.
+</dl>
+<p>
+These allow checks to assure that the same session that gained the
+stamp is the one returning for additional escalated commands.
+<p id="multiSpec">
+Very rarely one needs to consult multiple stamps to authorize an escalation.
+Any environment variable that begins with <code class="markup">STAMP_SPEC</code>
+is actually permissible.
+A parallel usage for <code class="markup">_WARN</code>
+and <code class="markup">_SET</code> is honored.
+See an <A href="#multiExample">example below</A>.
+
+<dt id="set"><code class="env">STAMP_SET</code>=<code class="param">names</code>
+<dd>
+<p>
+The listed tableau values are pushed into the escalated environment
+only if they are defined in the tableau.
+(Any undefined <code class="param">name</code> is left as-is in
+the environment.  It is not a configuration error to set a default
+value in the configuration of a given rule.)
+
+<dt id="reveal"><code class="env">STAMP_REVEAL</code>=<code class="param">prefix</code>
+<dd>
+<p>
+This supports the common reveal logic in <code class="sh">op</code>,
+see <a href="/~ksb/cgi-bin/manpage.cgi?op-jacket&amp;7l">op-jacket(7l)</a>.
+<dt id="warn"><code class="env">STAMP_WARN</code>=<code class="param">sorry</code>
+<dd>
+<p>
+When the authorization fails we output this string (else "Sorry").
+This is not displayed when the rejection is provided by a plain file.
+</dl>
+
+<p>
+When you need additional check for authentication see
+<code class="sh">coat</code> <a href="#coat">below</a> to nest jackets.
+
+
+<p id="stampJacket">
+When called in <em class="new">jacket</em> mode,
+the <code class="sh">stamp</code> process reconnects to the stamp
+socket at intervals to prevent the stamp from reaching the timeout
+limit.  This doesn't defeat the session expiry limit.
+
+<h4 id="ruleExample">Example stamp rule</h4>
+
+In the system startup the stamp directory must be created
+under <code class="path">/var/run</code> so we need a rule to
+do that as the correct login (since the stamps do not have to
+be run as the superuser):
+<blockquote class="file"><pre><code >DEFAULT uid=games gid=games	# test only stamp owner
+
+games	MAGIC_SHELL ;		# get a test shell as games
+	initgroups=games users=^ksb$</code></pre></blockquote>
+<p>
+This rule allows anyone to open a session.  It could be limited by
+any authentication require by local site policy.  As an example, it
+just opens a default session for the client login
+(the <code class="markup">$l</code> after <code class="opt">-M</code>):
+<blockquote class="file"><pre><code >stamp	/usr/local/libexec/jacket/stampctl -M $l -I 6m
+		BLAME=$l:$b TTY=$y
+		TERM TERMCAP EDITOR DISPLAY ORIG_PATH=${PATH}
+	;
+	$1=^-M$,^make$,^open$,^start$,^touch$
+	users=^.*$
+	environment
+	initgroups=%l</code></pre></blockquote>
+The session contains a lot of tableau data so we can poke at it.
+We pass the complete environment so the stamp may copy
+<code class="env">TERM</code> and the rest.  This is better than
+trying to pass the values on the command line as:
+<blockquote class="file"><pre><code >		BLAME=$l:$b TTY=$y
+		<em class="error">TERM=${TERM} TERMCAP=${TERMCAP} EDITOR=${EDITOR}</em><i>...</i> ;</code></pre></blockquote>
+Because that sets unset environment variables to an empty string in
+the tableau, which makes it hard to tell if it had been empty or unset at
+the time the stamp was created.  But for most application I suppose
+that doesn't really matter, unless you use an existence check.
+It doesn't hurt to pass the whole environment to the stamp, as
+it never <code class="libc">fork</code>'s or
+<code class="libc">execve</code>'s in any case.  (Also, elements not listed
+in the tableau are not recoverable from the socket interface.)
+
+<p>
+This rule allows anyone to terminate their own default session, if the session
+process allows it (they might be in the penalty state):
+<blockquote class="file"><pre><code >stamp	/usr/local/libexec/jacket/stampctl $1 $l ;
+	$1=^-k|-K|-n$
+	users=^.*$</code></pre></blockquote>
+I usually don't allow the <code class="opt">-K</code>
+spell in production, as it removes penalty stamps.  If you never
+use a penalty stamp then it doesn't matter.  Access to
+<code class="opt">-K</code> could allow operators to
+cleanup stamps, which would be a feature.
+
+<p>
+This rule checks for the authorization stamp and recovers the
+<code class="env">TERMCAP</code> variable for inspection:
+<blockquote class="file"><pre><code >check	{ echo TERMCAP="$TERMCAP"
+	} ;
+	users=^.*$
+	helmet=/usr/local/libexec/jacket/<em class="new">stamp
+	$STAMP_SPEC=$l:TTY=$y
+	$STAMP_SET=TERMCAP:TERM:DISPLAY
+	$STAMP_WARN=There$.is$.no$.stamp$.for$.$l</em></code></pre></blockquote>
+
+This rule allows anyone to reset the idle timer on their stamp:
+<blockquote class="file"><pre><code >stamp	/usr/local/libexec/jacket/stampctl -v $l ;
+	$1=^-v$,^ping$,^refresh$
+	users=^.*$</code></pre></blockquote>
+it may be merged with the kill rule above if the same authentication
+is required for both.
+
+<p>
+In this example the tableau for the new stamp comes from an
+authorization server (<code class="markup">central.example.com</code>:
+<blockquote class="file"><pre><code >central	/usr/local/libexec/jacket/stampctl -M $l <em class="new">-R $0.example.com -I 60m</em>
+		TTY=$y RT=$1 ;
+	$1=^[0-9][0-9]*$
+	$STAMP_FACILITY=rt $STAMP_SPEC=$l
+	$STAMP_WARN=$l$.no$.love$.from$.$0</code></pre></blockquote>
+
+<h4 id="changeExample">Two of a group</h4>
+
+In some cases a support organization may require a <em>second person</em> to
+authorize a change to production (or a commit to a source repository).
+I use jacket <code class="sh">stamp</code> to do that by accepting a stamp
+from anyone in the group (e.g. group <code class="group">commit</code>) to
+create a stamp in the commit directory named for a ticket number.  The key
+feature here is that the stamp contains the login name (in the tableau entry
+<code class="param">Auth</code>=<code class="markup">$l</code>):
+<blockquote class="file"><pre><code >ready	/usr/local/libexec/jacket/stampctl -M commit/ready-$1 -I 15m <em class="new">Auth=$l</em> Ticket=$1 ;
+	$1=^[0-9][0-9]*$
+	groups=^commit$,^qm$
+	uid=stamp gid=audit</code></pre></blockquote>
+This is run my someone in group <code class="group">qm</code> or
+group <code class="group">commit</code> to allow a commit operation under a
+given ticket number (you could change the RE to match letters as well):
+<blockquote class="file"><pre><code >$ <em class="new">op ready 121393</em></code></pre></blockquote>
+
+<p>
+Next we configure a rule to make the commit.  The key is to only accept
+a login that is <strong>not</strong> the same login, but is in
+any allowed group:
+<blockquote class="file"><pre><code >commit	<i>commit-command...</i> $@ ;
+	$1=^[0-9][0-9]*$
+	groups=^commit$,^appdev$
+	$STAMP_SPEC=commit/ready-$1:<em class="new">Auth!$l</em>
+	$STAMP_WARN=No$.authorization$.stamp$.for$.$1
+	$PATH $TERM $ENV $TERMCAP $EDITOR
+	uid=source gid=source</code></pre></blockquote>
+This is accessed by anyone in group <code class="group">appdev</code> or
+group <code class="group">commit</code> to <strong>execute</strong>
+a commit operation under the authorized ticket:
+<blockquote class="file"><pre><code >$ <em class="new">op commit 121393 Makefile stamp.m</em></code></pre></blockquote>
+
+<p>
+To make that rule a little more useful we can tell the <i>commit-command</i>
+the name of the login that authorized the commit by passing the
+"Auth" tableau entry to the environment (as <code class="markup">$Auth</code>)
+and the ticket number (as <code class="markup">$Ticket</code>):
+<blockquote class="file"><pre><code >commit	<i>commit-command...</i> $@ ;
+	<i>...</i>
+	<em class="new">$STAMP_SET=Auth:Ticket</em></code></pre></blockquote>
+<p>
+Because we used the ticket number as part of the path to the stamp, we
+must open a stamp for each ticket.  The stamp timeout of 15 minutes
+is an idle timeout, so as long as the commits keep coming the ticket
+will stay open.  If you didn't make a script to run the commits, then you are
+not really serious about it; because that script is the best list to review.
+
+<h4 id="multiExample">Two to allow a multi-player escalation</h4>
+
+In a different situation we might require two managers to authorize
+an escalation.  For example a Quality Manager (in group
+<code class="group">qm</code>) and an
+Operations Manager (from <code class="group">ops</code>).
+They both need to get on-board with a change to allow the technical
+staff (in group <code class="group">admin</code>) to get a superuser shell.
+<blockquote class="file"><pre><code >qm	/usr/local/sbin/stampctl -M qm/$2 -E 4h ;
+	groups=^qm$
+	$1=^allow$,^ok$
+	$2=^[0-9][0-9]*$	# the RT number
+	<i>....</i>
+ops	/usr/local/sbin/stampctl -M ops/$2 -E 4h ;
+	$1=^allow$,^ok$
+	$2=^[0-9][0-9]*$	# the RT number
+	<i>....</i></code></pre></blockquote>
+Which gives both managers a command to type (or select from a GUI) like:
+<blockquote class="file"><pre><code >$ <em class="new">op qm ok 317811</em></code></pre></blockquote>
+
+<p>
+After both managers have approved the change, the admin has about
+4 hours to run the install command as the superuser.  We configure
+her rule as follows:
+<blockquote class="file"><pre><code >admin	/bin/sh -c $* ;		# local site policy, of course
+	groups=^admin$
+	uid=root gid=wheel
+	initgroups=root		# more local site policy here
+	$1=^[0-9][0-9]$		# the RE number
+	helmet=/usr/local/libexec/jacket/stamp
+	$PERP=$l $RT=$1
+	environment=^TERMCAP$,^TERM$,^DISPLAY,<i>....</i>
+	<em class="new">$STAMP_SPEC_1=ops/$2
+	$STAMP_SPEC_2=qm/$2
+	$STAMP_WARN=There$.is$.no$.stamp$.for$.RT$1</em></code></pre></blockquote>
+Which gives her a usage like:
+<blockquote class="file"><pre><code >$ <em class="new">op admin 317811  make install</em></code></pre></blockquote>
+
+<p>
+We could add more restrictions: we could make the managers specify
+the admin's login name (then check that from the tableau in each stamp).
+Actually there is a lot you <strong>could</strong> do, but the question
+is really what does your local site policy require.  Yeah, we can do that.
+
+<p>
+Notes that the parallel usage for <code class="env">STAMP_SET</code>
+means that <code class="env">STAMP_SET_5</code> is read when
+consulting the stamp specified under <code class="env">STAMP_SPEC_5</code>,
+and <code class="env">STAMP_WARN_5</code> will be output in favor of
+the common <code class="env">STAMP_WARN</code>.  In the example I
+chose to radiate very little information, which is usually a good idea.
+
+<p>
+An finally the <strong>last</strong> specification (in alpha order) is
+taken as the stamp to refresh in jacket mode.
+
+<h4 id="cheat">The boot cheat via <code class="sh">stampctl</code></h4>
+
+When a rule requires a stamp to run, but the rule also needs to be
+run on reboot, we have a problem.  One could duplicate the rule to allow
+the superuser to run it without the stamp, or we could just use
+<code class="sh">stampctl</code> to build a stamp in the
+<code class="path">init.d</code> (aka <code class="path">rc.d</code>
+script that offers permission to start the application.
+<p>
+This adds a line to the boot script to create the required stamp.
+It also might include a <code class="opt">-k</code> call to
+end the stamp after the application is started.  This allows the
+<strong>normal audit check</strong> to remain in-place, and should
+not violate local site policy.  Just document the use-case in the
+<code class="sh">op</code> rules-base with a comment.
+
+<h4 id="reversePickup">Allow a reverse-pickup escalation for <code class="path">~/.ssh/authorized_keys</code></h4>
+
+I want to submit my <code class="path">authorized_keys</code> file to the
+local accounting system.  This system pushes each login's
+<code class="sh">ssh</code> configuration to newly created home
+directory to provide a much better customer experience.  We'd really
+like to allow each customer to submit the file they want installed, but
+how can we do it securely?
+<p>
+The Customer must submit the files (or file names) securely, and
+we want to enable the accounting user to fetch the files <strong>only</strong>
+when requested to do so.  If we don't secure both ends a suborner could
+install her keys in someone else's account, or collect keys from
+someone's account (possibly to their account).
+<p>
+So let's give every login a rule to run <code class="sh">stampctl</code> to
+build a stamp in a secure directory with a random name.  This rule then
+sends the name of the stamp file to the accounting system over a
+plain-text <code class="sh">tcpmux</code> service.
+<blockquote id="submit" class="file"><pre><code >acct	{
+		# Send our stamp name (pid.op-pid.five-random-digits) to
+		# the local accounting hub for a key recovery.
+		if ! [ -f "$Where" ] ; then
+			echo "$0: $Where: no such file"
+			exit 66 # NOINPUT
+		fi
+		set -e
+		export From=`pwd`
+		StN=acct/$$.$1.`jot -r 1 10000 89999`
+		stampctl -M $StN <em class="new">-Dnobody:acct</em> -E10m -u<em class="error">acct:acct</em> -m660 \
+			Intention=recovery Who Permit Where From
+		muxsend -xf/dev/null acct.<em class="error">example.com</em> key-pickup "$STAMP_FACILITY/$StN" 2&gt;&amp;1 |
+		grep -v '^[+]' || echo "Submission complete."
+		<em class="error">#</em>echo "$0: requested pickup of $From/$Where."
+	} $0 $Z ;
+	users=^.*$
+	$1=^submit$,^authorized_keys$,^authkeys$,^keys$
+	uid=<em class="new">0</em> gid=<em class="error">acct</em>
+	$STAMP_FACILITY=/var/op/stamp
+	$SHELL=/bin/sh umask=0007
+	$PATH=/usr/local/libexec/jacket:/usr/local/bin:/bin:/usr/bin:/usr/sbin
+	$Where=.ssh/authorized_keys $Who=$l $Permit=<em class="error">acct</em></code></pre></blockquote>
+
+Stamp access is allowed for the login <code class="user">acct</code> and
+group <code class="group">acct</code>, which you should change to
+local site policy values.  If the <code class="path">acct</code> directory under
+<code class="path">/var/op/stamp</code> exists and it is owned by
+some login other than the <code class="user">acct</code>, then
+you may change the <code class="attr">uid</code> to
+that login name (or to 0 for the superuser).
+Update the accounting host name while you are here, because
+your local accounting host is not in <em class="error">example.com</em>.
+Also check the <code class="attr">gid</code>'s spelling.
+<p>
+This specification runs the stamp process as <code class="user">nobody</code>,
+while the filesystem permission allow access by <code class="user">acct</code>.
+This is a good policy in general, because it prevents signals from
+removing the effects of penalty mode (but it is not really needed here).
+We have to be the superuser to make the permission <strong>not</strong>
+match the process owner.  We keep the group to allow the process to
+remove the stamp socket as it <code class="libc">exit</code>s.
+<P>
+You could run the rule as <code class="user">acct</code> and drop the
+<code class="opt">-D</code> specification from
+the <code class="sh">stampctl</code> spell.  That matches my
+local site policy much better, as the rule would never need superuser access.
+If the <code class="sh">muxsend</code> fails, then the useless stamp times
+out after 10 minutes (which doesn't hurt anyone).
+<p>
+We'll see code for that <A href="#muxScript">below</A> that
+loops-back an <code class="sh">ssh</code> to the host as a mortal login
+(usually <code class="user">acct</code> to fetch the login name from
+the newly created stamp.  We must <code class="sh">ssh</code> to the host
+because we don't want to send the client's login name over the
+unenciphered <code class="sh">tcpmux</code> connection.
+
+<h4 id="pickup">Back to the client for the pickup</h4>
+After we have both the login name and the stamp path we can run
+an <code class="sh">op</code> rule to become the Customer with
+the stamp file (under <code class="opt">-f</code>) and the login name (under
+<code class="opt">-u</code>).
+<p>
+The <code class="sh">stamp</code> spell for that rule checks
+the specified stamp (<code class="markup">%f</code>) for
+the owner (<code class="markup">%u</code>) and for confirming token attribute
+(viz. <code class="markup">Intention=recovery</code>) which the
+stamp creation rule added to the tableau.  This makes it a lot harder to
+use some other stamp as a shill to trick the accounting system:
+<p id="recover">
+That provides enough security that we can pass an audit.  Here is the
+rule we need:
+<blockquote class="file"><pre><code >acct	{
+		# We must cd to the original directory
+		cd "$From" || exit 77 # NOPERM
+		# Optional check modes on the file, or exit non-zero.
+		# Optional check the name of the file, or exit non-zero.
+		# Optional add other files (.profile, .forward, ...)
+		tar chf - $Where
+	} $0 $u $f ;
+	$1=^recover$
+	%f.path=^/var/op/stamp/acct/[0-9]*.[0-9]*.[0-9]*$
+	users=^<em class="error">acct</em>$,^root$
+	uid=%u initgroup=%u
+	$SHELL=/bin/sh
+	$PATH=/usr/local/bin:/bin:/usr/bin:/usr/sbin
+	$STAMP_FACILITY=. $STAMP_SPEC=$f:Intention=recovery:Who=$u
+	$STAMP_SET=Where:Who:Permit:From
+	$STAMP_WARN=Insuficient$.stamp$.credentials
+	jacket=/usr/local/libexec/jacket/stamp</code></pre></blockquote>
+<p>
+Note that you might get this strange error from a client:
+<blockquote class="file"><pre><code >muxsend: acct.example.com: /var/op/stamp/acct/17711.28657.46368:<em class="error">\</em>
+	-ssh 192.168.89.233 stampctl exits 65280</code></pre></blockquote>
+That usaully means you don't have a valid <code class="env">SSH_AUTH_SOCK</code>, or
+no permission to connect to it.  If you used your agent to test it and
+that had a random name, then you bought your own troubles.  Or something
+caused the agent to exit on the accounting server.
+<p>
+When all that passes muster, the rule collects the file (as a
+<code class="sh">tar</code> stream) and outputs that back to the
+accounting system.  That archive is extracted as the mortal login to
+build their <code class="path">.ssh</code> directory when their
+account is created on new instances.  We don't check the permissions
+anymore.  If they require an empty file or mode that breaks
+<code class="sh">ssh</code>, then we give that to them.
+<p>
+This is really hard to suborn: the stamp has to be in a local
+directory that only the superuser (or <code class="user">acct</code>) may
+write to -- with an active process bound to that name; the tableau must
+have an entry in it that no other rule installs; the stamp only lives for
+a relatively short time.  The plain-text message with the random stamp name
+radiates almost no information.  The <code class="sh">ssh</code> to
+the client host runs only an escalated rule, of
+which the accounting system is the only possible client.
+The <code class="sh">tar</code> archive generated as the requesting
+customer, and is benign until it is unpacked.  It may be frisked for
+traps before any deployment: then it is unpacked as the new mortal
+account from their home directory.  This is forward compatible with
+collecting <code class="path">.profile</code>, <code class="path">.exrc</code>,
+<code class="path">.forward</code> and the like.
+<p>
+The only issue I see is that a login name on the requesting system
+<strong>may</strong> overlap a login name on some other host: that is
+clearly a matter of local site policy.  So the accounting system must
+autonomously map the name of the recovered <code class="sh">tar</code> archive,
+since we don't provide a name for the file -- so it is up to that
+structure to find a unique home for the archive.
+
+<h4 id="setup">Setup for the rules above</h4>
+
+Here is a session where I test the <code class="markup">recover</code> rule as
+myself.  I first change rules listed above to add replace
+login <code class="user">acct</code> with <code class="user">ksb</code>, and
+the group <code class="group">acct</code> as with my primary login group.
+<p>
+Then I build the <code class="sh">op</code> stamp directory we need
+with <code class="sh">install</code> and <code class="sh">stampctl</code>:
+<blockquote class="file"><pre><code ># <em class="new">mkdir -p /var/op/stamp</em>
+# <em class="new">vinst /usr/local/lib/op/acct.cf</em>
+# <em class="new">/usr/local/bin/install -drv -m 2775 -o root /var/op</em>
+drwxrwsr-x. 3 root root 4096 Aug 29 11:10 /var/op
+# <em class="new">/usr/local/bin/install -drv -m 2775 -o root -g ksb /var/op/stamp</em>
+drwxrwsr-x. 3 root  ksb 4096 Aug 29 11:13 /var/op/stamp
+# <em class="new">stampctl -u <em class="error">ksb</em> -g <em class="error">ksb</em> acct</em>
+# <em class="new">ls -ld /var/op/stamp/acct</em>
+drwxr-xr-x. 2 ksb ksb 4096 Aug 29 14:55 /var/op/stamp/acct</code></pre></blockquote>
+Then I become myself to test the first rule (setup the stamp):
+<blockquote class="file"><pre><code ># <em class="new">su - </em><em class="error">ksb</em>
+$ <em class="new">op acct submit</em>
+muxsend: acct.example.com: key-pickup:		<em class="error"># no service running there, of course</em>
+$ <em class="new">ls -la /var/op/stamp/acct</em>
+total 8
+drwxr-xr-x. 2 ksb  ksb  4096 Aug 29 11:17 ./
+drwxr-xr-x. 3 root root 4096 Aug 29 11:13 ../
+srw-rw----. 1 ksb  ksb     0 Aug 29 11:17 <em class="error">17974.19166.19331</em>=
+$ <em class="new">stampctl -Q acct/17974.19166.19331 Intention</em>
+recovery
+$ <em class="new">stampctl -Q acct/17974.19166.19331 From Where Permit Who</em>
+/home/ksb .ssh/authorized_keys root ksb</code></pre></blockquote>
+That looks great.  We build a stamp with a random name, it has all
+the information we need to recover the authorized keys file.
+Next I'll try the <code class="markup">recover</code> rule.
+If it builds a <code class="sh">tar</code> file we are good:
+<blockquote id="fetchCmds" class="file"><pre><code >$ <em class="new">op -u ksb -f /var/op/stamp/acct/17974.19166.19331 acct recover | tar tvf -</em>
+-rw-r----- ksb/ksb         911 2000-09-11 09:11 .ssh/authorized_keys
+$ <em class="new">stampctl -k acct/17974.19166.19331</em>
+$ <em class="new">exit</em>
+# <em class="new">vinst /usr/local/lib/op/acct.cf</em></code></pre></blockquote>
+With that check done, I can put the owner back <strong>and change the host
+we notify</strong> from <em class="error">acct.example.com</em> to
+the local accounting hub (or at least one in our security zone).
+Then re-run the install commands with the accounting owner rather than myself.
+Note that the <code class="sh">rm</code> command should be redundant, but
+some very old versions of <code class="sh">stampctl</code> failed to
+unlink the socket.  (But if you are running 1.26 or better you are
+good to go without it.)
+
+<h4 id="accounting">The accounting <code class="sh">tcmpmux</code> support</h4>
+On the accounting host we need a <code class="sh">tcpmux</code> service
+that reads 1 line.  The line is the path to the stamp on the target host.
+The IP address of the peer is available from
+<code class="libc">getpeername</code>.  That is enough to assure that
+the host is one we manage, then trigger an <code class="sh">ssh</code> to
+the host (as the accounting user) to fetch the name of the user via
+<code class="sh">stampctl</code>.  With a valid stamp we'll
+<code class="sh">ssh</code> back to collect the file(s) with
+<code class="sh">op -u</code> <code class="param">login</code> <code class="sh">-f</code> <code class="param">stamp</code> <code class="sh">acct recover</code>.
+The output of that (if not empty) is the <code class="sh">tar</code>
+archive to add to all the user's new home directory builds.  If the
+exit code is non-zero ignore the output.
+<p id="sshAgent">
+Another feature you <strong>must</strong> enable is a secure way to
+credential the accounting user to reach all the client hosts.  I use
+an instance of <code class="sh">ssh-agent</code> which is started when
+the machine boots, in a fairly secure fassion.  It is true that if
+you have a shell as the accounting login on that host you can get a
+password-less login on any managed instance, so mayhap that allows you to
+break everything.  But that's how we update
+<code class="path">/etc/passwd</code>, <code class="path">/etc/shadow</code>,
+and <code class="path">/etc/netgroups</code> -- so likewise does the ability to
+submit <strong>arbitrary</strong> changes to the accounting system. So you
+are already a superuser if you can do that.  Your local site policy may vary.
+We, therefore, assume that the accounting user's
+<code class="path">known_hosts</code> already has all the client machines.
+<p>
+From the commands <A href="#fetchCmds">above</A> we can code such a script.
+Because they all do the same thing, this is going to
+look like <code class="sh">recvmux</code>, <code class="sh">msrcmux</code>,
+<code class="sh">explmux</code>, or <code class="sh">roapmux</code>.
+See the whole perl program, in <A href="acctmux.pl">acctmux.pl</A>, but
+this is the good bits:
+<blockquote id="muxScript" class="file"><pre><code ><em class="error">...</em>
+unless ($login = `ssh -anT -o \"VerifyHostKeyDNS yes\" $remote_as\@$remoteIP /usr/local/sbin/stampctl -Q $stamp_name Who 2&gt;/dev/null` and 0 == $?) {
+	print $opts{'M'} ? $mask : "-ssh $remote_as\@$remoteIP stampctl exit code $?\r\n";
+	exit EX_NOPERM();
+}
+# Hey, local site policy: login names alpha + up to 15 alpha-numerics %%
+$login =~ s/\r?\n$//;
+if (not $login =~ m/^(\w[\w\d]{0,15})$/o) {
+	print $opts{'M'} ? $mask : "-invalid login name \"$login\"\r\n";
+	exit EX_NOPERM();
+}
+$login = $1;
+
+# Find a place to stash the tar file.
+unless (open($keep, "&gt;userkeys/$login.tar")) {
+	print $opts{'M'} ? $mask : "-no space available for $login\r\n";
+	exit EX_NOPERM();
+}
+
+# Open the command to capture the file.
+my($a) = '&amp;';
+unless (open($fh, "exec &lt;/dev/null $a$a ssh -nT $remote_as\@$remoteIP . /usr/local/lib/distrib/local.defs \\$a\\$a op -u $login -f $stamp_name acct recover \\$a\\$a exec /usr/local/sbin/stampctl -k $stamp_name|")) {
+	print $opts{'M'} ? $mask : "-ssh $remoteIP recover: $!\r\n";
+	exit EX_NOPERM();
+}
+
+# Release the client and finish the download async.
+print "+$login\r\n";
+open(STDOUT, "&gt;/dev/null");
+<em class="error">...</em></code></pre></blockquote>
+The code is marked with comments matching <code class="sh">/Hey.*%%/</code>
+that help you fill in all the site policy.  Fix the code and check it into
+local revison control so you can update later to better upstream versions.
+<p>
+We are a <code class="sh">tcpmux</code> service, so our messages back to
+the client start with either a good (<code class="markup">+</code>) or
+failure (<code class="markup">-</code>).  Becuase of my local site policy
+there is an option to <strong>mask</strong> any radiated information about
+<acronym title="most all">all</acronym> failures.
+<p>
+On the client host we source <code class="path">local.defs</code> by
+local site policy to set the environment (<code class="env">PATH</code>,
+<code class="env">TZ</code>, and their like).
+Then we collect the requested file.  There is no reason why
+we couldn't collect more files, but we don't need others for this task.
+The process could be extended to include most other <em>dot files</em>.
+Or there might be more than one pick-up for files, which must be submitted
+selectively: your call.
+<p id="tcpmux">
+The server-side <code class="sh">tcpmux</code> configuration is a little
+long:
+<blockquote class="file"><pre><code >tcpmux/key-pickup  stream tcp nowait <em class="error">acct:acct</em> <em class="new">/usr/local/libexec/acctmux</em> acctmux <em class="error">\</em>
+	PATH=/usr/local/bin:/usr/local/sbin:/sbin:/bin:/usr/sbin:/usr/bin <em class="error">\</em>
+	HOME=/home/acct SSH_AUTH_SOCK=/home/acct/<em class="error">private/agent</em></code></pre></blockquote>
+<p id="pudding">
+With all the installed we can test the whole flow:
+<blockquote class="file"><pre><code >ksb$ <em class="new">time op acct submit</em>
+Submission complete.
+
+real    0m0.41s
+user    0m0.02s
+sys     0m0.02s
+ksb$  <em class="new">exit</em></code></pre></blockquote>
+<p>
+Now make your accounting system deploy the tarball when it builds new
+home directories.  The meta-reference here is that the
+<code class="user">acct</code> account itself must have an up-to-date
+<code class="path">.ssh/authorized_keys</code> file to make this work.
+In configuration management it usually comes down to a chicken-and-egg
+issue in the end: if you have it it works, if you don't it is a total
+<acronym title="max sarcasm enabled"><em class="error">breeze</em></acronym>
+to get going.
+
+<h2 id="other">Other helmets</h2>
+
+These are other helmets I've coded, some of which do not make a lot
+of sense unless you know the context in which they are needed.
+<dl>
+<dt id="envauth"><code class="sh">envauth</code> -- match environment variables to REs
+<dt>&nbsp;$<code class="env">ENVAUTH_VAR_</code><code class="param">name</code>=<code class="param">re</code>
+<dt>&nbsp;$<code class="env">ENVAUTH_NOT_</code><code class="param">name</code>=<code class="param">forbidden</code>
+<dt>&nbsp;$<code class="env">ENVAUTH_WARN</code>=<code class="param">warning</code>
+<dt>&nbsp;$<code class="env">ENVAUTH_REVEAL</code>=<code class="param">prefix</code>
+<dd>
+<p>This checks the contents of the dynamic environment variables set by
+other helmets.  Since <code class="sh">op</code> only checks the
+environment as presented by the client, we might need this after a
+helmet has added new elements.
+
+<dt id="sheval"><code class="sh">sheval</code> -- assign dynamic environment variables from shell command output
+<dt>&nbsp;$<code class="env">SHEVAL_SET_</code><code class="param">var</code>=<code class="param">cmd</code>
+<dt>&nbsp;$<code class="env">SHEVAL_UNSET</code>=<code class="param">list</code>
+<dt>&nbsp;$<code class="env">SHEVAL_WARN</code>=<code class="param">sorry</code>
+<dt>&nbsp;$<code class="env">SHEVAL_REVEAL</code>=<code class="param">prefix</code>
+<dd>
+<p>This is a good way to get some information recorded in the environment
+while still escalated.  Can be replaced by in-line scripts, or replace
+an in-line script.  See <a href="/~ksb/cgi-bin/manpage.cgi?sheval&amp;7l">sheval(7l)</a>.
+<dd>
+<p>This is also a great way to check for dual group membership.  Given
+that <code class="sh">sheval</code> fails when a command
+<code class="sh">exit</code>s non-zero, we can match the group list
+<code class="markup">$a</code> plus the client's real group
+<code class="markup">$r</code> against a group with
+<code class="sh">expr</code>.  In this example we'll match the
+group <code class="group">disk</code> in the rule, and the group
+<code class="group">wheel</code> in the jacket (you may have to pass
+$<code class="env">PATH</code> to make the jacket work):
+<blockquote class="file"><pre><code >ktest1  echo You are in both wheel and disk ;
+	groups=disk
+	helmet=/usr/local/libexec/jacket/sheval
+	$SHEVAL_SET_trapWheel=/usr/bin/expr$.',$r,$a,'$.:$.'.*,wheel,.*'
+	$SHEVAL_UNSET=trapWheel</code></pre></blockquote>
+Or get the the system architecture via <code class="sh">uname</code>, which
+the <code class="sh">make</code> recipe below depends on:
+<blockquote class="file"><pre><code >ktest2  make install clean ;
+	users=^.*$
+	helmet=/usr/local/libexec/jacket/sheval
+	$SHEVAL_SET_MyARCH=/usr/bin/uname$.-p</code></pre></blockquote>
+
+<dt id="wrope"><code class="sh">wrope</code> -- escalated environment access client's diversions via <code class="sh">wrapw</code>
+<dt>&nbsp;$<code class="env">WROPE_TO</code>=<code class="param">template</code>
+<dt>&nbsp;$<code class="env">WROPE_REVEAL</code>=<code class="param">prefix</code>
+<dd>
+<p>Runs an instance of <code class="sh">wrapw</code> as the client, but
+changes the ownership of the diversion socket to the escalated login.
+This allows the escalated-process access to the client's active diversions.
+Very useful to run regression tests as a mortal login.
+Unlike other jackets, there is no way to get an authorization warning from
+<code class="sh">wrope</code>: a failure to start <code class="sh">wrapw</code>
+is treated an an error, and fails the escalation as a OS error.
+(Which does get logged as a failed escalation.)
+See <a href="/~ksb/cgi-bin/manpage.cgi?wrope&amp;7l">wrope(7l)</a> and
+<a href="/~ksb/cgi-bin/manpage.cgi?wrapw&amp;1l">wrapw(1l)</a>.
+
+<dt id="proxyAgent"><code class="sh">proxy-agent</code> -- escalated environment accesses client's <code class="sh">ssh-agent</code> socket
+<dt>&nbsp;$<code class="env">SPROXY_FROM</code>=<code class="param">env</code>
+<dt>&nbsp;$<code class="env">SPROXY_ENV</code>=<code class="param">env</code>
+<dt>&nbsp;$<code class="env">SPROXY_TO</code>=<code class="param">template</code>
+<dd>
+<p>Grant the escalated login access to any single local socket
+service.  Almost always used to gain access or <code class="sh">ssh</code>'s
+$<code class="env">SSH_AUTH_SOCKET</code> socket (which is the default).
+Actually this will proxy any local domain socket.  It builds a
+safe directory under <code class="param">template</code> with
+<code class="libc">mkdtemp</code>(3) and <code class="libc">mktemp</code>(3).
+We use 2 (or more) sets of
+<code class="markup">XXXXXX</code>'s to assure that the make temporary
+filename call is secure (since <code class="libc">mkdtemp</code> is
+atomic, the <code class="libc">mktemp</code> in the newly created
+directory is also secure, due to limited permissions).
+See <a href="/~ksb/cgi-bin/manpage.cgi?proxy-agent&amp;7l">proxy-agent(7l)</a>.
+
+<dt id="signed"><code class="sh">signed</code> -- check signature hash or checksum on the proposed program
+<dt>&nbsp;$<code class="env">SIGNED_FILTER_</code><code class="param">cmd</code>=<code class="param">output</code>
+<dt>&nbsp;$<code class="env">SIGNED_CMD_</code><code class="param">cmd</code>=<code class="param">output</code>
+<dt>&nbsp;$<code class="env">SIGNED_REVEAL</code>=<code class="param">prefix</code>
+<dt>&nbsp;$<code class="env">SIGNED_WARN</code>=<code class="param">sorry</code>
+<dd>
+<p>This may be used to assure that a script or binary program was
+not been changed since the rule-base was last updated by keeping
+one or more hashes or checksums in the rule-base.  These are compared to
+a run-time version of the same hash which must match as an
+additional authorization check.
+See <a href="/~ksb/cgi-bin/manpage.cgi?signed&amp;7l">signed(7l)</a>.
+
+<dt id="manifest"><code class="sh">manifest</code> -- match the proposed program to a list of REs
+<dt>&nbsp;$<code class="env">MANIFEST_LIST</code><code class="param">spec</code>=<code class="param">file</code>
+<dt>&nbsp;$<code class="env">MANIFEST_WARN</code><code class="param">spec</code>=<code class="param">sorry</code>
+<dt>&nbsp;$<code class="env">MANIFEST_WARN</code>=<code class="param">sorry</code>
+<dt>&nbsp;$<code class="env">MANIFEST_REVEAL</code>=<code class="param">prefix</code>
+<dd>
+<p>This helmet allows the consolidation of many parallel rules into a
+single rule, as long as all the escalated scripts have the same usage and
+client authentication constraints.
+The path to the <code class="param">program</code> specified by
+<code class="sh">op</code> in the helmet parameters must match one
+of the regular expression in at least one <code class="sh">file</code>.
+The RE may be prefixed with a forced non-zero exit code to deny the
+escalation.
+<dd>
+For example this list allows <code class="sh">ls</code>,
+<code class="sh">cat</code>, and <code class="sh">true</code>,
+but not other commands:
+<blockquote class="file"><pre><code >^/bin/ls$
+^/bin/cat$
+^/bin/true$
+77=.*</code></pre></blockquote>
+The <code class="sh">op</code> configuration might look like:
+<blockquote class="file"><pre><code >do	$@ ;
+	helmet=/usr/local/libexec/jacket/manifest
+	$MANIFEST_LIST=<em class="error">/path/to/file/above</em>
+	users=<i>...</i> uid=<i>...</i></code></pre></blockquote>
+<p>
+This reduces the number of mnemonic rules, while adding little cost.
+<code class="sh">Manifest</code> is most often used to allow many similar
+application support scripts to the grouped into a single rule definition.
+See <a href="/~ksb/cgi-bin/manpage.cgi?manifest&amp;7l">manifest(7l)</a>.
+
+<dt id="coat"><code class="sh">coat</code> -- apply multiple jackets to an escalation
+<dt>&nbsp;$<code class="env">COAT</code>=<code class="param">jackets</code>
+<dt>&nbsp;$<code class="env">COAT_REVEAL</code>=<code class="param">prefix</code>
+<dd>
+<p>
+This allows more than a single jacket or helmet. Both may be done with
+the reveal hook, due the limits of the environment specification the
+jacket must be hidden with a prefix from the helmet.
+<p>
+Each of the required jackets in $<code class="env">COAT</code> is
+started in turn.  After all the external command output is consumed
+and the exit code is still 0, the next is started.  If all the
+listed jackets start we allow the escalation.
+See <a href="/~ksb/cgi-bin/manpage.cgi?coat&amp;7l">coat(7l)</a>.
+
+<dt id="ttyowner"><code class="sh"><em class="error">ttyowner</em></code> -- replaced by <code class="sh">stamp</code>
+<dt>&nbsp;<em class="error">do not use</em>
+<dd>
+This jacket has been replaced by <code class="sh">stampctl</code> and
+<code class="sh">stamp</code>.  It was intended to prevent 2 login sessions
+from sharing a common authorization, but it was very hard to assure that it
+actually checked the correct conditions.
+</dl>
+
+<h2 id="summary">Summary</h2>
+
+Jackets and helmets give <code class="sh">op</code> a wider range of
+application and power, without adding every possible escalation
+limit into the core tool.  Use them with care.
+<p>
+The facility provided by the <code class="sh">stampctl</code> and
+<code class="sh">stamp</code> services allow multi-key authorization
+as well as services that keep short-term state to create a whole
+range of options unavailable through other escalation structures.
+<hr><pre>
+
+$Id: jacket.html,v 1.44 2013/09/03 18:18:28 ksb Exp $ by <a rel="author" href="https://profiles.google.com/101982188326956345150">ksb</a>.</PRE><script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"0b68f1a49c894aa1a76d2dc1135097bb","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</BODY></HTML>

@@ -1,0 +1,9 @@
+# this file must be named "dicer"
+$Compile:  [ _dicer = _%F ] && MK=-t/dev/null %b -a%C%N%I%V -mX -dmakemehappy %f
+$X(*): [ _di = _%(F,1,2) ]
+$X(*): [ _dr = _%(F,1,~1) ]
+$X(*): [ _cer = _%(F,~3-$) ]
+$X(*): [ _rec = _%(F,$-~3) ]
+$X(*): [ _recid_dicer = _%(F,$-1,`_',*) ]
+$X(*): [ _applyapply = _%(s,(~4-~2,"l",~1)(*,*)) ]
+$X(*): [ _applyapply = _%([se3],(~4-~2,"l",~1)(*,*)) ]

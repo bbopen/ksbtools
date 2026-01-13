@@ -1,0 +1,143 @@
+# $Id: README,v 1.6 2010/07/22 22:30:26 ksb Exp $
+
+A replacement for distrib which looks more like xapply.  Host properties are
+attributes about the host, or about the political position of the host:
+examples like "this host has a modem" or "this host belong to the InfoSec
+department".  Unlike distrib we use multiple configuration files as a
+general rule (each with some knowledge about a set of hosts) to find
+unions, intersections and disjunctions.
+
+This program looks up a host in a properties database then applies those
+properties to a command (or script) to run a (filtered) command.  The
+properties database is in distrib's format, with the default column
+headers replaced with just "HOST".  Add the old ones back, if you used
+them, with explicit %header lines.
+
+There is also no default config file (aka distrib.cf) and no .mcf files,
+(run hxmd from hxmd to get that one, wow).  Rather it is expected that
+hxmd will always get a -C option and/or -Z option, or more than one.
+
+If you were a big distrib user (like me) this helps a lot:
+distrib options		hxmd version
+  -C config.cf		-C config
+  -C config.mcf		hxmd -E HOST=`hostname` -C local.cf \
+				'hxmd -C %1 cmd' config.mcf
+  -G guard		-G guard, but result is a hostname, not yes or 0
+  -I			<hxmd's default behavior>
+  not -I		-E "HOST!`hostname`" -E "HOST!localhost"
+  -a			[-B HOST]
+  -S			-B HASSRC [-Z source.cf]
+  -S			-B2 -C source.cf
+  -m $host		-E HOST=$host
+  -m host1,host2	-G "host1 host2"
+  -t type		-E HOSTTYPE=type
+  -t type1,type2	-G "ifelse(HOSTTYPE,\`type1',\`HOST')" \
+			-G "ifelse(HOSTTYPE,\`type2',\`HOST')"
+
+If we make a default control command accessible with ''.  We use the macro
+HX_CMD in the config file to specify the command to run, e.g. this does
+something like "msrc" (which is built on this tool):
+	hxmd -V:
+		hxmd: replace an empty control with: HX_CMD
+		..
+	my.cf:
+		...
+		HX_CMD=`RDIST_CMD RDIST_PARAM'
+		RDIST_CMD=`/usr/local/bin/rdist6 -P/usr/local/bin/ssh-x'
+		RDIST_PARAM=`-f HXMD_`'HXMD_C HOST'
+		REMOTE_MAKE=`make'
+		REMOTE_DEFS=`/usr/local/lib/distrib/local.defs'
+		SERVO=`/usr/local/bin/ssh-x HOST  sh -c ". REMOTE_DEFS && cd INTO && REMOTE_MAKE `DESTDIR='\"DESTDIR\" `DEBUG'=\"DEBUG\""'
+
+For the parameters in argv (after we pull the command off) we are
+going to build files in /tmp/$random_name/ for each, just as distrib
+did for @file@ processing.  Then we shall define macros for each
+file with a common prefix ("HXMD_" by convention):
+	HXMD_1="/tmp/$random_name/$1_name"
+	HXMD_2="/tmp/$random_name/$2_name"
+	...
+	HXMD_4="..."
+then add a count of the parameters for the wise:
+	HXMD_C="4"
+
+Then the m4 expression "define(DISTFILE,HXMD_`'HXMD_C)" will define the
+location of the Distfile for one of my more common usages.
+
+
+To do this we use the -u option in xapply 3.37 (which you might
+need to upgrade) and the -N option in xclate 2.18 which you need to
+upgrade, I'll bet.
+
+hxmd -n 'HOST is a HOSTTYPE/CPU running HOSTOS'
+hxmd -B EXPOSED  "ssh HOST -n uname -a"
+hxmd -E HOSTTYPE=SUN5 "rdist -d\`INTO'=INTO -f %2 HOST" special Distfile
+hxmd ...  'scp %1 HOST:/tmp/foo && ssh HOST /bin/sh <%2'  data comamnds
+
+
+
+hxmd takes a lot of options and builds quite a complex little pipeline,
+think:
+	hxmd [options] 'control' [files]
+
+Options from xapply: [-xn] [-a c] [-i input] [-N else] [-Pn] [-S shell]
+			[-R req] [-J jobs] [-t targets]
+Options twisted xapply: [-c cmd]
+	our -c is xapply's "cmd", defaults to %+
+	default -P is 6
+	default -i,-a,-x,-S,-n,-N is none given, else passed on as-is
+Options to pwtb via xapply:
+	default -t, -R, -J is none given, else as filtered by xapply
+Default options to xapply
+	-fzmu [-Axn]
+
+Options from xclate: [-L cap] [-H hr] [-T title] [-W widow] [-O ouput]
+	These options are also read from $XCLATE, of couse
+Default options to xclate
+	-m[r] -N '>&_' -- xapply -[xn]Pn -fmuz cmd -
+
+Options to m4
+	[-D var=value] [-U undef] [-I dirname] [-d debug]
+
+options to hxmd itself
+	-C config
+	[-B names]
+	[-E compares]
+	[-G guard]
+	[-K cleanup]
+	[-Q ward]
+	[-r redo]
+	[files]
+
+This builds a pipeline that is hard to draw, start with
+	hxmd | xclate -m -N .. -- xapply -fPn -mz...
+then xapply adds many of these (once for each -Pjobs)
+		control args | xclate
+which reaches back to the  xclate -m for -N and stdout arbitration.
+
+And it should be mentioned tha hxmd forks into 2 processes, one to filter the
+files (Child) and one to manage the notification and cleanup temporary files
+(Hxmd).
+
+	Child <-socket-> Hxmd
+	 \ 		 / (pipe)
+	  \		/
+	   \|xclate -mN/... -- xapply -fm ... '%+' - ...
+			+- control files | xclate-slave
+			+- control files | xclate-slave
+
+So Child can feed file information to Hxmd, and start processes in the
+xclate | xapply -f stream.  When Child is done it can close the xclate input
+pipe to finish xclate, and close the control socket with the parent hxmd to
+notify hxmd that no more clients will start.  The parent waits for the
+Child and the xclate master process (which waits for the xapply & kids).
+
+In the case of a Redo command (under -r, -Q, -K) we replace the xclate tree:
+	Child <-socket->  Hxmd
+	  \
+           \|Redo -- stderr
+Sending the exit code stream to redo (in a file, or as stdin) from Child
+to redo, allowing redo's output to flow to Hxmd's stderr (as stdout is
+the collated stream).
+
+--
+ksb, Oct 2006

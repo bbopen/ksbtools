@@ -1,0 +1,12 @@
+# the file is a character-special, what to do?				(ksb)
+# $Id: c,v 5.0 1996/09/09 19:57:53 kb207252 Exp $
+
+$Display(*):	${ls-ls} %s %f
+$Display(*):	${ls-ls} -l %f
+$Display(*):	%g%~/m/display
+
+$Info(*):	%=:/dev/null:%f:${echo-echo} "character special data sync"
+$Info(*):	${echo-echo} "character special"%;
+
+$*(*):		: '%f is a character special file, cannot %m(%s) it.' && ${false-false}%;
+$*(*):		: '%f is a character special file, cannot %m it.' && ${false-false}%;

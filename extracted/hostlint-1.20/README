@@ -1,0 +1,64 @@
+# $Id: README,v 1.6 2007/02/26 05:08:47 ksb Exp $
+# $Source: /usr/msrc/usr/local/libexec/hostlint/RCS/README,v $
+
+Lint a host using a "site policy" model: hostlint is the thrid leg of
+the peg/netlint/hostlint tool triumviral loop.
+
+The whole deal looks like this:
+ + peg monitors the real-time utilization of the hosts resources
+	* CPU, network, applications
+	* themis for more detailed views
+ + netlint makes sure the network can carry peg's data (and more)
+	* IP, netmask, layer 2 media errors
+	* sendmail
+	* DNS records
+ + hostlint makes sure the the right versions are running
+	* netlint, peg, hostlint, and others
+	* classlint checks class differences
+	* some pseudo-users have special checks too
+	* the master source system closes the loop on "wrong bits"
+
+As a "side effect" of these the host has a good tool chain, a good
+network, and a metric on utilization that the Admin can depend on.
+
+We are m4'd in the master source to allow distrib to configure our
+repository name and distrib host type.  We also let RCS set our
+revision number.  The file repo.m4 could be used by another program
+to find the same repo we found (in the msrc push).
+
+*** SITE POLICY:
+*** Other sites have to code a repo.m4 for local policy to find a
+*** valid rsync target.  Do that before you install this.
+
+
+Most of the "action" happens in the site policy files in:
+	../hostlint-policy/
+See the README there for the gore.  We just pull that policy down,
+find a likley entry point and run it.  Support this with an rsyncd.conf
+stanza:
+	[hostlint]
+	list = yes
+	comment = Site policy for hostlint
+	path = /usr/local/libexec/hostlint-policy
+	uid = nobody
+	gid = ftp
+	read only = true
+
+
+Other related close-the-loops:
+ + mkacct's loop for accounts and such
+ + ../classlint-policy/ for support of the class.hlc module
+ + hxmd's class.m4, which should agree with class.hlc (you'd think)
+ + dns lint checkers
+ + the mini install class-build automation
+ _ others I've yet to release (ZZZ)
+
+
+Because of the flow here we have to get our repository configuration
+from the master source push itself (as netlint does).  We can't
+really depend on any other file in the filesystem (if we don't have
+any invariant that says we already have the right tool-chain installed).
+
+
+--
+ksb, petef, Aug 2004, Feb 2007

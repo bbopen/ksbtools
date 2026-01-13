@@ -1,0 +1,5 @@
+# $Id: Commands,v 2.0 1996/11/07 17:35:40 kb207252 Exp $
+# general format [mkcmd cmd_parse.m style]
+#	path argv0 [params] -- helptext
+#
+/bin/ls ls [-flags] -- list files in stage area

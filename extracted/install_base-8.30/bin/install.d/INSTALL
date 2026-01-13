@@ -1,0 +1,60 @@
+# $Id: INSTALL,v 8.3 2009/10/15 22:21:05 ksb Exp $
+
+How to install the BSD-like install replacement.
+------------------------------------------------
+
+If you got here then you are not using the package, and it gets harder
+from here.  You should use "mmsrc" on the whole package.  But if you
+need to do it the hard way...  First you need to install all of msrc_base.
+So go do that first.  Then use that to install this package.  Oh, you
+still want to get hurt, OK...
+
+1) Read the manual pages (install.man)
+
+2) Edit the file `configure.h' and read about the site options
+   you may or may not want to turn on
+	+ syslog installs by the superuser
+	+ check a list of files and modes to assure important files
+		are not lost || miss installed
+	+ the name of some routines (getwd)
+	+ how default modes are built
+		- inherit from destination directory
+		- use compiled-in defaults
+	+ can source be a symlink (SLINKOK)
+	+ maybe define some defaults: (override those in install.h)
+		DEF{OWNER,GROUP,MODE}		- file modes
+		DEFDIR{OWNER,GROUP,MODE}	- directory modes
+		ODIR{OWNER,GROUP,MODE}		- OLD file modes
+		OLDDIR				- name of OLD
+
+3) Look over install.cf (if you are going to be using CONFIG):
+	$ groff -man -Tascii ../../lib/install.cf/install.cf.man | less
+	$ less ../../lib/install.cf/install.cf
+
+4) Use mmsrc to build it (you really don't want to run m4 by hand here):
+	$ mmsrc -Cauto.cf  -y INTO=/tmp/install.src -- make all
+
+5) Install it with the boot recipe (the first time):
+	$ cd /tmp/install.src
+	$ make -n boot
+	   ### check out what we are about to do.
+	$ su
+	# make boot
+	# exit
+	$ make clean
+
+6) Remove the master source platform cache from /tmp:
+	cd -
+	rm -rf /tmp/install.src
+
+7) Install the install.cf file if you want to turn on some checks.
+
+8) install purge and instck from ../../etc, then installus, then
+   from ../../bin/ install vinst, mk, and op.  Then ../../lib/mk.
+
+
+That should about do it.
+
+--
+kayessbee, Kevin S Braunsdorf
+Any questions?  Mail to install@ksb.npcguild.org

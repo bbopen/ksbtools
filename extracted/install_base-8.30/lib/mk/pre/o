@@ -1,0 +1,16 @@
+# a object file								(ksb)
+# $Id: o,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+$Compile(*):	${cc-cc} ${cc_debug--O} -o %s %f
+$Compile(*):	${cc-cc} ${cc_debug--O} -o %F %f %s
+$Compile(*):	${cc-cc} ${cc_debug--O} -o %F %f
+
+$Clean(*):	${rm-rm} -f %F
+
+$Display(*):	${nm-nm} %s %f |${PAGER-${more-more}}
+$Display(*):	${nm-nm} -o %f |${PAGER-${more-more}}
+$Display(*):	${strings-strings} %s %f |${PAGER-${more-more}}
+$Display(*):	${strings-strings} -o %f |${PAGER-${more-more}}
+$Display(*):	${strings-strings} - -o %f |${PAGER-${more-more}}
+
+$Info(*):	${echo-echo} "object code"

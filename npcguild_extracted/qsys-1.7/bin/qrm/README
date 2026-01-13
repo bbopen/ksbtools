@@ -1,0 +1,14 @@
+# $Id: README,v 1.2 1994/02/11 17:25:00 ksb Exp $
+
+Qrm removes tasks from the system queues.  If the job it running it
+forks a qkill to clean the job out of the process table.  Nasty.
+
+Usually the Owner of the job notices that the commands listed in
+the qstat output don't look right.  Then she removes the task and
+requeues.  The qkill stuff only happens if qmgr and the owner race.
+
+Bugs:
+	- qrm should have an `everything I own' option
+
+--
+ksb

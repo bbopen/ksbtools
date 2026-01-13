@@ -1,0 +1,15 @@
+<!-- a hypertext markup langauge file				     (bj/ksb)
+  --- $Id: html,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+  --!>
+
+$Compile(*):	%hDisplay
+
+$Display(*):	: on %{DISPLAY}\n\t${Mosaic-Mosaic} file:%f
+$Display(*):	: on %{DISPLAY}\n\t${netscape-netscape} file:%f
+$Display(*):	${lynx-lynx} %f
+
+$Info(*):	${echo-echo} "hypertext markup langauge `%~/bin/extract-title %f`"
+$Info(*):	${echo-echo} "hypertext markup langauge"
+
+$*(*):	: 'HTML source %f, do not know how to %m(%s) it.' && ${false-false}
+$*(*):	: 'HTML source %f, do not know how to %m it.' && ${false-false}

@@ -1,0 +1,3 @@
+# $Id: Msrc.hxmd,v 1.2 2008/07/04 16:43:26 ksb Exp $
+# send us over as root, until we use op to install -- ksb
+#-DENTRY_LOGIN=root

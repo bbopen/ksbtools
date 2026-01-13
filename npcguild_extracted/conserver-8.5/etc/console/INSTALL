@@ -1,0 +1,36 @@
+# $Id: INSTALL,v 8.1 1998/06/07 16:31:59 ksb Exp $
+#
+
+Prep:
+
+ Did you do the prep work in ../conserver yet?  If not please start there.
+
+
+Compiling:
+
+ Try a
+	make
+ in this directory.  If cons.h is correct this should just compile.
+
+
+First test:
+
+ Run a version command:
+	./console -V
+ and see something like:
+
+	console: <$>Id: console.m,v 7.3 1995/06/26 21:41:21 kb207252 Alpha $
+	console: initial master server `console.cc.purdue.edu'
+	console: default escape sequence `^Ec'
+	console: loopback address for dscmsvr6 is 127.0.0.1
+	console: service name `console' (which we call `conserver') on port 782
+
+ Finish the INSTALL in conserver now.
+
+
+Connect to the conserver on your dumb port,
+
+ Try all the commands.  Especially ^Ecz and ^Ecd/^Eco.
+
+ Try two connections to the same console, note the cool way you can force
+ the other guy off (^Ecf).

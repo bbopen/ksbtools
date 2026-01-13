@@ -1,0 +1,64 @@
+# $Id: README,v 3.5 1997/11/16 20:42:19 ksb Exp $
+
+What is this?
+
+ This is the Purdue/ksb entombing system.  Files removed by programs
+ linked with "libtomb" are cached for a while (long enough to get on a
+ backup tape would be best case) in case their untimely loss is noticed.
+
+ The 3 programs are "unrm" (the user agent to get files back), "entomb"
+ the system agent to cache a file, and "preend" (the system agent to
+ clean the older files from the tombs.
+
+ Included as nifty side products are "rmfile" which helps novice users
+ delete files with funny names (like "-") and "untmp" which should be
+ used to clean /tmp from a ".logout" type file from casual users.
+
+
+Source Contents:
+
+ The subdirectories in this directory contain the essential parts of a
+ file entombing system.
+
+ README		This file.
+
+ Pkg.sh		This shell script to build this package.
+
+ lib/entomb	The source for a program that will entomb a file.
+
+ lib/libtomb	The source for a library which provides entombing system API.
+	These system calls cause a fork/exec of the 'entomb' program, above.
+
+ etc/preend	A daemon which makes sure the tombs don't get too full of
+	corpses.
+
+ bin/unrm	A program that may be used to retrieve a file from a tomb.
+
+ bin/rmfile	A "micro shell" to help novice users delete or entomb files
+	with nasty names (like "~", "-", and " ").
+
+ bin/untmp	A quick spell to remove all my junk from /tmp (just plain
+	files, not subdirs).  This cleans up well for run away mktemp's.
+
+
+ Paper		A document describing how to install the entombing system,
+	and an (outdated) technical paper describing the system in detail.
+
+Compile Hints:
+	std msrc stuff, if you know how to do that.
+
+	You need mkcmd version 7.24 or better.
+
+	On Sun's Solaris you'll need my fake scandir(3) [from explode's
+	repository, or from BSD Net2 tape + hacks]
+
+	The AIX RS6000 port is hard to understand, but it works as well.
+
+Thanks to:
+	David Coleman for AIX clues.
+
+	Matthew Bradburn for early work on the previous (RPC based) version,
+	now long gone.
+
+--
+Kevin S Braunsdorf, SA&C UNIX Support, ksb@fedex.com

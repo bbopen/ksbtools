@@ -1,0 +1,49 @@
+.\" $Id: untmp.man,v 1.5 2009/12/26 20:11:44 ksb Exp $
+.\" $Compile: Display%h
+.\" $Display: ${groff:-groff} -Tascii -man %f |${PAGER:-less}
+.\" $Display(*): ${groff:-groff} -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man1/untmp.1
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]1/untmp.1*
+.TH UNTMP 1L LOCAL
+.SH NAME
+untmp \- clean files out of /tmp
+.SH SYNOPSIS
+\fBuntmp\fP [\fB\-nv\fP] [\fB\-T\fP \fIpath\fP] [\fIlogin\fP]
+.br
+\fBuntmp\fP \fB\-h\fP
+.br
+\fBuntmp\fP \fB\-V\fP
+.SH DESCRIPTION
+.I Untmp
+removes all the files from /tmp owned by the invoker.
+It is useful for those developing programs which use
+temporary files or for stopping a C compilation cold.
+.PP
+If a user name is given, then files in /tmp owned
+by that user are removed rather than the files owned
+by the invoker.
+.SH OPTIONS
+.TP
+.B \-h
+Output a brief help message.
+.TP
+.B \-n
+Do not really remove any files, just trace actions.
+.TP
+.BI \-T path
+Search the given colon separated path for crufty files to unlink.
+.TP
+.B \-v
+Trace actions as files are removed.
+.TP
+.B -V
+Output a standard version string.
+.SH EXAMPLES
+.TP
+\fIuntmp\fP
+The common usage to cleanup all the temporary files from /tmp and /var/tmp.
+.TP
+\fIuntmp\fP -T $TMPDIR
+A more explict version of the same request.
+.SH BUGS
+Only the superuser may specify another login name.

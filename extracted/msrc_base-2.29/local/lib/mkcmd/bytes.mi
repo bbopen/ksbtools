@@ -1,0 +1,14 @@
+/* $Id: bytes.mi,v 8.20 1998/11/29 01:17:36 ksb Exp $
+ * post mult byte (of course the k should be Ki, etc.)			(ksb)
+ */
+#define PMB_BYTE	{ '\000', "byte",	       1UL, (char *)0 }
+#define PMB_WORD	{    'w', "word",	       2UL, (char *)0 }
+#define PMB_LONG	{    'l', "long word",	       4UL, (char *)0 }
+#define PMB_BLOCK	{    'b', "block",	     512UL, (char *)0 }
+#define PMB_KB		{    'k', "kilobyte",	    1024UL, (char *)0 }
+#define PMB_MB		{    'm', "megabyte",    1048576UL, (char *)0 }
+#define PMB_GB		{    'g', "gigabyte", 1073741824UL, (char *)0 }
+
+static POST_MULT aPMBytes[] = {
+	PMB_BYTE, PMB_WORD, PMB_LONG, PMB_BLOCK, PMB_KB, PMB_MB, PMB_GB
+};

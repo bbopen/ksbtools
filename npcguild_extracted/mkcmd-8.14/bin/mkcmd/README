@@ -1,0 +1,38 @@
+# $Id: README,v 8.0 1997/01/29 02:41:57 ksb Exp $
+#
+
+Here at PUCC (The Purdue University Computing Center) we administer
+lots of UNIX platforms.  We sometimes have to run off quick tools to
+solve problems for our customers.  This program lets us build a nifty
+command line option parser and some on-line documentation in a snap.
+
+
+First edit the Makefile here to change `/usr/local/lib/mkcmd' and
+`/usr/local/bin' if you do not want to install this program under
+/usr/local.  You can look at other tuning params in "machine.h" and
+override them in CDEFS in the Makefile.
+	vi Makefile
+
+Build mkcmd:
+	make all
+
+Install mkcmd:
+	make install
+
+If you have mkcat (a PUCC tool to install manual pages):
+	mkcat mkcmd.man
+
+Install the library files:
+	(cd ../lib; make install)
+
+Test mkcmd:
+	make self
+
+Read the Notes file again, try some stuff from ../../examples.
+
+Send bugs with a *.m file to me.  Patches are OK too :-).
+
+-- 
+"Cold waves wash over, and drift away with dreams of youth
+ So time is stolen, I cannot hold you long enough."              --Enya
+kayessbee, ksb@cc.purdue.edu, uunet!purdue!ksb  (Kevin S Braunsdorf)

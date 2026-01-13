@@ -1,0 +1,114 @@
+`# $Id: Make.host,v 3.16 2000/06/20 14:10:03 ksb Exp $
+#
+#	Makefile for unrm
+
+SHELL=/bin/sh
+PROG=	unrm
+BIN= ${DESTDIR}/usr/local/bin
+
+S=/usr/include/sys
+I=/usr/include
+T=../../lib/libtomb
+E=../../lib/entomb
+
+INCLUDE= -I$T -I$E
+DEBUG= -O
+CDEFS=	-D'HOSTTYPE`'ifelse(
+HOSTTYPE,`IBMR2',` -DAIX')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+CNF=	unrm.m
+HDR=	changedir.h findfiles.h init.h lists.h listtombs.h ls.h purge.h \
+	restore.h show.h glob.h'ifelse(MKCMD,`no',` main.h')`
+SRC=	changedir.c findfiles.c init.c lists.c listtombs.c ls.c purge.c \
+	restore.c show.c glob.c'ifelse(MKCMD,`no',` main.c')`
+OBJ=	changedir.o findfiles.o init.o lists.o listtombs.o ls.o purge.o \
+	restore.o show.o glob.o main.o fslist.o
+GENh=	'ifelse(MKCMD,`no',`',`main.h ')`fslist.h
+GENc=	'ifelse(MKCMD,`no',`',`main.c ')`fslist.c
+GEN=	$(GENc} ${GENh}
+DEP=	${GENc} ${SRC}
+MAN=	unrm.man
+SOURCE=	Makefile ${HDR} ${SRC} ${MAN}
+
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o ${PROG} ${CFLAGS} ${OBJ}
+
+fslist.c fslist.h:
+	ln -s $E/$@ $@
+
+'ifelse(MKCMD,`no',`',
+`main.h:	main.c
+
+main.c:	unrm.m
+	mkcmd std_version.m std_help.m cmd.m cmd_help.m cmd_version.m unrm.m
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+	rm -rf prog.[ch]')`
+
+clean: FRC
+	-rm -f Makefile.bak a.out core errs lint.errs tags *.o ${PROG} ${GENc} ${GENh}
+
+depend: ${SRC} ${GENc} ${HDR} ${GENh} FRC
+	maketd ${CDEFS} ${INCLUDE} ${SRC}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG} HOST
+
+install: all
+	install -scm2755 -ocharon -gcharon ${PROG} ${BIN}
+
+mkcat: ${MAN} FRC
+	mkcat ${MAN}
+
+lint: ${HDR} ${GENh} ${SRC} ${GENc} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${SRC} ${GENc}
+
+print: ${SOURCE}
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean FRC
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR}
+	ctags -t ${SRC} ${HDR}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+changedir.o: changedir.c init.h lists.h main.h
+
+findfiles.o: findfiles.c glob.h lists.h main.h $T/libtomb.h
+
+fslist.o: fslist.c fslist.h $T/libtomb.h
+
+init.o: fslist.h $T/libtomb.h init.c init.h lists.h machine.h main.h
+
+lists.o: lists.c lists.h
+
+listtombs.o: init.h lists.h listtombs.c main.h
+
+ls.o: init.h lists.h ls.c main.h
+
+purge.o: init.h lists.h main.h 
+
+restore.o: $T/libtomb.h init.h lists.h main.h restore.c restore.h
+
+show.o: init.h lists.h main.h show.c show.h
+
+glob.o: glob.c glob.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

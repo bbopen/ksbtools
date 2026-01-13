@@ -1,0 +1,8 @@
+# $Id: TODO,v 3.6 2010/08/16 16:24:04 ksb Exp $
+
+We play games with shared library code under IBMR2 (RS6000 series).
+We should name the aux library libtomb_r.a, not libsys_r.a.
+
+--
+"Dira took Stack to Hell.  It was a fine place." _Deathbird_ (H. Ellison)
+kayessbee, KS Braunsdorf, entomb from ksb.npcguild.org

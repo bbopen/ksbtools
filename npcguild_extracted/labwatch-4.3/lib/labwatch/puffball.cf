@@ -1,0 +1,96 @@
+# puffball
+# $Id: puffball.cf,v 1.9 2000/07/22 19:48:40 ksb Exp $
+# Ship
+ship20.zmd
+ship21.zmd
+ship22.zmd
+ship23.zmd
+ship24.zmd
+ship25.zmd
+#ejb
+ejb1.zmd
+ejb2.zmd
+ejb3.zmd
+ejb4.zmd
+ejb5.zmd
+ejb6.zmd
+ejbtest1.zmd
+ejbtest2.zmd
+ejbtest3.zmd
+# www
+app1.zmd
+app2.zmd
+app3.zmd
+app4.zmd
+app5.zmd
+app6.zmd
+# iv app
+app7.zmd
+app8.zmd
+# nrapp
+app9.zmd
+app10.zmd
+# all purpose apps
+appbeta1.zmd
+appstage.zmd
+apptest1.zmd
+apptest2.zmd
+comm5.zmd
+comm7.zmd
+www35.zmd
+www36.zmd
+wwwstage.zmd
+cps60.zmd
+cps61.zmd
+# dew class
+dewtest2.zmd
+olrb1.zmd
+olrb2.zmd
+olrbtest1.zmd
+mqtest2.zmd
+%%status -- The CGI status report
+   Report   Host      Load  Status
+@ %{@:r} %{@:h} %{@:l} %{@:x} %{@:f}
+%%ftp -- FTP servers
+      www35.zmd %{www35.zmd:X} %{www35.zmd:}
+      www36.zmd %{www36.zmd:X} %{www36.zmd:}
+       app1.zmd %{app1.zmd:X} %{app1.zmd:}
+       app2.zmd %{app2.zmd:X} %{app2.zmd:}
+       app3.zmd %{app3.zmd:X} %{app3.zmd:}
+       app4.zmd %{app4.zmd:X} %{app4.zmd:}
+       app5.zmd %{app5.zmd:X} %{app5.zmd:}
+       app6.zmd %{app6.zmd:X} %{app6.zmd:}
+       app7.zmd %{app7.zmd:X} %{app7.zmd:}
+       app8.zmd %{app8.zmd:X} %{app8.zmd:}
+   appbeta1.zmd %{appbeta1.zmd:X} %{appbeta1.zmd:}
+   appstage.zmd %{appstage.zmd:X} %{appstage.zmd:}
+   apptest1.zmd %{apptest1.zmd:X} %{apptest1.zmd:}
+   apptest2.zmd %{apptest2.zmd:X} %{apptest2.zmd:}
+      comm5.zmd %{comm5.zmd:X} %{comm5.zmd:}
+      comm7.zmd %{comm7.zmd:X} %{comm7.zmd:}
+%%ejb -- EJB servers
+      ejb1.zmd %{ejb1.zmd:X} %{ejb1.zmd:}
+      ejb2.zmd %{ejb2.zmd:X} %{ejb2.zmd:}
+      ejb3.zmd %{ejb3.zmd:X} %{ejb3.zmd:}
+      ejb4.zmd %{ejb4.zmd:X} %{ejb4.zmd:}
+      ejb5.zmd %{ejb5.zmd:X} %{ejb5.zmd:}
+      ejb6.zmd %{ejb6.zmd:X} %{ejb6.zmd:}
+      ejbtest1.zmd %{ejbtest1.zmd:X} %{ejbtest1.zmd:}
+      ejbtest2.zmd %{ejbtest2.zmd:X} %{ejbtest2.zmd:}
+      ejbtest3.zmd %{ejbtest3.zmd:X} %{ejbtest3.zmd:}
+%%ship -- the FedExShip 3.1 Internet backend
+     ship20.zmd %{ship20.zmd:X} %{ship20.zmd:}
+     ship21.zmd %{ship21.zmd:X} %{ship21.zmd:}
+     ship22.zmd %{ship22.zmd:X} %{ship22.zmd:}
+     ship23.zmd %{ship23.zmd:X} %{ship23.zmd:}
+     ship24.zmd %{ship24.zmd:X} %{ship24.zmd:}
+     ship25.zmd %{ship25.zmd:X} %{ship25.zmd:}
+%%motd -- the message of the day
+This is one way to track clients and servers.  The code is from
+	ksb@sa.fedex.com
+The programs are labd, labc, labwatch, and labstat.  The configuration is in
+labwatch.cf (in /usr/local/lib or /root).
+
+	-- ksb
+%%version -- the version of this configuration file
+$Id: puffball.cf,v 1.9 2000/07/22 19:48:40 ksb Exp $

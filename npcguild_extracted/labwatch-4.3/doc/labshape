@@ -1,0 +1,286 @@
+Received: from internet.fedex.com by css-srv1 with SMTP
+	(1.38.193.4/16.2) id AA29035; Sat, 10 Dec 1994 16:59:41 -0600
+Return-Path: <bj%staff.cc.purdue.edu@internet.fedex.com>
+Received: from staff.cc.purdue.edu by internet.fedex.com with SMTP id AA37237
+  (InterLock SMTP Gateway 1.1 for <ksbrauns@fedex.com>);
+  Sat, 10 Dec 1994 17:02:56 -0600
+Message-Id: <199412102302.AA37237@internet.fedex.com>
+Received: from staff.cc.purdue.edu by staff.cc.purdue.edu (4.1/Purdue_CC)
+	id AA08970; Sat, 10 Dec 94 18:02:53 EST
+To: kb207252@css-srv1
+Subject: was I supposed to send you this?
+Date: Sat, 10 Dec 1994 18:02:52 -0500
+From: Ben Jackson <bj%staff.cc.purdue.edu@internet.fedex.com>
+
+I can't remember if you ever got a copy...
+
+--Ben
+
+# $Id: labshape,v 4.1 1997/11/16 20:52:29 ksb Exp $
+
+intro
+	who uses the lab
+	who administers the lab (incl. weekly meetings?)
+	where is it, where are the servers
+
+hardware config
+	servers
+		Sparc 4/690's with 128M of memory,
+		one builtin ethernet and 3 on the SBus
+		IPI controller driving 4 Seagate IPI ZBR Elite drives
+		SCSI bus with a high density Exabyte tape drive and CDROM
+		ALM 2 16 port MUX
+		consoles on ttya connected to console.cc ttyC{16,31}
+
+	clients
+		Sparc IPC's with 8M of memory in the form of 1M SIMMs
+		SCSI bus with Maxtor LXT-213SY
+		3.5" high density floppy
+		B&W framebuffer and an ethernet on the motherboard
+		Type 4 keyboard/mouse
+		17" greyscale monitor (19" for reshalls)
+		tty[ab] configured for RS432 [still?]
+
+	special machines
+		nis35
+			IPC configured like the lab
+			no keyboard or monitor
+			SCSI bus has external 1G drive
+			console on ttya connected to console.cc ttyC13
+		fegrader
+			IPC configured like the lab with 24M of memory
+			SCSI bus has Fujitsu-M2694ESA (2G ext HD)
+			console on ttya connected to nis35.cc ttyb
+
+		staff workstations?
+			abend, lv426, solarium, sunmaster, zoyd
+
+	network
+		4 Delneys in the rack next to feserve
+		hubs in enad...
+
+	printers
+		6 IBM 4019 laser printers (2 connected to feserve,
+		  4 connected to franklin)
+
+	floating hardware
+		assist's framebuffer is in sunmaster.cc
+		2 Maxtor drives in external cases for client reloads
+		n spare motherboards & clock modules
+		n CDROM drives
+
+software config
+	all
+		run SunOS 4.1.3 with C2 security turned on.
+		run hunter to watch for runaway processes and to give
+		  the users logged onto the consoles priority over rlogins
+		run labd to send information to labwatch
+		run ptyd to issue pty's for xterm, script
+		use the automounter to get
+			/user[stuv] from staff
+
+	servers
+		use the automounter to get
+			/user[abc] from feserve (assist only)
+			/usr/spool/mail from feserve (assist only)
+			/user[def] from assist (feserve only)
+			/var/pucc/nn from assist (feserve only)
+			/archive/keep/pucc from keep
+		trust each other and nis35, fe[5678]04,
+		  fedemo[1234], lv426 (and other non-lab hosts)
+		slave YP servers
+		don't allow logins except for members of group pucc (wheel?)
+		synchronize time with the sequents
+		run labwatch (assist)
+		run nologind (when logins are enabled)
+
+	clients
+		use the automounter to get
+			/user[abc] from feserve
+			/user[def] from assist
+			/usr/local from one of feserve or assist
+			/usr/man from one of feserve or assist
+			/usr/openwin from one of feserve or assist
+			/usr/spool/mail from feserve
+			/var/pucc/nn from assist
+		trust servers, nis35, lv426, solarium, zoyd (others)
+		get YP from one of feserve, assist, nis35, fe[5678]10,
+		synchronize time with the servers
+
+	special machines
+		nis35
+			like a client
+			has own /usr/local
+			NIS master
+			/root has sources to many configuration files
+			  for the servers and the clients, utilities for
+			  updating password and other maps.
+			/var/yp has master maps
+
+		fegrader
+			like a client
+			has own /usr/local
+
+	network
+		the lab machines occupy the 35, 36, 37 and 38
+		subnets in 128.210.  The 35 subnet is connected
+		to NSC4 and all the machines on that subnet use
+		the router to talk to the outside world.  Machines
+		on the other subnets gate packets through one of
+		feserve or assist.  Name service is provided by
+		feserve, assist and nis35.
+
+		residence hall machines are on the 12 subnet which
+		is insecure (physically and electronically).
+		carysun1 and owensun1 (the `1' machines for both
+		of the reshall labs with two machines) act as slave
+		ypservers in case one of the reshall machines can't
+		talk to nis35 through all the PC traffic.
+
+	mail
+		all of the machines (but feserve) forward all mail to
+		feserve where it is handled.  all users who read mail
+		on the lab machines get it from /usr/spool/mail on
+		feserve.
+
+	printers
+		enad{135,138,302}il are multiqueued "virtual printers"
+		which print to enad{135,138,302}il[12].
+		enad302 printers are on ttyH00 and ttyH01 on feserve
+		enad{135,138} printers are on franklin
+
+backups
+  all of the backups are done by ops each night
+
+	servers
+		done on internal Exabyte tape drives
+		[strategy]
+
+	clients
+		none of the bits on the clients are important.
+		if a client's disk goes bad it is reloaded from
+		scratch either from a portable drive or over the net.
+
+	special machines
+		nis35
+			backed up to assist's Exabyte?
+			[strategy]
+		fegrader
+			backed up to assist's Exabyte
+			[strategy]
+
+daily operation
+	classes held in enad{135,138} and sometimes enad302n
+	open lab (hours?) in enad302 staffed by consultants
+	reshall machines support "terminal" access which allows
+	  the residents to use the machine as an X terminal
+	residence halls are administered on a hall-by-hall basis
+	we monitor machines with labwatch via the console server or labstat
+	users find idle machines and get pretty maps from labstat
+	Eric Bartley is available (ha) in enad130a to help people
+	  using enad{135,138} for classes
+	who is on-call for emergencies?
+
+how to
+	reload a client
+		run `/root/meta/{diskless,external} client-name' on
+		nis35 and boot from the alternate fs.  When it's done
+		push any changes made since last basic.dump and run
+		`/root/passwd/One.machine client-name' on nis35.
+	install a new program
+		`make all install distrib clean' on mentor in source
+		directory of choice (this will build it on staff and push
+		it to the servers).  Files which go in /usr/kvm have
+		to be pushed "by hand" from one of the servers
+	change the motd
+		change mentor:/usr/msrc/etc/motd/motd.cf.  updates are
+		pushed nightly.  to update syncronously, do
+		`make feserve_clients.installed'
+	force a user's password
+	change the root passwd (?)
+		run `/root/bin/force-passwd' on nis35
+	make a new basic.dump
+		find a relatively sane client (look in the labwatch
+		console log for one that was never unintentionally
+		rebooted) and clean it up so it reflects all the
+		changes you want, then do a level 0 dump over the
+		net to a server.
+	add/remove a server
+		bwahahaha
+	add/remove a YP slave server
+		add/remove it in `nis35:/var/yp/ypservers.dat' (it should
+		  appear twice on one line) and `make ypservers.time'
+		if adding, MAKE SURE that `/var/yp/securenets' on the
+		  new slave server includes mask/value pairs that cover
+		  all of the machines it is supposed to serve, itself, and
+		  nis35.
+		if removing, kill the running ypserv process on the former
+		  server.
+		if removing, "rm -rf /var/yp/`domainname`" (the domain
+		  will probably be cc.purdue.edu) on the former server.
+		  this will prevent ypserv from being started at the next
+		  reboot.
+		if adding, put /usr/etc/yp in your path
+		  and run `/usr/etc/yp/ypinit -s nis35.cc.purdue.edu'
+		  on the new server (you MUST spell out the hostname).
+		if adding, run `/usr/etc/ypserv' on the new server as
+		  root, or just reboot.
+	add/remove a client
+		get PDN to add the machine to update the DNS database
+		add/remove client in
+		  `mentor:/usr/msrc/local/lib/distrib/FESERVE.cf'
+		  and install it
+		add/remove the client in
+		  `nis35:/root/meta/ethers.dat'
+		  `nis35:/root/meta/diskless.cf'
+		  `nis35:/root/meta/external.cf'
+		  `nis35:/root/single/single.cf' (if you feel bold)
+		if you have named this machine something that doesn't
+		  conform to [a-z][a-z][0-9][0-9][0-9].cc.purdue.edu,
+		  go find the zillion places where it will have to be
+		  an exception to the rule (look for fegrader as an
+		  example) in all those files you just modified.
+		if adding, reload the client as discussed above
+		  boot it
+		  ask ksb why that didn't work and try again
+		if removing, get bj and he will get a cart and, uh,
+		  liberate it.
+	repartition the disks on all the clients
+		edit `nis35:/root/meta/format.input' and reload them
+
+recovering from emergencies
+	server crash
+		some of the lab may not recover if it had filesystems
+		  mounted from the now-dead server.  these will need
+		  to be rebooted.
+	lose a server
+		see documentation in `nis35:/root/meta/single/README'
+	lose a disk on a server
+		find a spare (uh huh) and reload from backups.  maybe
+		put an external 2G disk on and run from SCSI (slow!)
+	lose a disk controller
+		put in the spare and go
+	lose an ethernet card in a server
+		get one from somewhere else (easier than the software
+		solution)
+	lose a special machine
+	lose a client
+		usually this can wait for MRG to repair (for special
+		machines, this may vary).  if it's critical, swap one
+		in from enad302s (?)
+	lose a printer
+		wait for MRG to repair it
+	lose net connectivity to ENAD
+		give up (or get a couple of operators to help you cary
+		feserve to enad130a, then see "recovering from losing
+		a server")
+		or, more seriously, put 1G SCSI externals on fe[5678]??
+		and give them NFSSERVER kernels and reconfigure everything
+		similar to the single server case and you must be kidding
+		if you are reading this far.
+	lose the key to storage cabinets in the labs
+		don't worry, nothing is in those cabinets
+	power outage
+		???
+	breakin or other security problem
+		???

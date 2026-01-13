@@ -1,0 +1,49 @@
+Prep
+
+ Find out how to get the C compile on your system to output the source
+ code *after* macro expansion.  Some I have seen:
+	/lib/cpp file.c
+	/bin/cc -E file.c
+	/usr/local/bin/gcc -E file.c
+
+
+Compile
+
+ Edit the Makefile to change where you want the calls program installed
+ (change BIN).
+
+ Edit main.c (I know, this should be in machine.h or some such, maybe later)
+ and change the line:
+	acCppCmd[1024] = "/lib/cpp ";
+
+ to be the beginning of the way you found to make the C compiler output the
+ source text after macro expansion (the text in quotes).
+
+ Try making the calls binary:
+	$ make
+
+ Does it run at all:
+	$ ./calls -V
+
+ should output a version string (send this when you report a bug):
+	calls: $Id: INSTALL,v 3.3 1997/04/14 02:46:02 ksb Exp $
+
+ Test it:
+	$ make graph | more
+
+Install
+
+ Just use
+	# make install
+
+ If you have mkcat use
+	# mkcat calls.1u
+
+ or rename is to calls.1 if your man program is stupid.  Else follow local
+ custom for man pages.
+
+Problems
+
+ Contact me at
+	ksb@fedex.com
+

@@ -1,0 +1,6 @@
+add the entry to /etc/rpc on the servers, like /etc/services
+
+later, upgrade the uuid->path code to to the .map stuff
+
+--
+ksb

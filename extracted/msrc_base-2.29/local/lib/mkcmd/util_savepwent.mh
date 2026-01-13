@@ -1,0 +1,4 @@
+/* deep copy a clone of the passwd structure				(ksb)
+ * $Id: util_savepwent.mh,v 8.13 2008/09/05 16:26:19 ksb Exp $
+ */
+%extern struct passwd *%K<util_savepwent>1v()%;

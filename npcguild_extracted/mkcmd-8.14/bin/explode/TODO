@@ -1,0 +1,104 @@
+Non-local source caches:
+------------------------
+
+Codify a way to (in a Makefile) poll a remote source repository with
+tftp, ftp, http, rsync, or some other protocol to explode remote
+source for a local build.
+
+Later find a way to do more URLS than http and ftp with wget, so wget
+might need a -pipe option -- a nice thing in general.  Also add tftp
+to wget.
+
+
+More versital expansion:
+------------------------
+
+Use m4, or something like it?
+/*@Filter "m4 -"@*/
+define(...)dnl
+...
+/*@Explode ...@*/
+
+
+Or allow non-comment escapes to a shell/environment/expander?
+{Viz. $var, function params, \octal, and the like.}
+
+/*@Configure open-expand close-expand@*/
+
+/*@Configure << >>@*/
+# makefile for <<$FILE>>
+#			by <<$NAME>>, PUCC
+
+BIN=	${DESTDIR}$$HOME/bin
+MANROOT=${DESTDIR}/usr/man
+
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE=
+DEBUG=	-O
+CDEFS=	
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+SRC=	<<glob *.c>>
+GENh=	main.h
+GENc=	main.c
+GEN=	${GENh} ${GENc}
+DEP=	${GENc} ${SRC}
+OBJ=	main.o explode.o
+MAN=	<<glob *man>>
+SOURCE=	Makefile <<glob *.m>> <<glob README>> ${HDR} ${SRC} ${MAN}
+
+all: explode
+
+explode:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}
+
+main.h: main.c
+
+# should be `mk explode.m' really
+main.c: explode.m
+	mkcmd std_help.m std_version.m explode.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f explode ${GEN} *.o Makefile.bak a.out core errs tags
+
+depend: ${GEN} ${SRC} ${HDR} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+install: all FRC
+	install -c -s explode ${BIN}
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -hnx ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat -r${MANROOT} ${MAN}
+
+print: source FRC
+	lpr -J'explode source' ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR} ${GEN}
+	ctags -t ${SRC} ${HDR} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+main.o: $I/stdio.h main.c
+
+explode.o: $I/ctype.h $I/signal.h $I/stdio.h $S/file.h explode.c main.h
+
+# *** Do not add anything here - It will go away. ***

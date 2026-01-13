@@ -1,0 +1,35 @@
+# $Id: README,v 5.1 2009/10/15 22:06:27 ksb Exp $
+
+These templates take the place of any hard coded rules.  Your users may
+pick and choose these, or rules of their own.  Some site specific
+configuration *may* be done.
+
+	1/  references to default compilers in dot-{c,f,p,l,y} may be changed
+	   to reflect local compiler/processor names:
+		s/cc-cc/cc-gcc/  
+		s/-f77/-fortran/
+		s/-kcl/-lisp/
+		s/-pc/-pascal/
+		s/-lex/-flex/
+		s/-yacc/-bison/		or	s/-yacc/-byacc/
+
+	   (but do not change the `hook' variable, unless you *have* to).
+
+	2/  references to options (-v, -quiet) might be added if local users
+	   like more/less info by default (on xloadimage for example).
+
+	3/  submarkers might be added to some rule in place of (*).
+
+	4/  more templates for local file extenders might be created.  If you
+	   need help mail me, I might even put them in the next patch!
+
+	5/  you'll have to replace calls to `ltroff' because it is a local
+	   PUCC program (never to be released).
+
+	6/  you might have to install (any of) xloadimage, patch, perl, etc.
+	   to get their rules to work.
+
+--
+"And in time I could only believe in one thing,
+ the sky was just phosphorous stars hung on strings."
+kayessbee, K S Braunsdorf, install@ksb.npcguild.org

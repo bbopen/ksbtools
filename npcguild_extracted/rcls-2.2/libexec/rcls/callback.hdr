@@ -1,0 +1,22 @@
+/* $Id: callback.hdr,v 2.1 2000/07/12 00:19:54 ksb Exp $
+ * Tell each class module how to call-back for some functions that	(ksb)
+ * are common to all classes (like attribute merge and util_ppm).
+ */
+
+typedef struct MAnode {
+	int imax;
+	char **ppc;
+} mattr_buf;
+
+#if !defined(U_CSTRING)
+#define U_CSTRING       1
+typedef char *Cstring;
+#endif
+
+#if !defined(U_CARGV)
+#define U_CARGV 1
+typedef char **Cargv;
+#endif
+
+extern void MergeAttrs(mattr_buf *, char ***, char **ppcAdd);
+extern char *progname;

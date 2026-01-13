@@ -1,0 +1,135 @@
+.\" $Id: installus.man,v 2.4 2000/07/29 19:11:27 ksb Exp $
+.\" by Ben Jackson
+.TH INSTALLUS 1L LOCAL
+.SH NAME
+installus \- install user supported software
+.SH SYNOPSIS
+.ds PN "installus
+\fI\*(PN\fP [\-\fB1\fP\fBD\fP\fBl\fP\fBn\fP\fBq\fP\fBs\fP\fBv\fP] \fIfiles\fP \fIdestination\fP
+.br
+\fI\*(PN\fP \-\fBW\fP [\fIfiles\fP]
+.br
+\fI\*(PN\fP \-\fBL\fP [\-\fBx\fP] [\fIuser\fP] [\fIdirs\fP]
+.br
+\fI\*(PN\fP \-\fBd\fP [\-\fBr\fP | \-\fBR\fP] [\-\fBn\fP\fBq\fP\fBr\fP\fBv\fP] \fIdestination\fP
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.SH DESCRIPTION
+Allows non-superusers to maintain software in system binary directories.
+See owners(5L) for details on access control.
+
+.PP
+From time to time the System Admin may wish to delegate installaion
+and maintainance of a program to a normal user.  The obvious method of
+making a system directory writable by the login's group suffers from
+several security expliots.
+
+.PP
+Most of these issues can be addressed by making the person who is using the
+account type a \fBpassword\fP before they are allowed to update the
+installed file.  This makes it much harder for a Bad Guy to trick the
+maintainer into (unwhittingly) installing a bad version of the program.
+
+.PP
+It also makes it possible to install a file into a directory the
+maintainer cannot even read.
+
+.PP
+To make this as safe as possible (it is never 100% safe) the program
+enforces the modes that the target file gets, and logs every install.
+
+.SH OPTIONS
+.TP
+.BI \-1 
+Keep exactly one backup of the installed file.
+.TP
+.BI \-d 
+Install a directory (mkdir), see \-\fBr\fP.
+.TP
+.BI \-D 
+Make no backup of target file.
+.TP
+.BI \-h 
+Print a help message.
+.TP
+.BI \-l 
+Run ranlib(1) on \fIfiles\fP (for libraries) as they're being installed..
+.TP
+.BI \-L 
+List the files that \fIuser\fP owns.  If the \fIuser\fP is given as
+\fIuser\fP\fB:\fP\fIgroup\fP then both are user to check the permissions.
+Either of these may be given as \fB*\fP to indicate an unspecified target.
+.TP
+.BI \-n 
+Tell \fIinstall\fP to trace execution but not do anything.
+.TP
+.BI \-q 
+If \fIinstall\fP (and \fIinstall\fP) can recover from the error be quiet.
+.TP
+.BI \-r 
+Build all intervening directories, if necessary.
+.TP
+.BI \-R 
+Remove the given target.
+.TP
+.BI \-s 
+Run strip(1) on \fIfiles\fP as they're being installed.
+.TP
+.BI \-v 
+Run in verbose mode, and tell \fIinstall\fP to do the same.
+.TP
+.BI \-V 
+Show version information.
+.TP
+.BI \-W 
+Show who owns \fIfiles\fP.  Use the getopt spacer double dash (\-\-) to
+skip the \fIuser\fP parameter if you are looking at yourself.
+.TP
+.BI \-x 
+List the programs that ONLY \fIuser\fP owns.
+
+.SH EXAMPLES
+A typical use of \fIinstallus\fP would be to update a binary in
+/usr/unsup/bin:
+.sp 1
+	installus \-sv a.out /usr/unsup/bin/calls
+
+If you are using a user supported program and want to know who
+the maintainer is, the \fB\-W\fP option comes in handy:
+.sp 1
+	installus \-W /usr/unsup/bin/prog
+
+If you are a user maintaining software and want to know what files in
+/usr/unsup/bin you control, use:
+.sp 1
+	installus \-L \-\- \-\- /usr/unsup/bin
+
+.SH BUGS
+The exact semantics of locating and using .owners files has changed since
+the \fB\-W\fP and \fB\-L\fP options were written, and their behavior is
+probably not ideal.  For example the .owners file path is presented
+to the Customer as if it were relative to the target directory (which
+it is internally).
+
+.PP
+The \fB\-W\fP option excludes the \fB\-d\fP options, to ask who the
+owner of a directory is one must append a slash on the name.
+
+.SH CAVEATS
+This is a modified version of the the original Purdue University
+Computing Center source.  It has been updated to work on more platforms
+and has a few more features. \-\- ksb
+
+.SH AUTHOR
+Ben Jackson & Kevin Braunsdorf
+.br
+bjj@sequent.com & ksb@sa.fedex.com
+.br
+SAC Unix Support
+
+.SH "SEE ALSO"
+install(1L), owners(5L), vinst(1L)

@@ -1,0 +1,50 @@
+.\" $Id: qstart.man,v 1.2 1997/01/06 02:10:35 kb207252 Exp $
+.\" by Kevin Braunsdorf
+.TH QSTART 1L LOCAL
+.SH NAME
+qstart \- start all the queue system job queues
+.SH SYNOPSIS
+.ds PN "qstart
+\fI\*(PN\fP
+.SH DESCRIPTION
+.PP
+When the system boots any local jobs queues are started after a brief
+pause to avoid NFS lockd problems.
+Honors the \fI.q-opts\fP flags file in each queue.
+.PP
+Read the script for details.
+.SH OPTIONS
+None.
+.SH EXAMPLES
+.PP
+From \fI/etc/rc.local\fP:
+.RS
+if [ -f /usr/local/etc/qstart ] ; then
+.br
+	/usr/local/etc/start ; echo -n ' qsys'
+.br
+fi
+.RE
+.PP
+Could be started with \fIautologin\fP(8) on a virtual tty under
+FreeBSD or NetBSD:
+.RS
+autologin -t /dev/ttyv7 -Sc /usr/local/etc/qstart
+.RE
+.PP
+Could be started from the console server on a virtual tty:
+.RS
+qsys::/usr/local/etc/qstart@work.horse.com:9600p:/var/log/qsys.cons:
+.RE
+
+.SH FILE
+\fI/usr/spool/qsys\fP	the default job queue
+.SH BUGS
+None known.
+.SH AUTHOR
+Kevin Braunsdorf
+.br
+ksb@fedex.com
+.SH "SEE ALSO"
+qinit(8L), qadd(1L), qrm(1L), qstat(1L), qlock(8L),
+autologin(8L)

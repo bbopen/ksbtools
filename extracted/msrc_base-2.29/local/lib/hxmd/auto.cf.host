@@ -1,0 +1,59 @@
+dnl $Id: auto.cf.host,v 1.4 2009/09/25 23:29:43 ksb Exp $
+dnl Push this file to every target host to support pull builds.
+dnl We include the localhost entrys because the hostname macro might not
+dnl be set to the FQDN of the host, rather it is often set to an alias that
+dnl points to the delivery network interface.
+dnl  $Display: ${hxmd:-hxmd} -E HOST=$(hostname) -- '${PAGER:-less}' %f
+dnl  $Display(*): ${hxmd:-hxmd} %s -- '${PAGER:-less}' %f
+dnl  $Display(*): ${hxmd:-hxmd} -DDATE_STAMP="`date`" %s -- '${PAGER:-less}' %f
+dnl E.g.: mk -mDisplay -d'-E HOST=sulaco.example.com -Call.cf' auto.cf.host
+dnl
+dnl This tries to be msrc, mmsrc, and distrib compatible.  You still might
+dnl have to add local policy attributes to it (e.g. NFS_SERVER, NIS_DOMAIN).
+dnl Any path specified on the authoritative host may be wrong from the POV
+dnl of target host: so in the resultant file we comment it out.  One could
+dnl use sed to remove that comment mark, as required (or fix it here).
+dnl
+`# $Id: auto.cf.host,v 1.4 2009/09/25 23:29:43 ksb Exp $
+# This file is used for mmsrc-built products pulled to this host.  It is
+# installed from the local authoritative master host so each target host
+# may pull spells to build locally.  N.B. this does only works for spells
+# specifically designed to work in context of each and every target host.
+# It would be clever for site policy to mark such spells in some way.
+#  $Mmsrc(*): ${mmsrc-mmsrc} -C%f %s
+#
+'ifdef(`esyscmd',`ifdef(`esyscmd',`ifdef(`DATE_STAMP',`',`define(`DATE_STAMP',substr(esyscmd(`date'),0,28))')')')dnl
+ifdef(`DATE_STAMP',``DATE_STAMP'="DATE_STAMP"
+')dnl
+ifdef(`ENTRY_DEFS',``ENTRY_DEFS'="ENTRY_DEFS"
+')dnl
+ifdef(`RDISTD_PATH',``RDISTD_PATH'="RDISTD_PATH"
+')dnl
+ifdef(`ENTRY_LOGIN',``ENTRY_LOGIN'="ENTRY_LOGIN"
+')dnl
+ifdef(`RDIST_PATH',``#RDIST_PATH'="RDIST_PATH"
+')dnl
+ifdef(`RSH_CMD',``#RSH_CMD'="RSH_CMD"
+')dnl
+ifdef(`SSH',``#SSH'="SSH"
+')dnl
+`%HOST SHORTHOST HOSTTYPE HOSTOS HASSRC
+'ifdef(`HOST',`HOST dnl
+ifdef(`SHORTHOST',SHORTHOST,`ifelse(-1,index(HOST,`.'),`localhost',
+`substr(HOST,0,index(HOST,`.'))')') dnl
+ifdef(`HOSTTYPE',HOSTTYPE,`unknown') dnl
+ifdef(`HOSTOS',HOSTOS,`.') dnl
+ifdef(`HASSRC',HASSRC,`.')
+')dnl
+ifelse(-1,index(HOST,`.'),`',`localhost`'substr(HOST,index(HOST,`.')) dnl
+localhost dnl
+ifdef(`HOSTTYPE',HOSTTYPE,`unknown') dnl
+ifdef(`HOSTOS',HOSTOS,`.') dnl
+ifdef(`HASSRC',HASSRC,`.')
+')dnl
+`localhost 'dnl
+`localhost 'dnl
+ifdef(`HOSTTYPE',HOSTTYPE,`unknown') dnl
+ifdef(`HOSTOS',HOSTOS,`.') dnl
+ifdef(`HASSRC',HASSRC,`.')`
+'dnl

@@ -1,0 +1,29 @@
+# $Id: options,v 5.1 2003/09/17 18:47:26 ksb Exp $
+
+$Compile: MK=-t/dev/null; export MK; for marker in All Verbose Case Interactive NotReally Name\n\tdo\n\t\t%b -m $marker %f && echo "$marker test OK"\n\tdone
+
+$All: %b -m%m -d1 %f && %b -a -m%m -d2 %f && %b -A -m%m -d3 %f
+$All(1): [ "%A" = "" ] && [ _"%a" = _"" ] && [ _"%o" = _"-v" ] && [ _"%O" = _"v" ]
+$All(2): [ "%A" = "a" ] && [ _"%a" = _"-a" ] && [ _"%o" = _"-av" ] && [ _"%O" = _"av" ]
+$All(3): [ "%A" = "A" ] && [ _"%a" = _"-A" ] && [ _"%o" = _"-Av" ] && [ _"%O" = _"Av" ]
+
+$Verbose: %b -m%m -d1 %f && %b -v -m%m -d2 %f && %b -s -m%m -d3 %f
+$Verbose(1): [ "%V" = "v" ] && [ _"%v" = _"-v" ] && [ _"%o" = _"-v" ] && [ _"%O" = _"v" ]
+$Verbose(2): [ "%V" = "v" ] && [ _"%v" = _"-v" ] && [ _"%o" = _"-v" ] && [ _"%O" = _"v" ]
+$Verbose(3): [ "%V" = "s" ] && [ _"%v" = _"-s" ] && [ _"%o" = _"-s" ] && [ _"%O" = _"s" ]
+
+$Case: %b -m%m -d1 %f && %b -i -m%m -d2 %f && %b -i -m%m -d3 %f
+$Case(1): [ "%I" = "" ] && [ _"%i" = _"" ] && [ _"%o" = _"-v" ] && [ _"%O" = _"v" ]
+$Case(2): [ "%I" = "i" ] && [ _"%i" = _"-i" ] && [ _"%o" = _"-iv" ] && [ _"%O" = _"iv" ]
+$caSe(3): [ "%I" = "i" ] && [ _"%i" = _"-i" ] && [ _"%o" = _"-iv" ] && [ _"%O" = _"iv" ]
+
+$Interactive: %b -m%m -d1 %f && echo "y" | %b -c -m%m -d2 %f
+$Interactive(1): [ "%C" = "" ] && [ _"%c" = _"" ] && [ _"%o" = _"-v" ] && [ _"%O" = _"v" ]
+$Interactive(2): [ "%C" = "c" ] && [ _"%c" = _"-c" ] && [ _"%o" = _"-cv" ] && [ _"%O" = _"cv" ]
+
+$NotReally: %b -m%m -d1 %f && ( %b -n -m%m -d2 %f | sh )
+$NotReally(1): [ "%N" = "" ] && [ _"%n" = _"" ] && [ _"%o" = _"-v" ] && [ _"%O" = _"v" ]
+$NotReally(2): [ "%N" = "n" ] && [ _"%n" = _"-n" ] && [ _"%o" = _"-nv" ] && [ _"%O" = _"nv" ]
+
+$Name(1): [ _"%B" = _"mk" ]
+$Name(2): [ _'$' = _'%k' -a _'\044\044' = _'%K' ]

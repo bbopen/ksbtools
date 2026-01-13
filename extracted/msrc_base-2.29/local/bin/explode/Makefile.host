@@ -1,0 +1,87 @@
+`# makefile for explode
+# $Id: Makefile.host,v 6.1 2000/06/20 14:10:03 ksb Exp $
+#		by Kevin S Braunsdorf
+
+SHELL=/bin/sh
+BIN=	${DESTDIR}/usr/local/bin
+MANROOT=${DESTDIR}/usr/man
+
+I=/usr/include
+S=/usr/include/sys
+P=
+
+INCLUDE=
+DEBUG=	-O
+CDEFS=	-D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	explode.h machine.h
+SRC=	explode.c
+GENh=	main.h
+GENc=	main.c
+GEN=	${GENh} ${GENc}
+DEP=	main.c ${SRC}
+OBJ=	main.o explode.o
+MAN=	explode.man
+SOURCE=	Makefile TODO explode.m test.c ${HDR} ${SRC} ${MAN}
+
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s
+')dnl
+`
+all: explode
+
+boot: all
+	cp explode ${BIN}/explode
+	chmod 755 ${BIN}/explode
+
+explode:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}
+
+main.h: main.c
+
+main.c: explode.m
+	PATH=$$PATH:../mkcmd mkcmd -I ../../lib/mkcmd explode.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+clean: FRC
+	rm -f explode ${GEN} *.o Makefile.bak a.out core errs tags
+
+depend: ${GEN} ${SRC} ${HDR} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+install: all FRC
+	install -c -s explode ${BIN}/explode
+
+lint: ${HDR} ${SRC} ${GEN} FRC
+	lint -hnx ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN}
+	mkcat -r${MANROOT} ${MAN}
+
+print: source FRC
+	lpr -J"explode source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR} ${GEN}
+	ctags -t ${SRC} ${HDR} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+main.o: main.c
+
+explode.o: explode.c main.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

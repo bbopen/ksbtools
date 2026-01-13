@@ -1,0 +1,6 @@
+/* $Id: util_cache.mh,v 8.32 2008/09/05 16:26:19 ksb Exp $
+ * cache a file into a mallloc'd space and build a (char **) index	(ksb)
+ */
+%extern char *%K<cache_file>1v(int u_iFd, unsigned int *u_puLines)%;
+%extern char **%K<cache_vector>1v(char *pcCache, unsigned int u_uLines)%;
+%extern int %K<cache_dispose>1v(char **u_ppcVector)%;

@@ -1,0 +1,105 @@
+# $Id: INSTALL,v 4.2 1997/11/23 03:55:29 ksb Exp $
+
+Prep:
+ Install the services lines in /etc/services.
+	lablog		784/udp	lablisten	# host stat chat to labwatch
+	labinfo		785/tcp labstat		# client info chat to labwatch
+
+ Make the programs and install them.  None of them are setuid or any rot.
+ OK, labc _may_ be installed setuid root to allow anyone to send a message
+ but that is not the default.
+
+ Run each program with -V and cross check the output with the others.
+ They should all mention the same ports and such.  You are set.
+
+Configure:
+ Build a simple configuration for some hosts on your network.  Just edit a
+ "labwatch.cf" that contains a list of the FQDNs for a handfull of hosts.
+ Here is an example:
+	$ cat labwatch.cf
+	# test config by ksb
+	w01.dspd.fedex.com
+	w02.dspd.fedex.com
+	w05.dspd.fedex.com
+	$ exit
+ You can put in a map if you like, but for testing you don't have to.
+
+Test:
+ Start the labwatch prgram in an xterm on a file server (you can use the GNU
+ screen program or the console server [both!]  to keep this window hot when
+ you are not logged in).  For now just start it in a xterm on a file server or
+ workstation.  I used:
+	# xterm -e /usr/local/etc/labwatch -n -C /tmp/labwatch.cf
+
+ You can read the help message and type returns to see the stat banner.
+ I know you're impressed -- it gets better.
+
+ Start the labd's on the machines in the config file:
+	# for cli in w01 w02 w05
+	> do
+	>	rsh $cli -n /usr/local/etc/labd srv1.dspd.fedex.com
+	> done
+
+ The xterm with the labwatch in it should report
+	all expected machines reporting.
+
+
+ On one of those machines run
+	# labc "message testing one two 3"
+
+ You will see some of that text on the labwatch window, like:
+	# w01: yourself: testing one two 3
+
+ Last test, using your server for "$YOUR_SERVER" run:
+	$ labstat -M $YOUR_SERVER -al
+
+ You should get a 3 column output with 7 character host names in column one, a
+ report time, and a load average (if not 0.0).
+
+ When all this works you are ready to move on.
+
+Debugging:
+ If you get complaints about services not in /etc/services you might have
+ to run a ypmake or this like (niload .whatsit under NeXTStep).
+
+ If labd runs but doesn't report to labwatch unless you "kick" it you have
+ the wrong port assigned on one of the two hosts (for the udp side).
+
+ If labc reports gethostbyname failures and if the machines are in separate
+ DNS domains you have to change the canonical host name to the FQDN on both
+ sides.  Take it like a man.
+
+ Labc is meant as a debugging tool as much as anything else, use the ping,
+ interval, and bounce commands to help you find problems.  Steal/redirect
+ wars can make for a good joke.
+
+Polish:
+ Get a part time person to make overhead views (maps) if the machines you need
+ to monitor.  Use nice character graphics and read the manual page on labstat
+ and labwatch.cf for examples and clues.
+
+ Install the maps in the .cf file and check the host list at the top, be sure
+ it includes all the hosts in the maps.  (Maps start at %% tokens.)
+
+ Install the init.d file in labd's source (labd.init) in init startup
+ directory so that clients (and servers) running labd will start it at boot
+ time.  You can put it in /etc/rc.local on older BSD machines.
+
+ Put the labwatch console in conserver.cf or the like.  You might have to code
+ a little shell script to set the erase and kill characters and run the
+ labwatch program with '-n -C your.cf'
+  -- OR --
+ Run labwatch as a daemon if you don't have anyone to watch the output.  Also
+ see about getting some help, OK?  You're not going to last if you need
+ labwatch and don't have any Ops support.
+
+ Install the manual pages.
+
+ Tell people about `labstat -W' and/or write some code to use it.
+ Tell people about those nifty maps (and the -a forms).
+
+Done:
+ Send "ksb@fedex.com" a nice thank you letter.
+
+--
+Kevin "ksb" Braunsdorf, ksb@fedex.com, SA+C UNIX Support

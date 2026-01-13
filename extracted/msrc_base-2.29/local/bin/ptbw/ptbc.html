@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Mkcmd interface to ptbw and the like</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: PTB, cred
+<BR>
+Author: Kevin S Braunsdorf
+<BR>
+Mail: ptbw@ksb.npcguild.org
+<BR>
+Version: 1.28
+<BR>
+Bugs: none known
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+These routines provide a control interface to the
+parallel token broker wrapper, and other wrappers that use
+the same command frame-work, or need similar services.
+
+<H1>Configuration</H1>
+
+The only configuration option is the use of the socket
+credential service (CRED_SCM_MSG) or the emulation of same.
+For this service the file "machine.h" should define <code>SCM_CREDS</code>.
+<blockquote class="file"><pre><code>
+#define SCM_CREDS 1
+</code></pre></blockquote>
+
+Which forces the generated code to include "cred.h" (which must
+be presented from the explode repository as well.  In addition
+the code must be linked with (at least) "credsend.c" exploded from "cred.c".
+
+<H1>Provides</H1>
+<DL>
+<DT>extern int PTBClientPort(const char *pcDirect);
+<DD>
+Returns a socket connected to the given wrapper socket.
+If SCM_CREDS is defined when compiled the local credentials are
+sent to the wrapper.
+<DT>static unsigned int uOurCount, uOurSize;
+<DD>
+Once PTBClientPort is successful <code>uOurCount</code> holds the
+number of tokens the enclosing diversion holds, and
+<code>uOurSize</code> the total
+space required to hold the list of token names (including any '\000'
+string terminators).
+<DT>extern char *PTBReadTokenList(int sMaster, unsigned int uNeed, unsigned int **ppuList);
+<DD>
+Download <code>uNeed</code> token names from the master instance with
+the 'G' command.
+Fill <code>ppuList</code> with the vector of tokens we leased from
+the whole list, which is in <code>malloc</code>'d space.
+<DT>extern unsigned int PTBFreeTokenList(int sMaster, unsigned int uHold, unsigned int *puList);
+<DD>
+Release the token allocated by <code>PTBReadTokenList</code> with
+the 'D' command.
+The master diversion might give them to some other client process,
+so don't lie to it.  Subsequent called to <code>PTBReadTokenList</code>
+might allocate a wholely different list, or fail.
+<DT>extern int PTBCmdInt(int sMaster, int cCmd);
+<DD>
+Send the master a command that must return an ASCII encoded base-10
+interger, we return the interger, or -1 for an error with <code>errno</code>
+set.  The resulting integer cannot have more the 63 digits in it.
+The return string may start with "-No" to force an errno of <code>EINVAL</code>.
+In explicit -1 sets <code>errno</code> to "Protocol not supported" (<code>ENOTSUP</code>,
+<code>EPROTONOSUPPORT</code>, or <code>ENOPROTOOPT</code>).
+<DT>extern int PTBIsSocket(char *pcPath);
+<DD>
+Returns non-zero if the <code>Path</code> is a socket, which might
+represent a master diversion.
+<DT>extern int PTBReqSource(int sMaster, char *pcSource, size_t iMax, char **ppcMeta);
+<DD>
+Request the source of the token stream with the 'U' command.
+If <code>ppcMeta</code> is not <code>(char **)0</code> we also
+request the meta-information from the token stream (via 'C' command).
+We return the first character of the source; usually a '+' for
+success or a '-' for failure or an unknown source.
+<DT>extern char *PTBIota(unsigned int uMax, unsigned int *puWidth);
+<DD>
+Build the default token list that all token brokers use:
+the list of counting numbers from 1 to N.  This is returned
+in the same format the list of tokens from a master would be
+returned (0 is a valid count which return the empty list).
+<DT>extern int PTBQuit(int sMaster, char *pcReply, unsigned uLen);
+<DD>
+Send any persistant diversion the 'Q' command.  If the
+reply is a negative ("-No\n") return 0, otherwise 1.
+<DT>extern int PTBReadPid(int sMaster, pid_t *pwMaster);
+<DD>
+Use the 'M' command to ask the master for her process id.
+Return 0 for no master as well as any non-numeric reply.
+</DL>
+
+<H1>To Do List</H1>
+
+<P>
+Nothing.
+
+<PRE>
+
+$Id: ptbc.html,v 1.6 2010/08/13 17:16:20 ksb Exp $
+</PRE>
+</BODY></HTML>

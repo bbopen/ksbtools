@@ -1,0 +1,55 @@
+# This file checks mk's exit code traps				(ksb)
+# $Id: ExitCodes,v 5.1 2003/09/18 01:29:06 ksb Exp $
+
+mk -s $0
+exit $?
+
+$Compile:\nfor group in True False Any None Number Sig;\ndo\n\t%b %v -m$group %f || (echo failed $group ; exit 1);\ndone\necho exit codes OK
+
+
+These tests check for the different ways to say `zero is a good value'
+
+$True=0: \n%b -a%V -t/dev/null -mOK %f
+$OK(1)   : :
+$OK(2)=0 : :
+$OK(3)=1 : exit 1
+$OK(4)=~0: exit 1
+$OK(5)=~1: :
+$OK(6)   : :
+$OK(7)=0 : :
+$OK(8)=~1: :
+
+These thests check for the different fail under `zero is a good value'
+$False=7: \n%b -a%V -t/dev/null -mBAD %f
+$BAD(1)   : exit 1
+$BAD(2)=0 : exit 1
+$BAD(3)=1 : :
+$BAD(4)=~0: :
+$BAD(5)=~1: exit 1
+$BAD(6)=1 : exit 0
+$BAD(7)=~0: exit 0
+
+These tests must all always succeed
+$Any=0: \n%b -a%V -t/dev/null -mANY %f
+$ANY(1)=*: :
+$ANY(2)=*: exit 0
+$ANY(3)=*: exit 1
+$ANY(4)=*: exit 5
+
+These tests should all always fail
+$None=4: \n%b -a%V -t/dev/null -mNONE %f
+$NONE(1)=~*: :
+$NONE(2)=~*: exit 0
+$NONE(3)=~*: exit 1
+$NONE(4)=~*: exit 5
+
+$Number=0: \n%b -a%V -t/dev/null -mVALUE %f
+$VALUE(0)=0: exit 0
+$VALUE(1)=1: exit 1
+$VALUE(2)=2: exit 2
+$VALUE(3)=3: exit 3
+$VALUE(4)=4: exit 4
+
+$Sig=0: \n%b -a%V -t/dev/null -mSIG %f
+$SIG=1: kill -1 \$$
+$SIG=15: kill -15 \$$

@@ -1,0 +1,10 @@
+/* $Id: vinst.mh,v 1.2 1998/12/06 01:41:52 ksb Exp $
+ */
+%@foreach vinst_paths
+%#if !defined(BIN_%a)
+%#define BIN_%a %D/%a/epqv
+#endif
+%@endfor
+#if !defined(BIN_shell)
+%#define BIN_shell %K<vinst_shell>?p1qv
+#endif

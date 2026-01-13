@@ -1,0 +1,44 @@
+# $Id: README,v 1.4 2007/09/25 19:26:53 ksb Exp $
+
+Phantom TollBooth Wrapper -or- Parallel Token Broker Wrapper
+
+Clients connect to our socket and request a token from the pool,
+they first get the status, we return the number of tokens (-1 for
+not set) and the size of the memory required to hold them
+(t1\000t2\000...\tN\000\000).  They can't set the pool or to add
+to it, they can request a token (we reply with the index into the
+table).  The token is released when the client disconnects, or sends
+a release command.
+
+Protocol (in breif) (_ means not implemented yet, + means done):
+ _	'A'token\n add a token to the list -> Index\n
+ +	Number'D' de-allocate (release) token index Number -> Index\n
+ +	Number'G' allocate a group of N -> T1,T2,T3...\n
+ +	Number'N' return the name of just this token -> +name\n | -1\n
+ +	Number'O' return pid (owner) of the token index Number -> pid\n | -1\n
+ +	'M' identify master process (return pid to signal), or "-No\n"
+ +	'P' poll for a token -> Index\n or -1\n
+ +	'Q' spin down from : mode, return number of clients, or "-No\n"
+ +	'R' return -R req given on command line -> req\n
+ +	'S' status -> Count,Size\n | -1,-1\n
+ +	'T' tags -> t1\000t2\000...\tN\000\n | "\n"
+ +	'U' token source name -> TypeName\n or "-No\n"
+ +	'V' version -> V.r\n
+ +	'J' return the width of the longest token -> width\n
+ _	'W' withdraw the tokens I added -> Count\n
+ +	'.' quit -> close connection (implicit free) (aka 'Q')
+ _	'?' help -> some-text-undefined+"\000"
+ +	'\n' silent sync (discard Number)
+ +	anything else gives "-No\n"
+
+The "mapfile" would be a read-only file the client to mmap(2) in
+to get the whole token table w/o a long pull on the socket.  This
+would be handy for large token lists -- something  I've never needed.
+The modes should me +r for each +x in the directory we are in (MySpace).
+
+The add a token could even take multiples ('B' bunch add?).  I'm
+not sure how some programs would as we add tokens.  We would want
+to revoke them when the adding client disconnected (really).
+
+--
+ksb, Aug 2007

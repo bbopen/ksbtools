@@ -1,0 +1,24 @@
+/* $Id: hosttype.mh,v 1.1 1996/12/26 23:33:39 kb207252 Beta $
+ */
+#if !defined(HOSTTYPE)
+%#define %K<HostType>1v	1
+%@eval if %K<HostType>1v in L7_HPUX_TYPES
+#if !defined(HPUX)
+#define HPUX	1
+#endif
+%@endif
+%@eval if %K<HostType>1v in L7_IRIX_TYPES
+#if !defined(IRIX)
+#define IRIX	1
+#endif
+%@endif
+%@eval if %K<HostType>1v in L7_SUN_TYPES
+#if !defined(SUN)
+#define SUN	1
+#endif
+%@endif
+#endif
+
+#if (defined(V386) || defined(ETA10)) && !defined(SYSV)
+#define SYSV	1
+#endif

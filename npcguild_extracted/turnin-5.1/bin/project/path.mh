@@ -1,0 +1,7 @@
+/* $Id: path.mh,v 4.2 1997/02/20 19:57:28 ksb Exp $
+ * let mkcmd find the various programs we call at compile time
+ */
+%#define COMPRESS_PATH	%K<compress>1pqv
+%#define TAR_PATH	%K<tar>1pqv
+%#define ZCAT_PATH	%K<zcat>?p1qv
+%#define MAILX_PATH	%K<berkmail>?p1qv

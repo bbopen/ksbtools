@@ -1,0 +1,3014 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Master Source Remote Command -- Data flow</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+<H1 id="known">What you need to know to understand this document</H1>
+
+This document assumes you are quite familiar with the
+standard UNIX tools
+<code class="sh">make</code>(1), <code class="sh">m4</code>(1),
+and the shell <code class="sh">sh</code>(1).  In addition you
+should have a working understanding of
+<A href="../../bin/xapply/xapply.html"><code class="sh">xapply</code></A>,
+and some understanding of how
+<A href="../../sbin/hxmd/hxmd.html"><code class="sh">hxmd</code></A>
+is used to customize files via <code class="sh">m4</code>.
+
+<P>
+<code class="sh">Make</code>, briefly described,
+runs the fewest commands possible to achieve a goal.
+Goals are described in terms of dependency relations between target files,
+and the commands make should run to <em>update</em> each of those targets.
+Prerequisite targets are always checked (and possibly updated) before their
+dependent files.  Any file with an updated dependency must be updated if
+another target (or the goal) depends on that file.
+
+<P>
+A <code class="sh">make</code> recipe file defines a list of of
+possible target files, their dependency relationship to other files,
+and the shell commands which would be run to update the target
+given dependent files with time-stamps dated after the modification time of
+the target.  It also defines <em>macros</em> (also known as variables)
+which are used to compress repeated lists of files (or commands).
+
+<P>
+<code class="sh">M4</code> is the UNIX&trade;  macro processor.
+It replaces text in files.  It is used my many applications as a generic
+macro filter, for example <code class="sh">sendmail</code>,
+<code class="sh">syslogd</code>, and <code class="sh">autoconfig</code>.
+
+<P>
+<code class="sh">Sh</code> is the default shell.  A fairly complete
+command interpreter and data-flow language which is used by
+<code class="sh">make</code>, and <code class="sh">ssh</code>.
+
+<P>
+<code class="sh">Xapply</code> derives shell commands from a template
+and a list of items, then runs the commands in parallel to maximize
+throughput.
+
+<P>
+<code class="sh">Hxmd</code> uses <code class="sh">xapply</code> and
+some related commands to apply a command to many hosts in parallel.
+And <code class="sh">msrc</code> uses <code class="sh">hxmd</code> to
+send files and commands to many remote hosts.
+
+<H1 id="top">What is <A href="/cgi-bin/manpage.cgi?msrc">msrc</A>?</H1>
+
+<code class="sh">Msrc</code> updates a remote host with a
+copy of a local directory via <code class="sh">rdist</code>, then executes
+a shell command on the remote host in the context of the
+updated folder.
+In short <code class="sh">msrc</code> executes an arbitrary
+distributed task across a set of hosts with a known set of files.
+The primary use is to build, install, and
+configure software on a large group of hosts.
+<p>
+To do that <code class="sh">msrc</code>'s default command is
+<code class="sh">make</code>, and a <code class="sh">make</code>
+recipe file is also used to configure the program.  So anyone
+using <code class="sh">msrc</code> must have a good understanding
+of <code class="sh">make</code>.
+<P>
+Here is the command-line usage for <code class="sh">msrc</code>:
+<blockquote>
+msrc [<code class="opt">-lz</code>] [-<code class="sh">preload</code>]
+[<code class="opt">-f</code>&nbsp;<code class="param">makefile</code>]
+[<code class="opt">-m</code>&nbsp;<code class="param">prereq</code>]
+[<code class="opt">-P</code><code class="param">jobs</code>]
+[<code class="opt">-u</code><code class="param">login</code>]
+[<code class="opt">-y</code>&nbsp;<code class="param">yoke</code>]
+[<code class="param">hxmd-opts</code>]
+[<code class="param">utility</code>]<br>
+msrc <code class="opt">-h</code><br>
+msrc <code class="opt">-V</code><br>
+</blockquote>
+
+<P>
+<code class="sh">Msrc</code> is a wrapper for the shell command that is to be
+executed on a set of remote hosts.
+<!--
+ A wrapper is a special case of a filter that creates an environment
+ that encloses descendent processes to provide a resource to them.
+ -->
+In this case the wrapper encloses a <code class="param">utility</code>
+and creates an environment that looks like the local directory on
+each target host.
+<code class="sh">Msrc</code> updates the
+target via hosts <code class="sh">rdist</code>(1),
+the executes the requested command via <code class="sh">ssh</code>(1).
+In other modes of operation one might use <code class="sh">rsync</code>
+rather in place of <code class="sh">rdist</code>.
+
+<P>
+Since it leverages <code class="sh">hxmd</code>'s configuration management
+data it is especially useful for distributed tasks across heterogeneous hosts.
+It supports variation in the target population by
+using <code class="sh">hxmd</code>'s <code class="sh">m4</code> file
+processing to customize scripts, makefiles, or data-files
+from the current directory, as it copies them to each target host.
+
+<P>
+As an example, to build a program on 900 hosts in my environment
+I might use:
+<blockquote class="file"><pre><code >msrc -Cdmz.cf make all install clean</code></pre></blockquote>
+
+<P>
+To reduce command-line complexity, <code class="sh">msrc</code> quotes the
+target <code class="param">utility</code> (in this case
+<code class="sh">make</code>) and its parameters to
+protect them from the <code class="sh">m4</code> processing done by
+<code class="sh">hxmd</code> and the shell parameter expansion done by
+<code class="sh">ssh</code>.
+It also constructs the required <code class="sh">rdist</code>
+<code class="param">distfile</code> on the fly,
+so the operator doesn't have to triple quote parts of
+the command.
+
+<P>
+This is an evolution of the work
+<ACRONYM TITLE="Kevin Braunsdorf">I</ACRONYM> did at the Purdue University
+computing center.  The older tools required more explicit
+configuration of <code class="sh">rdist</code>'s <code class="param">distfile</code>, and
+a much longer <code class="param">makefile</code>.  The new structure is a little
+harder to boot-strap, but is much faster, easier to configure,
+and more flexible.
+
+<P>
+While intended primarily to drive <code class="sh">make</code> on
+the target host, <code class="sh">msrc</code> may execute any shell program.
+That shell program may take a different action for
+any subset of hosts, because <code class="sh">msrc</code> uses
+<A href="../../sbin/hxmd/hxmd.html"><code class="sh">hxmd</code>'s</A>
+configuration management to customize the set of source files
+distributed to each host.
+Almost any <code class="sh">hxmd</code> option may be presented on the
+command-line, which is represented as <code class="param">hxmd-opts</code>
+in the usage above.
+
+<P>
+This flexible tool is quite convenient for many recurring
+systems administration tasks.
+
+
+<!--
+<H3 id="hidden">The parts of that statement</H3>
+
+The <em>structure</em> of this automation is represented by
+a common copy of some bits of code or data.
+The code might be kept in any revision control system which
+is locally available.  I've used RCS and CVS, others have used
+Subversion or the like.  <I>Ad hoc</I> or temporary directories
+are also possible, if discouraged.
+
+<P>
+The <em>distributed task</em> could be any task that is mostly
+common to the host population.  It doesn't have to be completely
+identical, as there is some support to filter files and commands
+before they are executed on the remote hosts.  Some common examples
+would be a program with a build script such as a <code class="sh">make</code>(1)
+recipe file, or a recurring data collection task.
+
+<P>
+For the <em>heterogeneous hosts</em> we need a way to
+both customize the task's code and push it out to the many hosts.
+For this part we'll reuse <code class="sh">rdist</code>, <code class="sh">hxmd</code>(8), and the
+<code class="sh">m4</code> macro attributes that <code class="sh">hxmd</code> processes.
+	-->
+
+<h2 id="quick">Quick start</h2>
+
+Before you read this whole document you might want to visit the
+<A href="qstart.html">quick start HTML</A> document to see what
+we are getting at.  The document is easier to understand if you
+have access to a host with <code class="sh">msrc</code> and the
+rest of <code class="sh">msrc_base</code> already installed.
+
+
+<H2 id="normalflow">The normal data-flow</H2>
+
+To see how <code class="sh">msrc</code> works we break the user interface
+into several steps.  Each steps uses data from the command-line,
+environment variable, or
+a file in the current directory to provision the next layer.
+
+This is a quick link index into the main sections:
+<DL>
+<DT><A href="#cmdline">From the command-line</A>
+<DD>
+<code class="sh">Msrc</code> accepts options for
+<code class="sh">xapply</code> and <code class="sh">hxmd</code>,
+which includes options for <code class="sh">ptbw</code> and
+<code class="sh">xclate</code>.  The few options it parses for
+itself are documented below.
+<DT><A href="#makemacro">Macros extracted from a <code class="param">makefile</code></A>
+<DD>
+All the macros extracted from the <code class="param">makefile</code>
+represent the disposition of the files from the current working
+directory.
+<DT><A href="#hxmdcmd">File created for <code class="sh">hxmd</code></A>
+<DD>
+<code class="sh">Msrc</code> creates template files that
+<code class="sh">hxmd</code> expands to update each target host.
+<DT><A href="#rdistup">Updating the remote directory via <code class="sh">rdist</code></A>
+<DD>
+<code class="sh">Rdist</code> sends a copy of the current directory to
+each target host.
+<DT><A href="#utility">Remote execution of <code class="param">utility</code></A>
+<DD>
+The update script includes a remote command to
+execute the <code class="param">utility</code>
+specified on the command-line on the target host.
+</DL>
+
+<P>
+There is also <A href="#localflow">an alternate local data-flow</A>
+which allows a completely local version of the process.
+This provides service for hosts that are not able to
+receive incoming network connections.
+
+
+<P>
+There are some details to illuminate how to
+<A href="#recursion">manage recursive subdirectories</A>
+which should help explain the tactics used in that case.
+
+<H3 id="cmdline">The command-line</H3>
+
+<code class="sh">Msrc</code> is built on top of <code class="sh">hxmd</code>, it accepts
+most of the options <code class="sh">hxmd</code> processes and hands them
+off to <code class="sh">hxmd</code> (which in turn hands lots of them down
+to <code class="sh">xapply</code>, <code class="sh">ptbw</code> and <code class="sh">xclate</code>).
+
+<P>
+There is one option that <code class="sh">msrc</code> won't pass down:
+the <code class="opt">-F</code> option changes <code class="sh">hxmd</code>'s
+parameters from literal strings to filenames, since <code class="sh">msrc</code>
+provides those all as files it can't allow any command-line specification.
+
+<P>
+In addition to the <code class="sh">hxmd</code> options <code class="sh">msrc</code>
+processes the <code class="sh">make</code> option <code class="opt">-f</code> to
+change the default name of the <code class="param">makefile</code> used in the
+next step.
+<code class="sh">Msrc</code> looks for a file named either
+"Msrc.mk" or "msrc.mk" before falling back to
+<code class="sh">make</code>'s defaults of "Makefile" or "makefile".
+Like <code class="sh">make</code>, <code class="sh">msrc</code> looks in the
+current working directory for these files.
+
+<P>
+The standard <code class="opt">-h</code> and
+<code class="opt">-V</code> options output the usage and
+version information, as in all of my tools.
+
+<P>
+The other options make more sense in context, briefly:
+<UL>
+<LI><A href="#localflow"><code class="opt">-l</code> triggers local mode</A>
+<LI><A href="#optm"><code class="opt">-m</code> changes the
+synthetic <code class="sh">make</code> target</A>
+<LI><A href="#optu"><code class="opt">-u</code> provides a shorthand to define a default <code class="attr">ENTRY_LOGIN</code></A>
+<LI><A href="#opty"><code class="opt">-y</code> provides options to <code class="sh">make</code> to suggest macro values, or options</A>
+<LI><A href="#optz"><code class="opt">-z</code> ignores the <code class="sh">make</code> macro <code class="make">HXINCLUDE</code></A>
+<LI><A href="#optl"><code class="opt">-l</code> changes the mode</A> to <A href="#localflow">local</A>
+</UL>
+
+
+<H3 id="makemacro">Using a <code class="param">makefile</code> as a configuration file</H3>
+<code class="sh">Msrc</code> extracts the values of
+several <code class="sh">make</code> macros from
+the <code class="param">makefile</code> found under <code class="opt">-l</code>.
+
+<P>
+<code class="sh">Make</code> meets our needs and
+doesn't really limit us, since we are bound to
+the current working directory for the other files we process.
+We also gain a standard file format we don't have to parse, since
+<code class="sh">make</code> recipe files are common to all UNIX (POSIX)
+platforms.
+
+<P id="optm">
+As a bonus we can use <code class="sh">make</code>'s dependencies to
+trigger prerequisite tasks.
+A common use to this feature it to check-out files
+from a configuration management facility, if they are missing or
+out-of-date.
+The command-line option <code class="opt">-m</code> allows us to
+change the <code class="param">prereq</code> target we use in this step.
+The default value for <code class="param">prereq</code> is
+"__msrc" (which is two underscores prefixed on
+the name of the program).
+
+<H4 id="extractintro">How <code class="sh">msrc</code> extracts of makefile macros</H4>
+
+To output a <code class="sh">make</code> macro from a shell command-line
+let us add a synthetic target to the end of <code class="param">makefile</code>
+that <code class="sh">echo</code>'s the value.
+For example
+<blockquote class="file"><pre><code >cat Makefile - &lt;&lt;\! | make -f - __msrc
+__msrc:
+	@echo ${INTO}
+!</code></pre></blockquote>
+
+<P>
+This fragment outputs the value of <code class="make">INTO</code>
+to <code class="param">stdout</code>.  <code class="sh">Msrc</code> uses
+some slightly more advanced chicanery
+(with added file descriptor manipulation)
+to extract the seven <code class="sh">make</code> macro values it needs.
+
+<H4 id="extraction">Which <code class="sh">make</code> macros <code class="sh">msrc</code> extracts</H4>
+
+Since each of the seven <code class="sh">make</code> macros listed
+below contains only filenames or fixed strings
+(which both <code class="sh">make</code> and <code class="sh">m4</code> can process)
+we assert that none of them can contain embedded white-space.
+When you need a filename with embedded white-space you
+might stop to ask yourself, "Why?"
+
+<P>
+As given in the example code, the first macro is <code class="make">INTO</code>.
+This macro specifies where (on the target host) the cached
+copy of the current directory is to be constructed.
+The empty string triggers a default value which
+replaces the string "/msrc/" with
+the string "/src/" in the path to the current working directory.
+Always specify <code class="make">INTO</code> when your application
+requires a specific target directory.
+The default is good for the design use of <code class="sh">msrc</code>.
+
+<P>
+The <code class="make">INTO</code> macro may not
+specify more than one target directory,
+or the current working directory.
+This prevents the disaster of sending customized files over
+the top of the source files.
+If you try to target the current working directory you'll see an
+error like:
+<blockquote class="file"><pre><code >msrc: /tmp/ksb/msrc: will not target the current working directory</code></pre></blockquote>
+
+<P>
+An example of this macro from a real <code class="param">makefile</code>:
+<blockquote class="file"><pre><code >INTO=/usr/src/home/monitor</code></pre></blockquote>
+
+<P>
+The macro <code class="make">MODE</code> selects the default
+mode of operation for <code class="sh">msrc</code>, either "local" or
+"remote".  We talk about this more under <A href="#localflow">local mode below</A>.
+
+<P>
+By default the other macros segregate the files in the current
+directory into 5 non-overlapping groups,
+which <code class="sh">msrc</code> uses to
+decide how to process each file.
+When the specific macro for a group is not set, or set to an empty list,
+<code class="sh">msrc</code> creates a value for that macro from the
+files not otherwise consumed.
+In other words each file is normally used in only a single macro.
+
+<DL>
+<DT><code class="make">SUBDIR</code>
+<DD>
+When empty or not set this defaults to
+any directory which doesn't look like a configuration
+management artifact ("RCS", "CVS", "SCCS", or "SVN").
+<DD>
+Takes any directory out of the list of files, but is usually
+empty because subdirectories are not common.
+<DT><code class="make">MAP</code>
+<DD>
+Defaults to the list of files with the suffix ".host".
+<DD>
+Each of these files is processed through <code class="sh">hxmd</code>'s
+<code class="sh">m4</code> structure; the customized file is sent
+to the target host with any ".host" suffix removed.
+The most common mapped file I include is "Makefile.host".
+This allows some recipe targets to hold custom commands for each
+target host and operating system combination.
+<P>
+Before the master source structure used <code class="sh">msrc</code>
+it used <code class="sh">distrib</code> and the platform recipe file
+was commonly named "<em class="error">Make.host</em>", which is how
+one can tell that a directory needs an upgrade to the 2008 version.
+For more about the old code and tactics see
+the <A href="../distrib/distrib.html">HTML document</A>.
+
+<DT><code class="make">HXINCLUDE</code>
+<DD>
+Defaults to the list of files with the suffix ".hxmd".
+<DD>
+Each of these files is read to assemble a list of
+options to pass (in addition so those on the command-line)
+down to <code class="sh">hxmd</code>.
+The common name for this file is "Msrc.hxmd",
+which matches the default suffix so it doesn't need to be specified
+in the Makefile.
+
+<DT><code class="make">SEND</code>
+<DD>
+Defaults to the list of files not captured in either of the above
+macros.
+<DD>
+Each of these files is sent as-is to the target host,
+even if the file has a special suffix.  This macro is only set
+in the <code class="param">makefile</code> when there are files you need to force
+into the <ACRONYM TITLE="IGNORE">macro below</ACRONYM>.
+<DT><code class="make">IGNORE</code>
+<DD>
+Defaults to the list of files not consumed by any of the other macros.
+<DD>
+These files are not sent to the remote host, and may be
+explicitly <code class="rdist">except</code>'s in any generated
+<code class="param">distfile</code>.
+Any files listed in this macro force <em>all</em> the other files
+into the <code class="make">SEND</code>
+macro as they are mutually exclusive.
+</DL>
+
+<H4 id="prereq">Prerequisite recipe bound to "__msrc"</H4>
+
+The makefile might also specify dependencies which must be
+fulfilled before <code class="sh">msrc</code> does any processing.
+
+<P>
+As a side-effect of running <code class="sh">msrc</code>
+some prerequisite updates may be checked by <code class="sh">make</code>
+in the local directory.
+Since the default <code class="param">prereq</code> target is predictable, based on
+the program name, it is possible to
+add a <code class="sh">make</code> dependency to that target.
+For example the fragment assures that the files
+listed in <code class="make">SOURCE</code> exists, or are
+checked-out before the update process begins:
+<blockquote class="file"><pre><code >SOURCE= a.c b.c main.c common.h
+
+${SOURCE}:
+	co -u $@
+
+__msrc: ${SOURCE}</code></pre></blockquote>
+
+<P>
+Any prerequisite bound the the target may be checked
+(more than once, in some cases) before
+the <code class="param">utility</code> runs.
+If the update recipe has side-effects it would be best to
+protect it with some other logic.
+
+<P>
+An alternate set of prerequisite actions might be specified
+with the <code class="opt">-m</code> command-line option, or
+a link to the <code class="sh">msrc</code> program with a difference name.
+This flexibility allows a single <code class="param">makefile</code>
+to support multiple uses.  Later we will describe the other
+form for <code class="opt">-m</code> which allows
+for a <A href="#opt-m">cleanup target</A> as well.
+
+<P>
+Take care <em>never to define</em> the synthetic target
+in your <code class="param">makefile</code>.
+Putting a recipe on that target suppresses the recipe
+<code class="sh">msrc</code> adds, so
+<code class="sh">msrc</code> appears to extract empty values for
+every <code class="sh">make</code> macro.
+Error messages like:
+<blockquote class="file"><pre><code >msrc: cannot deduce "INTO" not under "msrc": </code><code class="param">pwd</code></pre></blockquote> stem from
+a missing (or nonsense) <code class="make">INTO</code> value.
+
+<H4 id="makehooks">Less obvious uses of the macros</H4>
+
+Setting the <code class="sh">make</code> macros to a list of files is
+the intended interface.  Two alternate forms come to mind
+when you know how <code class="sh">msrc</code> extracts their values.
+
+<DL>
+<DT><code class="make">SEND</code>= *.plain *.peanut
+<DD>
+Since the code <code class="sh">msrc</code> emits to gather the values
+uses a shell <code class="sh">echo</code> statement with a redirection
+on the end the shell will expand the globbing asterisk in <code class="make">SEND</code>.
+
+<DT><code class="make">HXINCLUDE</code>= ; some-command with arguments
+<DD>
+Since the semicolon (";") in the expanded text terminates
+the <code class="sh">echo</code> the output of <code class="sh">some-command</code>
+will be assigned to <code class="make">HXINCLUDE</code>, from <code class="sh">msrc</code>'s
+point of view.
+<P>
+To be clear, this <em>does</em> limit the usefulness of the macro
+for any other purpose inside <code class="param">makefile</code>.  With more
+complex pipelines one might have to apply parentheses.
+</DL>
+
+<P>
+In either case the use of these tactics indicates you've
+made a spell few people will grok without help.  Comments
+in the <code class="param">makefile</code> help a lot.
+
+
+<H3 id="hxmdplan">Planning to execute <code class="sh">hxmd</code></H3>
+
+For the next step <code class="sh">msrc</code> builds the
+<code class="sh">hxmd</code> wrapper to process each host.
+The instance of <code class="sh">hxmd</code> does all the
+heavy lifting: it manages the loop logic, selects
+the hosts to target, customizes the
+files listed in <code class="make">MAP</code>, executes
+<code class="sh">rdist</code> to update target directories,
+then runs the given <code class="param">utility</code> on
+each selected host.
+
+<P>
+The directory might need to tune <code class="sh">hxmd</code>; to do this
+<code class="sh">msrc</code> uses the
+<code class="sh">make</code>
+macro <code class="make">HXINCLUDE</code> to specify extra options to
+<code class="sh">hxmd</code>.
+Each of files listed contains options for <code class="sh">hxmd</code>.
+The options are passed on to <code class="param">hxmd</code>
+via the <code class="env">HXMD_PASS</code> environment variable, as
+described below.
+
+<P>
+All files listed in
+the <code class="sh">make</code> macro <code class="make">MAP</code>
+are customized via <code class="sh">hxmd</code>'s <code class="sh">m4</code> macro expansion.
+Each resulting stream is placed in a file with the
+original name, sans the ".host" extension.
+
+<P>
+All of the customization performed by <code class="sh">hxmd</code> is
+specified via the attribute macros it provides.  To take full
+advantage of <code class="sh">msrc</code> some policy attributes
+may have to be added to your <code class="param">site.cf</code> file.
+
+<H4 id="attrmacro">Attribute macros <code class="sh">msrc</code> expects</H4>
+
+The set of macros gathered from <code class="sh">make</code> is distinct
+from the <code class="sh">m4</code> macros provided by <code class="sh">hxmd</code>'s
+configuration files.
+These macros are all rendered in
+this document as <code class="attr">ENTRY_LOGIN</code>.
+
+<P>
+In the previous sections we talk about
+<code class="sh">make</code> macros: below this point we talk
+mostly about attribute macros.
+The makefile specifies <code class="sh">make</code> macros, while
+the <code class="sh">hxmd</code> command-line options
+(<code class="opt">-D</code>, <code class="opt">-C</code>, <code class="opt">-X</code>,
+and <code class="opt">-Z</code>) garner <em>attribute macros</em> for
+<code class="sh">hxmd</code>'s <code class="sh">m4</code> macro processing.
+
+<P>
+In the following steps we are going to use these attribute macros to
+customize the <code class="sh">m4</code> processed files <code class="sh">hxmd</code> produces for
+each target host.
+Here is a summary of the attribute macro <code class="sh">msrc</code> uses:
+
+<DL>
+<DT><code class="attr">HOST</code>
+<DD>
+A domain name for the target host, as well as the expected <code class="param">key</code> value
+(set by <code class="sh">hxmd</code>'s <code class="opt">-k</code> option)
+<DD>
+Really breaks the process when not defined.
+<DT id="optu"><code class="attr">ENTRY_LOGIN</code>
+<DD>
+When we need to become a different user on the target machine
+this should be defined to the login name of that user.
+In that case the login name is prepended to every reference to
+the target <code class="attr">HOST</code> when it is used to
+specify a network destination.
+<DD>
+The command-line option <code class="opt">-u</code> is a shorthand
+for definition of this attribute.
+<DD>
+When undefined <code class="sh">msrc</code> won't specify a remote login name.
+<code class="sh">ssh</code> might map the login with
+the option <code class="opt">User</code>, which might be set per-host in
+a local <code class="path">ssh_config</code> file.
+<DT><code class="attr">ENTRY_DEFS</code>
+<DD>
+A shell file to source (via the shell <code class="sh">.</code> command) into
+the remote environment before execution of <code class="param">utility</code>.
+<DD>
+When not defined no file is sourced.
+<DT id="m4hooks"><code class="attr">INCLUDE_CMD</code><code class="markup">(</code><code class="param">mode</code><code class="markup">)</code>
+<DD>
+Usually defined to a function that includes the correct markup for
+either "local" or "remote" processing.  This macro is commonly defined by
+a file included under <code class="opt">-j</code>, or in
+some <code class="make">HXINCLUDE</code> file
+(viz. <code class="path">Msrc.hxmd</code>).
+<DT><code class="attr">INIT_CMD</code>
+<DD>
+A shell command executed on the local machine before we update each target.
+<DT><code class="attr">PRE_CMD</code>
+<DD>
+A shell command executed on the local machine before we start the
+<code class="param">utility</code> on each target.
+<DT><code class="attr">POST_CMD</code>
+<DD>
+A shell command executed on the local machine after we finish each target.
+<DT><code class="attr">RDISTD_PATH</code>
+<DD>
+The patch to <code class="sh">rdistd</code> on the remote machine, if we need to
+set it with <code class="sh">rdist</code>'s <code class="opt">-p</code> option.
+<DT><code class="attr">RDIST_PATH</code>
+<DD>
+The path to an rdist version six (rdist6) compatible program.
+<DD>
+Assumes the value "rdist" when not defined.
+<DT><code class="attr">RSH_PATH</code>
+<DD>
+The path to a remote shell for <code class="sh">rdist</code>'s -P option.
+<DD>
+Defaults to <code class="attr">SSH</code>, when not defined.
+<DT><code class="attr">SDIST</code>
+<DD>
+The path to <code class="sh">rdist</code> followed by both the <code class="opt">-p</code> and <code class="opt">-P</code> options and a trailing <code class="opt">-f</code>.  The could be used to
+call a program other than <code class="sh">rdist</code> for some hosts.
+<DD>
+When undefined <code class="sh">msrc</code> constructs a value from
+<code class="attr">RDIST_PATH</code>, <code class="attr">RSH_PATH</code>
+and <code class="attr">RDISD_PATH</code>
+<DT><code class="attr">SSH</code>
+<DD>
+The path to the remote shell program to execute.
+<DD>
+Defaults to "ssh" when not defined.
+<DT><code class="attr">MSRC_MODE</code>
+<DD>
+This attribute is set to the value of the <code class="make">MODE</code>
+make macro, or set to "local" under <code class="opt">-l</code>, or
+set by default to "remote".
+It is forced (under <code class="opt">-D</code>) in
+the <code class="sh">hxmd</code> command-line.
+</DL>
+
+
+<H3 id="rdistup">Updating the remote directory</H3>
+
+Using the values <code class="sh">msrc</code> extracted from the <code class="param">makefile</code>
+it constructs two files.
+
+<P>
+The first is a <code class="param">distfile</code> for <code class="sh">rdist</code> that
+would update a remote directory (extracted from <code class="make">INTO</code>)
+from the current directory.  The second is a shell script that is
+customized by <code class="sh">hxmd</code> for each host
+selected.  This script uses the <code class="param">distfile</code> to run
+<code class="sh">rdist</code>, then <code class="sh">ssh</code> to run the command
+line <code class="param">utility</code>.
+
+<P>
+After all that is setup <code class="sh">msrc</code> builds an <code class="sh">hxmd</code>
+command-line, then executes that program to do all the work.
+The details below explain how that comes together.
+
+<H4 id="expdistfile">Outline of the <code class="param">distfile</code></H4>
+
+The <code class="param">distfile</code> is rendered through <code class="sh">m4</code>, so it
+is a strange mix of extracted <code class="sh">make</code> macros mixed
+with <code class="sh">ifelse</code> logic based on <code class="sh">hxmd</code> attributes
+encoded in <code class="sh">m4</code> macros.  All this means is that
+reading it requires a firm grasp of where all the data came from
+and how it is going to be interpreted by <code class="sh">rdist</code>.
+
+<P>
+We are building a <code class="param">distfile</code> with three <code class="param">labels</code>:
+<DL>
+<DT>myself
+<DD>
+A label to build the target directory (extracted from <code class="make">INTO</code>)
+on the target host.
+<DT>dirs
+<DD>
+A label to build all the directories extracted from <code class="make">SUBDIR</code>.
+<DT>files
+<DD>
+The label that sends the mapped files and plain files across.
+</DL>
+
+<P>
+It may seem like calling <code class="sh">rdist</code> three times is a bit
+much, but some (older versions) of <code class="sh">rdist</code> need the support.
+
+<H4 id="distfilegen"><code class="param">Distfile</code> details</H4>
+
+The <code class="param">distfile</code> uses some <code class="sh">hxmd</code>
+attribute macros to customize the transport.
+Compare the example below to one of
+these <code class="sh">msrc</code> outputs under
+the <code class="opt">-d S</code> option on your host:
+<blockquote class="file"><pre><code >dnl rdist distfile to update a remote host
+`myself: ( . ) -> ( 'ifdef(`ENTRY_LOGIN',`ENTRY_LOGIN@')HOST` )
+	install -onodescend /usr/src/local/sbin/msrc;'
+`dirs: (  . ) -> ( 'ifdef(`ENTRY_LOGIN',`ENTRY_LOGIN@')HOST` )
+	install -owhole,nodescend /usr/src/local/sbin/msrc;'
+`files: ( msrc.man msrc.m make.m README TODO machine.h mreg.ksh msrc.html envfro
+m.m ) -> ( 'ifdef(`ENTRY_LOGIN',`ENTRY_LOGIN@')HOST` )
+	except_pat ( /RCS /Makefile );
+	install -owhole /usr/src/local/sbin/msrc;'
+`( 'HXMD_1` ) -> ( 'ifdef(`ENTRY_LOGIN',`ENTRY_LOGIN@')HOST` )
+	install -b /usr/src/local/sbin/msrc/Makefile ;'</code></pre></blockquote>
+
+<P>
+When <code class="sh">hxmd</code> runs that through <code class="sh">m4</code>
+it produces a <code class="param">distfile</code> that is
+custom-fit to send the source to <code class="sh">msrc</code>
+itself to a target host.  Since the source to <code class="sh">msrc</code>
+doesn't have any subdirectories the "dirs" label won't be used, the
+safety feature of putting a safe transaction on that label helps
+other programs automate their use of <code class="sh">msrc</code>.
+
+<P>
+The attribute macro <code class="attr">HXMD_1</code> is provided
+by <code class="sh">hxmd</code>: it is the first file in
+the <code class="make">MAP</code> macro (in this case "Makefile.host" is
+being sent to "Makefile" on the target machine).
+When there are other files in <code class="make">MAP</code more
+stanzas are emitted.
+
+<P>
+There are two files on the <code class="sh">hxmd</code> command
+line that are not mentioned in
+the marked-up <code class="param">distfile</code>:  The
+control file (below) and the last file on the command-line,
+which is the file displayed above.
+
+<H4 id="control">Control file details</H4>
+
+Now we turn to the control script.  This file drives the
+update of a single host.
+To update each host <code class="sh">hxmd</code> processes this file
+though <code class="sh">m4</code> for attribute expansion,
+then runs the output as a shell script.
+
+<P>
+The script calls <code class="sh">rdist</code> at least
+twice: once to assure that the remote directory exists,
+and once to send the files.  Then uses the remote shell
+selected to start a shell on the remote machine to execute
+the specified <code class="param">utility</code>.
+
+<P>
+Compare this example to one <code class="sh">msrc</code>
+outputs under <code class="opt">-d S</code> on your host (I did remove
+some <code class="sh">m4</code> markup in
+this example, after you grok this see <A href="#diversions">below</A>):
+<blockquote><pre><code >dnl remote per-host update script for hxmd
+`#!/bin/sh
+'`set . "Makefile" "remote" "'ifdef(`ENTRY_LOGIN',`ENTRY_LOGIN'@)HOST" "/usr/src/local/sbin/msrc"
+ifdef(`INCLUDE_CMD',`INCLUDE_CMD(`remote')
+')dnl
+ifdef(`SSH',`',`define(SSH,`ssh')')dnl
+ifdef(`RSH_PATH',`',`define(RSH_PATH,`SSH')')dnl
+ifdef(`RDIST_PATH',`',`define(RDIST_PATH,`rdist')')dnl
+ifdef(`SDIST',`',`define(SDIST,`RDIST_PATH `'ifdef(`RSH_PATH',`-P`'RSH_PATH') ifdef(`RDISTD_PATH',`-p`'RDISTD_PATH') -f')')dnl
+ifdef(`INIT_CMD',`INIT_CMD
+')dnl
+dnl myself, subdirs, then files:
+SDIST HXMD_1 myself || exit $?
+dnl SUBDIR is empty
+SDIST HXMD_1 files
+ifdef(`PRE_CMD',`PRE_CMD
+')dnl
+SSH ifdef(`ENTRY_LOGIN',`ENTRY_LOGIN@')HOST ifdef(`ENTRY_DEFS',`. defn(`ENTRY_DEFS') \&amp;\&amp; ')`cd /usr/src/local/sbin/msrc \&amp;\&amp; :'
+ifdef(`POST_CMD',`POST_CMD
+')dnl</code></pre></blockquote>
+
+<P>
+The reference to <code class="attr">HXMD_2</code> is replaced by
+the name of the processed <code class="param">distfile</code> from
+the previous section.
+
+<P>
+As in the example in the last section the source for <code class="sh">msrc</code>
+
+<H4 id="debuggen">Debugging these steps</H4>
+
+To help the implementor trace errors <code class="sh">msrc</code>
+displays the parts explained below as the <code class="opt">-d</code>
+option requests.
+With the debug flag "<code class="opt">-d X</code>" <code class="sh">msrc</code>
+outputs the generated <code class="sh">hxmd</code> command-line on <code class="param">stderr</code>.
+That also passes the debug flag to <code class="sh">hxmd</code> which traces
+the execution of the wrapped <code class="sh">xapply</code> stack.
+
+<H4 id="optz">Environment options to <code class="sh">hxmd</code></H4>
+
+<code class="sh">Msrc</code> reads each of the files from the list set by
+the <code class="param">makefile</code> macro <code class="make">HXINCLUDE</code>
+to set an environment variable for <code class="sh">hxmd</code> (called
+<code class="env">HXMD_PASS</code>).
+The command line option <code class="opt">-z</code> skips this step,
+allowing an explicit command line to override the <code class="param">makefile</code>.
+
+<P>
+The command line for <code class="sh">msrc</code> contains options to
+<code class="sh">hxmd</code> to select hosts and tune the use of <code class="sh">m4</code>
+and <code class="sh">xapply</code>'s stack.  Experience with these tools
+has shown that the command line options tend to be long
+and mostly the same for any given directory.
+In fact the common parts were almost always the
+configuration file (<code class="opt">-C</code>, <code class="opt">-Z</code>,
+<code class="opt">-X</code>), host selection (<code class="opt">-E</code>,
+<code class="opt">-B</code>, <code class="opt">-G</code>),
+<code class="sh">m4</code> tuning (<code class="opt">-D</code>, <code class="opt">-I</code>, <code class="opt">-U</code>)
+and merge (<code class="opt">-o</code>) options.
+
+<P>
+By drawing those options from a file we avoid having to type them
+on the <code class="sh">msrc</code> command line every time we run the program.
+Another way to do this would be to code a shell script to force
+the options into the command line: since we'll use that method
+to solve a different issue <A href="#dmzsh">later</A> we don't want to use it here.
+
+<P>
+There are three goals met with such a file:
+<dl>
+<dt>Add options to provide uncommon data
+<dd>
+The standard <code class="sh">hxmd</code> site configuration may
+not include any chasis color information, but this configuration
+management problem requires that attribute: force the merge locally.
+<p>
+For example "Msrc.hxmd" might contain:
+<blockquote class="file"><pre><code ># $Revision control infomation...
+# We need to include the color information for movie.com
+-X color.cf</code></pre></blockquote>
+<p>
+Nodes that are mentioned in one configuration but not the other
+create does a close-the-loop problem.
+Some mechanism to increase the certainty that the files are
+synchronized before use is strongly advised.
+<dt>Limit selection to a subset of the normal population
+<dd>
+By adding a selection criteria in this file the implementor tries
+to limit the impact of sending the structure to inappropriate
+nodes.
+<p>
+For example "Msrc.hxmd" might contain:
+<blockquote class="file"><pre><code ># $Revision control infomation...
+# We need to know the color of every host
+-BCOLOR</code></pre></blockquote>
+<p>
+The use of the <code class="opt">-z</code> option defeats this
+injunction for legitimate testing or for silly people.
+<dt>Add processing hooks to process recursion or other dependencies
+<dd>
+The <code class="sh">m4</code> <A href="#m4hooks">hooks above</A> provide
+the opportunity to call other structures, but are too cumbersome to
+type on each command-line.  By placing the hooks in
+an <code class="sh">hxmd</code> options file we remove that burden.
+<P>
+See examples of this <A href="#pre_cmd">below</A> when we explain
+recursion.
+</dl>
+<P id="commonopts">
+An important point: we normally only put options common to
+<code class="sh">mmsrc</code> (micro-msrc) and <code class="sh">hxmd</code> in these files.
+Since <code class="sh">mmsrc</code> doesn't
+emulate <code class="sh">xapply</code>'s stack we mustn't include
+any options it doesn't know in these files.
+
+<P id="gunsafety">
+Another important point: using <code class="opt">-z</code> without careful
+inspection of the options you are ignoring is about as safe a playing with
+a gun you didn't clear yourself.
+Never point a loaded <code class="sh">msrc</code> at
+a structure you are not willing to <em>destroy</em>.
+Given that <code class="sh">msrc</code> is designed to update directories
+completely this is a pretty fair rule in all cases, but much more important
+when you use <code class="opt">-z</code> to take off someone's safety.
+
+<P>
+There are other reasons why these options are gathered in
+this indirect way:
+<UL>
+<LI> By put putting the options in a file we can use <code class="sh">make</code> to
+keep them up-to-date with respect to any "up stream" data source.
+<LI> The hook we use with the <code class="sh">echo</code> in the synthetic make
+target removes a level of shell quotes, so options passed though that system
+would have to be (at least) double quoted.
+<LI> The parser (on the <code class="sh">msrc</code> side) only breaks the list on
+white-space, so it would have to be taught to parse quotes for options
+with embedded spaces.
+</UL>
+
+<P id="hxmdformat">
+The files are read as a single catenated text stream.
+In that stream:
+<DL>
+<DT>Whole-line hash comments are ignored
+<DD>
+This allows load lines (with a first line starting with "#!"),
+comments, and the use of <code class="sh">mk</code> in these files.
+<DT>A line that starts with a dollar-sign ("$") expands from the environment
+<DD>
+This allows the addition of debug options, the output of a shell command, or
+temporary filenames to be passed though without creating a new file.
+To defeat this feature put a space before the dollar-sign.
+<DT>The file name "." is ignored
+<DD>
+This lets you force <code class="make">HXINCLUDE</code> to a value, without actually
+reading a file.  One might also use "/dev/null" as an explicit
+value that has no options in it.
+<DT>Newlines are replaced by spaces
+<DD>
+This is done because the option parser that reads from
+the environment doesn't break words on newlines.  To defeat this
+put the newline in an environment variable and use the dollar-sign
+facility above.
+</DL>
+
+<P>
+After removing comments, if the only thing in the stream is the
+string "--" then the the stream is replaced with an empty one.
+The environment variable <code class="env">HXMD_PASS</code> is set to
+the resultant stream.
+<code class="sh">Hxmd</code> reads this variable in preference to
+<code class="env">HXMD</code>.
+
+<P>
+Without intervention the <code class="env">HXMD_PASS</code> variable is
+inherited via the environment by any descendent processes,
+including nested <code class="sh">hxmd</code>s.
+<code class="sh">Hxmd</code> has an option (<code class="opt">-z</code>) to
+clear the environment variable after it is read for options.
+With <code class="opt">-z</code> set in any <code class="make">HXINCLUDE</code>
+file any descendent use of <code class="sh">hxmd</code> reverts to
+reading <code class="env">HXMD</code> rather than
+<code class="env">HXMD_PASS</code>.
+
+<H4 id="externfile">Sending non-local files</H4>
+
+In the older system the hand-built "Distfile" could
+be manipulated to send files from a different local directory
+to the remote destination.  These files could be processed
+with <code class="sh">m4</code> markup (with the crazy
+<code class="markup">@</code><code class="param">file</code><code class="markup">@</code> notation) or sent as-is.
+Since the
+implementor doesn't code a <code class="param">distfile</code>,
+and need not use <code class="sh">rdist</code> at all,
+<code class="sh">msrc</code>
+must provide another way to support this feature.
+
+<p id="rsynchack">
+To copy a file from from a different local directory,
+in the new structure, list it by either an absolute or
+relative path in the <code class="make">SEND</code> macro.
+That has a big issue: that whole path is catenated on the target directory.
+To defeat that use the <code class="sh">rsync</code>-style notation:
+version 2.6.7 allows a "/./" in the path to represent where to
+start the target directory.  Everything before that token is
+replaced with the target directory.
+To send <code class="path">/home/663/ksb/lib/this.tar</code> to
+the target directory itself, as just <code class="path">this.tar</code>,
+include the path <code class="make">SEND</code> as:
+<blockquote class="file"><pre><code >SEND= /home/663/ksb/lib/./this.tar</code></pre></blockquote>
+To include the <code class="path">lib</code> component word it as:
+<blockquote class="file"><pre><code >SEND= /home/663/ksb/./lib/this.tar</code></pre></blockquote>
+
+<p id="dotdothack">
+Any file copied from a parent directory has the "../" prefixes removed
+in the target directory.  This is done to protect sibling directories
+on the platform host from accidental updates.  To override this
+protection prefix the path with "././", that activates the previous
+rule, which always suppresses this one.
+
+<p>
+See the <a href="/cgi-bin/manpage.cgi?rsync">rsync manual page</a> for
+another example.
+
+<P>
+The <code class="make">MAP</code> macro works exactly the same way.
+Of course any ".host" suffix is removed as well.
+The <code class="make">SUBDIR</code> lacks this feature, as a recursive
+call the <code class="sh">msrc</code> with a <code class="param">yoke</code>
+set for <code class="make">INTO</code> works better.
+
+
+<H4 id="ptbwuse">The wrapper around <code class="sh">hxmd</code></H4>
+
+When the parallel factor given by <code class="opt">-P</code> is greater
+than 1 we use <code class="sh">ptbw</code> to manage a list of temporary
+directories.  We stage the processed <code class="make">MAP</code> files in these
+directories for <code class="sh">rdist</code>'s use.
+
+<P>
+In this case <code class="sh">msrc</code> actually <code class="libc">execve</code>'s
+<code class="sh">ptbw</code> to wrap <code class="sh">hxmd</code>
+with a command that looks like:
+<blockquote class="file"><code >ptbw -mdt dirlist -N socket hxmd ...</code></blockquote>
+
+<P>
+When the parallel factor is 1 there is but a single directory
+so we don't have to use <code class="sh">ptbw</code>.  In that case <code class="sh">hxmd</code>
+is the direct child of <code class="sh">msrc</code>.
+
+<P>
+By using the <code class="opt">-d</code> option to <code class="sh">ptbw</code>
+we hope that we won't interfere with any use by an
+enclosing wrapper.  We also do not change any of the
+environment variables used by <code class="sh">ptbw</code>.
+We even preserve <code class="env">ptbw_d</code> by setting it
+back to the inherited value, or unsetting it (under <code class="opt">-l</code>).
+
+<H4 id="defconfig">Program name and default configurations</H4>
+
+When an explicit <code class="opt">-Z</code> option is presented on the
+command <code class="sh">msrc</code> passes <code class="sh">hxmd</code> the
+string "hxmd" to defeat the logic which looks for a
+default configuration file.
+Any other program name is passed on to <code class="sh">hxmd</code>
+as its program name, so the default zero configuration file is
+<code class="path">msrc.cf</code>.
+
+<P>
+Since <code class="sh">ptwb</code> follows the wrapper rules for program
+names it passes the correct name down to <code class="sh">hxmd</code>
+when it is used for temporary directory management.
+
+<H4 id="hxmdcmd">The explicit <code class="sh">hxmd</code> command line</H4>
+
+The actually parameter list passed on to <code class="sh">hxmd</code>
+is built as:
+<blockquote><pre>hxmd <i>passed-options</i> -P<code class="param">parallel</code> -DMSRC_MODE=<code class="param">mode</code> -F0 -- <code class="param">update</code> <i>mapped-files</i> <code class="param">provision</code></pre></blockquote>
+
+<P>
+That is to say we follow the program name with any options passed
+through the command line to <code class="sh">hxmd</code>, then an explicit
+<code class="opt">-P</code> option, an explicit <code class="opt">-F0</code>, an option
+terminating double-dash, the generated update script, the list of
+files from the <code class="sh">make</code> macro <code class="make">MAP</code>, then a
+helper file (the <code class="sh">rdist</code> <code class="param">distfile</code>).
+
+<H3 id="utility">Run the <code class="param">utility</code></H3>
+
+<code class="sh">Msrc</code> executes <code class="sh">hxmd</code>,
+which does all the work.  Then it removes some temporary files
+and exits with the same exit code <code class="sh">hxmd</code> returned.
+
+<P>
+When no <code class="param">utility</code> is specified
+the default utility is "make".
+
+<P>
+So when we put that all together we get a picture that looks like this:
+<br>
+&nbsp;<IMG style="text-align: center;" src="remote.jpg" alt="remote data-flow picture" />
+<br>
+
+<h4 id="leverage">The leverage used for <code class="param">utility</code></h4>
+
+By default the <code class="param">utiltity</code> command is
+another instance of <code class="sh">make</code>.
+When it is not the default one might use some other standard scripting agent.
+Any command that might become interactive defeats the purpose of
+the large-scale automation <code class="sh">msrc</code> provides.
+<P>
+Using some scripting agent (shell script, <code class="sh">make</code>
+recipe, or the like) allows for a much more repeatable process.  Allowing
+that one could wrap any command as the <code class="param">utility</code>,
+it would be "poor form" to make the maintainer of your structure type
+a hundred character command to use your automation.
+<P>
+There are four options I use to get the <em>right recipe</em>
+(and recipe file) to the target machine:
+<dl>
+<dt id="punmake">Pun the <code class="param">makefile</code>
+<dd>
+Include targets in the <code class="param">makefile</code>
+that are unrelated to its use by <code class="sh">msrc</code> as
+a configuration engine.  These can then be triggered on the target
+host.
+<P>
+The has the advantage that only a single recipe file controls both sides,
+but that is also a disadvantage in that the same target recipe
+(viz. <code class="markup">clean</code> may already be in use, and
+conflicting uses for a single recipe is hard to document and maintain.
+I always include the word "pun" in the comments in such a
+<A href="#punexam">recipe file</A>.
+<dt id="mapmake">Send a mapped recipe file from "Makefile.host" to "Makefile"
+<dd>
+Use a separate recipe file (under the <code class="make">MAP</code>
+feature) to customize the recipes for each host.  The safest way
+to process any mapped file is to quote the entire contents from
+<code class="sh">m4</code>, only <em>unquoting</em> the parts you
+want expanded.  All the example files I write assume this style.
+<p>
+This is the most common in my environment because I like to
+keep the "master" and "platform" recipe files separate.
+This also has the advantage that the same target may trigger wholly
+different logic on each target node, based on
+any attribute <code class="sh">hxmd</code> can process, and the
+recipe file can derive at run-time.
+<dt id="sendmarkup">Use <code class="sh">mk</code> markup in some other file
+<dd>
+A good example of this is the markup I include in manual pages
+to "self-install" under the spell:
+<blockquote class="file"><code >mk -mInstall *.man</code></blockquote>
+This has the implied effect only when the glob ("*.man") matches
+the same pages on the local host as it does on the remote.  If the
+glob doesn't match all the files you want (because some were in
+<code class="make">MAP</code>) then put that command inside the
+recipe file and run it indirect via <code class="sh">make</code>
+as above.
+<dt id="oplever">Use <A href="/cgi-bin/manpage.cgi?op"><code class="sh">op</code>(1)</A> to escalate privileges
+<dd>
+Each target machine's <code class="sh">op</code> rule-base is a valid
+indirection to select the a recipe modification.  For example an
+admin group might build as themselves, but install as the superuser:
+which is exactly what <A href="../../bin/op/op.html">op</A> is good for.
+I would only use <code class="sh">op</code> to execute one of the
+methods above.
+<blockquote class="file"><code >op make install</code></blockquote>
+<P>
+This implies an escalation rule that allows certain <code class="sh">make</code>
+targets to be run as the superuser.
+That's much more sane than allowing arbitrary shell access as the superuser.
+At the least you'll need <code class="markup">install</code> and
+<code class="markup">clean</code>.
+Here is a sample rule to allow this access:
+<blockquote class="file"><pre><code >make	/usr/bin/make $1 $* ;
+	$1=^(clean|install)$
+	groups=^(source|root|wheel)$
+	uid=root initgroups=root gid=source</code></pre></blockquote>
+This is most secure when the "make all" is run as the administrator, or
+we can run other targets as the "source" login with the additional
+rule (after the one above):
+<blockquote class="file"><pre><code >make	/usr/bin/make $* ;
+	groups=^(source|root|wheel)$
+	uid=source initgroups=source</code></pre></blockquote>
+
+</dl>
+
+<P>
+Obviously sending a plain old shell script is better than nothing,
+but it shows a slight lack of imagination.  It also may have to be run
+with an explicit dot-slash to be sure it is selected by
+<code class="env">$PATH</code>, while a <code class="sh">make</code>
+recipe file is always assumed to be directory specific.
+
+<H3 id="localflow">Local mode is another data-flow</H3>
+
+<P id="optl">
+Under the command line option
+<code class="opt">-l</code> <code class="sh">msrc</code>
+doesn't use <code class="sh">rdist</code> to update the
+target hosts.
+
+<P>
+In that mode it builds the desired directory in a temporary
+space (under <code class="env">TMPDIR</code>, or "/tmp")
+so it can run the given <code class="param">utility</code>
+from the staged directory.
+
+<P>
+This allows another transport mechanism to be used to
+project the data to another host, while still
+allowing <code class="sh">msrc</code> to generate the up-to-date files.
+For example the updated directory might be put on external media, or
+copied to a local repository, or sent back
+to the requesting client via a "pull" request.
+
+<P>
+The <code class="param">makefile</code> may also request
+local mode by setting the <code class="sh">make</code> macro
+<code class="make">MODE</code> to the value "local".
+To explicitly forbid local mode set the macro to "remote".
+For example:
+<blockquote class="file"><pre><code >MODE=local</code></pre></blockquote>
+
+<P>
+The steps taken are the same except for
+<A href="#control">"Control file details"</A>.
+At that point we substitute as below.
+
+<H4 id="distfile">Replacements for <code class="param">distfile</code> and the update script</H4>
+
+Since we don't want to call <code class="sh">rdist</code>
+to copy files into our empty temporary directory we build
+a marked-up shell script to do the work.
+Here is an example:
+
+<blockquote class="file"><pre><code >msrc: cat &lt;&lt;\! &gt;/tmp/mtfcakNZCB/provision
+dnl complete the ephemeral directory then run command
+`#!/bin/sh
+'ifdef(`INCLUDE_CMD',`INCLUDE_CMD(`local')
+')dnl
+ifdef(`INIT_CMD',`INIT_CMD
+')dnl
+`cp "Msrc.mk" $1/
+cp -p 'defn(`HXMD_1')` $1/"data.txt"
+cd $1 || exit 69
+`cd $1 || exit 69
+'ifdef(`PRE_CMD',`PRE_CMD
+')dnl
+ifdef(`ENTRY_DEFS',`. defn(`ENTRY_DEFS') &amp;&amp; ')$SHELL -c "utility"
+ifdef(`POST_CMD',`POST_CMD
+')
+`exit'</code></pre></blockquote>
+
+<P>
+After <code class="sh">m4</code> expansion this script copies
+literal files, then files listed in <code class="make">MAP</code>,
+then changes directory to the staged area and runs the given
+<code class="param">utility</code>.
+
+
+<P>
+Since the update script doesn't have to call <code class="sh">rdist</code>
+or <code class="sh">ssh</code> it is a little shorter.
+It does, however, have to manage the temporary directories, and
+it uses <code class="sh">ptbw</code> to do that.
+
+<blockquote class="file"><pre>
+dnl local per-host update script for hxmd
+`#!/bin/sh
+unset ptbw_d
+exec ptbw -t <code class="param">some-path</code> -R1 sh -c "mkdir -p -m 0700 \$ptbw_list;'defn(`HXMD_1')` \$ptbw_list &lt; /dev/null;exec rm -rf \$ptbw_list"
+'dnl
+</pre></blockquote>
+
+<P>
+The code "unset ptbw_d" removes the usage of <code class="sh">ptbw</code>
+from the process environment of <code class="sh">utility</code>.
+We are not trying to wrap <code class="sh">utility</code>, and
+it might be using a
+"<code class="sh">ptbw</code> <code class="opt">-d</code>" instance itself.
+
+<P>
+In the case where <code class="sh">msrc</code> sees an active
+<code class="sh">ptbw</code> <code class="opt">-d</code> diversion
+it replaces the <code class="sh">unset</code> with a variable
+assignment to restore the original value.
+
+<P>
+So when we put that all together we get a picture that looks like this:
+<br>
+&nbsp;<IMG style="text-align: center;" src="local.jpg" alt="local data-flow picture" />
+<br>
+
+<H4 id="resume">Resume the normal flow</H4>
+
+By just replacing those files we have changed to a local
+staged directory.  All the other steps are the same.
+
+<H2 id="begin">How to get started</H2>
+
+Assuming you did the <code class="sh">hxmd</code> start-up you
+should have a file "site.cf" that has at least a few hosts in it.
+With that file we can build an <code class="sh">msrc</code>
+sample directory to see how it works.
+
+<H3 id="example">Pick a directory</H3>
+
+For this example we'll use a directory under either
+<code class="path">/tmp</code> or
+your home directory.  I'm going to use "/tmp/ksb" for my
+source directory.
+Replace the hostname <code class="param">svr7</code> with a
+short hostname from your "site.cf" file.
+<blockquote class="file"><pre><code >$ <tt>cd /tmp</tt>
+$ <tt>mkdir ksb</tt>
+$ <tt>cd ksb</tt>
+$ <tt>echo "INTO=/tmp/ksb.dest" &gt;Msrc.mk</tt>
+$ <tt>msrc -Csite.cf -E SHORTHOST=<code class="param">svr7</code> date</tt></code></pre></blockquote>
+
+<P>
+You should see two <code class="sh">rdist</code> update
+banners, then the output of <code class="sh">date</code> from
+the target host. Here is the output from my host:
+<blockquote class="file"><pre><code >svr7.sac.fedex.com: updating host svr7.sac.fedex.com
+svr7.sac.fedex.com: updating of svr7.sac.fedex.com finished
+svr7.sac.fedex.com: updating host svr7.sac.fedex.com
+svr7.sac.fedex.com: updating of svr7.sac.fedex.com finished
+Mon Feb 15 16:20:00 CST 2008</code></pre></blockquote>
+Replace "date" with "uname -a" to be sure
+the time-stamp came from the correct host.
+
+<H3 id="debug">Debugging</H3>
+
+Trace the progress of the generated update script by
+setting the <code class="attr">INIT_CMD</code> to
+<code class="sh">set -x</code>.
+If that doesn't tell you
+enough you can put a <code class="markup">dumpdef</code> in
+that attribute to display the m4 bindings in scope.
+
+<P>
+Inside the update script the attribute macro <code class="attr">HXMD_0</code>
+is the name of the script itself.  Use that to copy the script to someplace
+safe if you need to preserve it (for example mail it to yourself).
+Remember that in situations with large numbers of target hosts
+and a high parallel factor a simple <code class="sh">cp</code> to
+a fixed filename will race, badly.
+
+<H3 id="localattr">Adding local flavor</H3>
+
+Pick an attribute from you local "site.cf" file; I'll have to use
+the nonsense macro
+<code class="attr">COLOR</code>, since I don't know what you've
+decided to implement.  We are going to build a file that changes
+content based on that attribute.  There are 3 common ways to do that:
+<DL>
+<DT>use the attribute macro directly
+<DD>
+For example include a line in the file like:
+<blockquote class="file"><pre><code >`Hello, I am 'COLOR` today.'</code></pre></blockquote>
+<DT>use an <code class="markup">ifelse</code> or <code class="markup">ifdef</code> to select text
+<DD>
+Remember that <code class="sh">m4</code>'s if statements are
+limited to exact string matches, so the cases here can be numerous:
+<blockquote class="file"><pre><code >HOST `is a' ifdef(`COLOR',`pretty COLOR',`plain') HOSTTYPE`.'</code></pre></blockquote>
+
+<DT>use the attribute macro as an <code class="markup">include</code> filename
+<DD>
+Set the <code class="sh">make</code> macro <code class="make">IGNORE</code>
+so it catches "*.m4" (for example) then use:
+<blockquote class="file"><pre><code >include(COLOR`.m4')dnl</code></pre></blockquote>
+</DL>
+
+<P>
+It is also possible to run shell commands from within
+<code class="sh">m4</code>, although capturing the output is
+a bit cumbersome -- it might be better to leave such work to the
+target side when possible, as that distributes the
+computation more evenly.
+
+<P>
+As always, keep plain text inside quotes as long as possible:
+only drop quotes when expanding an attribute macro or other markup.
+
+<H2 id="recursion">Recursive calls for subdirectories</H2>
+
+Distribution of a directory should imply that any subdirectories specified
+in the <code class="sh">make</code> macro <code class="make">SUBDIR</code>
+are sent to the <em>same target hosts</em>.
+This is possible but is not automatic.
+It requires some project and site specific knowledge to know
+which data to send down.
+
+<H3 id="datadown">How the data flows to the next level</H3>
+
+There are several hooks in <code class="sh">hxmd</code> and
+<code class="sh">msrc</code> to help
+with recursive execution.
+
+<DL>
+<DT id="opty">Any <code class="param">yoke</code> command-line options
+<DD>
+The <code class="sh">make</code> recipe file should have a valid
+default value for each macro.
+Some recursive instances of the process might need to re-tune
+those defaults to be more aligned with their needs.
+<P>
+Under <code class="opt">-y</code> <em>any</em> option may be
+passed to <code class="sh">make</code>, but usually we limit
+ourself to macro assignments.  Since these macros help the
+parent and child instances of <code class="sh">msrc</code> work
+in tandem we call the "yokes".  (Like oxen pulling as a team.)
+The best example of this is the <code class="make">INTO</code>
+macro: if the parent doesn't pass this on to each child instance
+there is a good chance they will send their source to the wrong
+platform directory.
+
+<DT>The <code class="sh">make</code> macro <code class="attr">HXINCLUDE</code>
+<DD>
+Recursive descent operation requires very long
+<code class="sh">msrc</code> command lines.
+Placing those recursive options in a file saves a lot of typing,
+and command-line errors.
+This is where <code class="sh">hxmd</code>'s merged
+configuration option (<code class="opt">-o</code>) is specified.
+<!-- since it would be too
+    long to type on the <code class="sh">msrc</code> command line -->
+
+<P>
+For example we might need to capture just the transport attributes.
+We place the merged configuration option in a file ("Msrc.hxmd"):
+<blockquote class="file"><pre><code ># capture transport attributes
+-o "RSH_PATH ENTRY_DEFS ENTRY_LOGIN SSH"</code></pre></blockquote>
+
+
+<DT>Attributes specified with <code class="opt">-D</code>
+<DT>The list of hosts selected
+<DD>
+These are always captured using a merged configuration option
+(<code class="opt">-o</code>) specified for
+<code class="sh">hxmd</code>.
+We take this tactic since any host selection options
+(<code class="opt">B</code>,
+<code class="opt">E</code>, or <code class="opt">G</code>)
+might evaluate differently in the context of the subdirerectory.
+The merge option requires a list of the attributes to record:
+the application's needs dictate which ones to include.
+The resulting file is available in the attribute macro
+<code class="attr">HXMD_U_MERGED</code>.
+<P>
+See host we pass this file back to <code class="sh">make</code> below.
+
+<DT>Configuration files listed under <code class="opt">-C</code>
+<DT>Configuration file listed under <code class="opt">-X</code>
+<DT>Configuration file listed under <code class="opt">-Z</code>
+<DD>
+These are all available under attribute macros, for example
+<code class="attr">HXMD_OPT_C</code>.  They should be
+passed down to the recursive <code class="sh">msrc</code> instances
+with help from the <code class="param">makefile</code>, as needed.
+
+<DT id="pre_cmd">The <code class="attr">PRE_CMD</code> script hook
+<DD>
+This is the tie-point we use to trigger a call-back to the
+<code class="param">makefile</code> to update the files.
+<P>
+For example we might add these lines to "Msrc.hxmd"
+<blockquote class="file"><pre><code ># Provision and select a descend target from the makefile for each host:
+-D!PRE_CMD="make -f ${2} DOWN_CFG=-C\ HXMD_U_MERGED LINTO=${1} THOST=HOST TINTO=${5} ${3}_descend"</code></pre></blockquote>
+The parameters enclosed in culry braces are provided by
+<code class="sh">msrc</code> in the context of the update script,
+see <A href="#recbits">"Five more bits", just after this list</A>.
+
+<DT>A target in the <code class="param">makefile</code>
+<DD>
+Now that we've collected the components we need to iterate over
+the directories listed in the <code class="sh">make</code> macro
+<code class="make">SUBDIR</code> to update each one.
+Here is a sample target spell:
+<blockquote class="file"><pre><code ># Loop-back from Msrc.hxmd, for local or remote updates, at PRE_CMD.
+# Please find DOWN_CFG, THOST, TINTO, and LINTO defined in Msrc.hxmd.  --ksb
+X_OPT=
+remote_descend:
+	xapply ${X_OPT} 'cd %1 &amp;&amp; msrc ${DOWN_CFG} -E HOST=${THOST} -y INTO=${TINTO}/%1 -- make source' ${SUBDIR}</code></pre></blockquote>
+</DL>
+
+<P>
+The "remote_descend" target assures that the same target host list
+is provisioned for recursive instance with
+the merged configuration as <code class="opt">-C</code>.
+In this example (although I've not shown it) we know there is
+at least one file specified under <code class="opt">-Z</code>,
+so we pass it though.
+
+<H3 id="recbits">Five more bits of data you are going to need</H3>
+
+The example above (with the <code class="markup">remote_descend</code> target)
+is quite naive:  there are actually two cases that need to be
+provisioned: one for <code class="sh">msrc</code> in "local" mode
+(under <code class="opt">-l</code>) and one for "remote" mode.
+
+<P>
+The <code class="attr">INIT_CMD</code>,
+<code class="attr">PRE_CMD</code>, and <code class="attr">POST_CMD</code>
+have access to five shell parameters to help any recursive application
+of this technology function in both modes.
+Since shell parameter look exactly like <code class="sh">m4</code>
+macro parameters when written as "$1", "$2", etc. they need to be
+spelled as "${1}", "${2}", etc. to avoid being replaced with the
+empty string, or some random <code class="sh">m4</code> macro parameter.
+
+<P>
+These parameters make it way easier to recursively call
+<code class="sh">msrc</code>, <code class="sh">rdist</code> or
+<code class="sh">rsync</code> to deliver subdirectories, chain
+peer directories, or use a multi-stage engine for extremely
+complex tasks.  Here are the parameters:
+<DL>
+<DT><code class="markup">${1}</code> the local cache directory
+<DD>
+This is the directory (on the local host) which holds the any
+processed source.
+<dl>
+<dt>Under <code class="sh">msrc</code> in local mode
+(viz. under <code class="opt">-l</code>)
+<dd>
+In this case <code class="markup">${1}</code> is
+a random directory built for this host.
+This directory is removed after the
+<code class="param">utility</code> executes,
+so make use of it by saving it someplace,
+like in <code class="markup">${5}</code> on
+the <code class="attr">HOST</code>.
+<dt>Under <code class="sh">msrc</code> in remote mode
+<dd>
+In this case <code class="markup">${1}</code> is
+always set to "." (dot).
+There is no other cache directory engaged.
+<dt>Under <code class="sh">mmsrc</code>
+<dd>
+In this case <code class="markup">${1}</code> is
+set to the value of <code class="make">INTO</code>, which
+might be set to an alternate value forced under <code class="opt">-y</code>.
+</dl>
+<P>
+In any case the <code class="attr">PRE_CMD</code> hook is often used to
+finsh an update.
+For example any <code class="make">SUBDIR</code> updates are
+triggered by that hook.
+The value of this parameter is often prefixed on each
+name in SUBDIR to create a <code class="opt">-y</code> option for
+recursive instances of <code class="sh">msrc</code>
+(or <code class="sh">mmsrc</code>).
+<DT><code class="markup">${2}</code> the <code class="param">makefile</code> specified
+<DD>
+Either the value of the <code class="param">makefile</code> command-line
+parameter, or the value <code class="sh">msrc</code>
+(or <code class="sh">mmsrc</code>) selected from the available recipe files.
+<DT><code class="markup">${3}</code> the <code class="make">MODE</code>
+<DD>
+Either the value of the <code class="make">MODE</code>
+<code class="sh">make</code>
+macro, or the value <code class="sh">msrc</code>
+selected via the <code class="opt">-l</code> option.
+Under <code class="sh">mmsrc</code> this is always "local".
+<DT><code class="markup">${4}</code> the <code class="attr">ENTRY_LOGIN</code>@<code class="attr">HOST</code>  or <code class="attr">HOST</code>
+<DD>
+This is a convenience variable built from an <code class="sh">m4</code>
+<code class="markup">ifelse</code> expression which resolves to either
+the host we should target, or the login at that host when the
+attribute macro <code class="attr">ENTRY_LOGIN</code> is defined for the host.
+This is almost always used as a parameter to <code class="sh">ssh</code>,
+<code class="sh">rdist</code>, or <code class="sh">rsync</code> as
+a command-line specification for the target credentials.
+<DT><code class="markup">${5}</code> <code class="make">INTO</code>
+<DD>
+Either the value of the <code class="make">INTO</code>
+<code class="sh">make</code> macro, or the value
+<code class="sh">msrc</code> (or <code class="sh">mmsrc</code>)
+selected via the the default rule.
+This is likely used to tell some other process where to put
+the staged files under "remote" mode.
+</DL>
+
+<P>
+Some <code class="sh">hxmd</code> option file usually includes some of
+the above shell parameters in a recursive call to
+<code class="sh">make</code>.  For example
+<blockquote class="file"><pre><code ># send in the clowns
+-DPER_CMD='make -f ${2} LTG=${1} CRED="${4}" RTG=${5} ${3}_descend'</code></pre></blockquote>
+I only quoted ${4} because ENTRY_LOGIN could have a space in it,
+but that would be silly for a UNIX host. <!-- who said it was
+a UNIX host we were looking at? -->
+
+<h3 id="below">Avoid unwanted inheritance below</h3>
+
+In the example cases above the top-level directory sets the list of
+hosts for all descendent directories.  Without any code to
+intercept the <code class="env">HXMD_PASS</code> variable it
+will flow though the environment to
+every descendent <code class="sh">hxmd</code>.
+
+<P>
+The <code class="sh">hxmd</code> option <code class="opt">-z</code>
+removes <code class="env">HXMD_PASS</code> from the environment
+<em>after</em> it is read.  By placing that option in "Msrc.hxmd"
+we limit the effects of the file to 1 level of recursion:
+<blockquote class="file"><pre><code ># Limit our effect to 1 level
+-z</code></pre></blockquote>
+
+<P>
+Setting <code class="env">HXMD_PASS</code> to the empty
+string also removes any ancestorial baggage.
+
+<h3 id="descendex">A working example of descending into sub-directories</h3>
+
+The source for <code class="sh">mk</code>'s library is built
+with the tactics described above.  In this section we are going to
+put it all together to show how the three commands below build identical
+platform copies of the source for that directory
+(<code class="path">/usr/msrc/local/lib/mk</code>).
+
+<p>
+For this example we are going to simply construct the platform
+source in a known place in the local filesystem.  We're not
+going to install it, or act on it, just create it under
+<code class="path">/tmp</code>.
+
+<h4>The setup in the source</h4>
+
+There are two files in the source we need to look at: the
+<code class="sh">make</code> recipe file <code class="path">Makefile</code>,
+and the <code class="sh">hxmd</code> options file <code class="path">Msrc.hxmd</code>.
+
+<P>
+The <code class="sh">hxmd</code> options file is pretty standard
+in that is is always used to loop-back to the
+<code class="param">makefile</code>.
+Here is the file:
+<blockquote class="file"><pre><code ># Don't pass this down more than 1 level:
+-z
+#
+# Build an aggregated configuration to tell subdirs which hosts to process:
+-o "RSH_PATH ENTRY_DEFS ENTRY_LOGIN"
+#
+# Provision and select a descend target from the makefile for each host:
+-D!PRE_CMD="make -f ${2} DOWN_CFG=-C\ HXMD_U_MERGED`'ifdef(`HXMD_OPT_Z',`\ -Z\ HXMD_OPT_Z')`'ifdef(`HXMD_OPT_C',`\ -X\ HXMD_OPT_C')
+ LINTO=${1} THOST=HOST TINTO=${5} ${3}_descend"</code></pre></blockquote>
+<P>
+And here is a blow-by-blow analysis:
+<DL>
+<DT>-z
+<DD>
+We need to limit the effect to a single level with <code class="opt">-z</code>.
+This removes the <code class="env">HXMD_PASS</code> environment variable
+after <code class="sh">hxmd</code> reads it.
+<DT>-o "RSH_PATH ENTRY_DEFS ENTRY_LOGIN"
+<DD>
+This is an attempt to save the attributes that let us access the
+host to transmit files (via <code class="sh">rdist</code>).  If it
+doesn't work at your site you might have to add attribute names.
+<DT>-D!PRE_CMD="<i>...</i>"
+<DD>
+We are setting <code class="attr">PRE_CMD</code> for every host to
+update the descendent directories, but only for
+this instance of <code class="sh">hxmd</code>, not in the generated
+<code class="attr">HXMD_U_MERGED</code> file
+(notice the exclamation point markup).
+<DT>make -f ${2}
+<DD>
+We need to loop-back to the <code class="param">makefile</code> from
+whence we came, not the default <code class="sh">make</code> might choose.
+<DT>DOWN_CFG=-C\ HXMD_U_MERGED
+<DD>
+We know we always want to process the merged configuration as
+our primary configuration file.
+<DT>`'ifdef(`HXMD_OPT_Z',`\ -Z\ HXMD_OPT_Z')`'ifdef(`HXMD_OPT_C',`\ -X\ HXMD_OPT_C')`'ifdef(`HXMD_OPT_X',`\ -X\ HXMD_OPT_X')
+<DD>
+I needed an example of <code class="sh">m4</code> markup in this file,
+To explain how to quote it.
+This doesn't assume the specification of any
+<code class="param">zero-config</code>,
+<code class="param">config</code>, or
+<code class="param">ex-config</code> but when one is
+presented it passes it down as a <code class="opt">-Z</code>
+or a <code class="opt">-X</code> command-line option.
+That way we can still see any attributes we might need below.
+The empty <code class="sh">m4</code> quotes allow
+the <code class="markup">ifdef</code> to be abutted to
+the previous word, then the backslashes quote the spaces from the shell.
+<DT>LINTO=${1} THOST=HOST TINTO=${5}
+<DD>
+This records the local source cache, the present target host,
+and the final platform directory name for <code class="sh">make</code>.
+For a more direct use of
+<code class="sh">rdist</code> or <code class="sh">rsync</code>
+one would record <code class="markup">TCRED=${4}</code> to get a
+<code class="param">login</code>@<code class="param">host</code>
+term, in this case we rely on the structure below via recursion.
+<DT>${3}_descend
+<DD>
+This is the recipe we are going to envoke in
+the <code class="param">makefile</code> to complete the call-back:
+it expands to either "local_descend" or "remote_descend",
+depending on the options to
+<code class="sh">msrc</code> or <code class="sh">mmsrc</code>.
+</DL>
+
+<P id="twokeys">
+The recipe file holds those two key targets for descending into the many
+<code class="make">SUBDIR</code>'s this structure builds.  The first
+is active in "remote" mode:
+<blockquote class="file"><pre><code >remote_descend:
+	xapply ${X_OPT} 'cd %1 &amp;&amp; msrc ${DOWN_CFG} -E HOST=${THOST} -y INTO=${TINTO}/%1 -- make source' ${SUBDIR}</code></pre></blockquote>
+
+<P>
+The second is active in "local" mode:
+<blockquote class="file"><pre><code >local_descend:
+	xapply ${X_OPT} 'cd %1 &amp;&amp; mmsrc ${DOWN_CFG} -E HOST=${THOST} -y INTO=${LINTO}/%1 -- make source' ${SUBDIR}</code></pre></blockquote>
+
+<P>
+Both have about the same structure.  Here is a blow-by-blow analysis:
+
+<dl>
+<dt>xapply ${X_OPT} 'cd %1 &amp;&amp; <i>...</i>' ${SUBDIR}
+<dd>
+We use an <code class="sh">xapply</code> instance to
+iterate over each directory (we could do this in parallel, but let's not
+for the time being).  In each iteration we <code class="libc">chdir</code>
+into the directory and call either <code class="sh">mmsrc</code> or
+<code class="sh">msrc</code> to distribute the directory into
+the similar directory under our cache.
+
+<dt>msrc or mmsrc
+<dd>
+We can't use "<code class="sh">msrc</code> <code class="opt">-l</code>" to
+place a subdirectory's platform source in a known folder, because
+that always picks a local temporary name (as it might select more than
+a single host, and targeting the same directory for multiple hosts
+would be "poor form" at best).  So in the local recursion mode we
+must use <code class="sh">mmsrc</code> which does target a
+known local directory (<code class="make">INTO</code>).
+In remote mode use <code class="sh">msrc</code> to project the master source to
+each platform host's <code class="make">INTO</code> directory.
+
+<dt>${DOWN_CFG} -E HOST=${THOST}
+<dd>
+This is where we pickup the configuration attributes for the host
+we are updating.  We read the configuration file names from the
+data <code class="path">Msrc.hxmd</code> passed us (after it was
+run through an instance of <code class="sh">m4</code>, then passed
+through an environment variable and stuffed into a command line).
+
+<dt>-y INTO=${TINTO}/%1
+<dt>-y INTO=${LINTO}/%1
+<dd>
+We force the directory to be delivered to the correct location.
+In local mode we hang it under the local cache <code class="make">LINTO</code>,
+while in remote mode we deliver it to <code class="make">TINTO</code>.
+
+<dt>-- make source
+<dd>
+Using a double-dash option separator we move to the
+<code class="param">utility</code> specification and run a
+<code class="sh">make source</code> to ask the platform
+recipe file to do any other actions it needs to complete the
+source file updates.
+</dl>
+
+<h4 id="msrc-built">Built with <code class="sh">msrc</code> in remote mode</h4>
+
+The command below specifies that <code class="sh">msrc</code> should
+draw the host with the shortname "svr6" from <code class="path">dmz.cf</code> to
+send the current directory to <code class="path">/tmp/mk.remote</code>, then do nothing
+on the remote host:
+<blockquote class="file"><pre><code >msrc  -C dmz.cf -E SHORTHOST=svr6 -y INTO=/tmp/mk.remote :</code></pre></blockquote>
+It happens that "svr6" is the host I'm using, so we end up sending the
+platform copy back to <code class="path">/tmp</code> on localhost.
+
+<h4 id="msrc-l-built">Built with <code class="sh">msrc</code> in local mode</h4>
+In this example we build the platform directory under a temporary
+name, then <code class="sh">cp</code> the whole deal to
+<code class="path">/tmp/mk.local</code> using
+<code class="sh">msrc</code> in local
+mode (under <code class="opt">-l</code>), the other parameters are the same:
+<blockquote class="file"><pre><code >msrc -lC dmz.cf -E SHORTHOST=svr6 cp -rp . /tmp/mk.local</code></pre></blockquote>
+
+<h4 id="mmsrc-built">Built with <code class="sh">mmsrc</code> (local only)</h4>
+When you don't have <code class="sh">msrc</code> compiled yet you can
+still use <code class="sh">mmsrc</code> to provide a local platform
+copy:
+<blockquote class="file"><code >mmsrc -C dmz.cf -E SHORTHOST=svr6 -y INTO=/tmp/mk.mmsrc :</code></blockquote>
+
+<P>
+All of the above commands build an identical platform copy under
+<code class="path">/tmp</code>.
+What you do with the generated files is up to you:
+<code class="sh">tar</code> them, RPM them,
+cross-compile them,
+<code class="sh">rsync</code> them, or whatever you need to do to
+get them to the correct place on the correct host.
+
+<h3 id="megaquote">Tips for quoting Makefile.host</h3>
+
+<P>
+Mixing <code class="sh">m4</code> marked-up and shell quotes in a
+<code class="sh">make</code> recipe is hard do, read, and follow.
+Since we depend on such markup in "Makefile.host" we need to have
+a common tactic to make this clearer: the best one I can recommend is to
+<code class="markup">changequote</code> to
+some other quotes (say square brackets) then build macro for each
+<code class="sh">m4</code> quote character
+(<code class="markup">`</code> and <code class="markup">'</code>),
+then change quotes back.
+<blockquote class="file"><pre><code >`# head comment with revision control markup
+# near the top of Makefile.host
+'changequote([,])dnl
+[O=`
+C=']
+changequote(`,')dnl
+`# the rest of the makefile
+
+# at the end
+'dnl</code></pre></blockquote>
+Then I use <code class="markup">${C}</code> and <code class="markup">${O}</code>
+in any recipes the need quotes.
+That way <code class="sh">make</code> expands them for the shell, which
+actually helps a lot.  By the wacky rules of <code class="sh">make</code>
+macros you <em>could</em> use the slightly shorter
+<code class="markup">$C</code> form, but that confuses the
+maintainer later (who will read <code class="file">$Csome</code> as
+if the macro expanded were "Csome" every time in the example below).
+
+<P>
+That put the whole of the file in standard <code class="sh">m4</code>
+quotes.  To reveal a macro value we <em>explicitly dequote</em> it.
+In the next example I include single quotes around "some long shell command"
+with the <code class="make">C</code> macro defined above, and reveal the
+value of <code class="attr">MY_LIST</code> as the parameter list to
+<code class="sh">xapply</code>:
+<blockquote class="file"><pre><code >target:
+	xapply ${C}some long shell command${C} 'MY_LIST`</code></pre></blockquote>
+When expanded by <code class="sh">m4</code> yeilds (for example):
+<blockquote class="file"><pre><code >target:
+	xapply ${C}some long shell command${C} list1 list2 list3</code></pre></blockquote>
+When expanded by <code class="sh">make</code> for "target" yeilds:
+<blockquote class="file"><pre><code >	xapply 'some long shell command' list1 list2 list3</code></pre></blockquote>
+
+<P>
+In the manual page for <code class="sh">hxmd</code> there are some
+notes (under BUGS) about quoting <code class="sh">m4</code> on the
+command-line.  Those still apply to commands in
+any <code class="make">MAP</code>'d file.
+
+<H2 id="varpayload">To send a variable number of payload files</H2>
+
+The older version of the master source was built on top of
+<code class="sh">distrib</code>.  This allowed a very versatile
+mark-up in the "Distfile" to send different lists of
+files to platform hosts.
+A similar effect in the 2008 version of the structure is possible
+in three ways:
+by indirection through a local mode directory,
+by command-quoting the <code class="make">SEND</code>
+(or <code class="make">MAP</code>) macro value, or by
+using a <code class="param">yoke</code> to set those same macros
+from the command-line.
+
+<P id="novar">
+This tactic is <em>not</em> always the right option.  Often it
+is far easier to send an empty or unwanted file to the platform
+directory simply to ignore it in the generated recipe file.
+Or to use a template file that <code class="markup">include</code>'s
+or <code class="markup">paste</code>'s the correct contents
+into a common file, rather than try to pick the right file to
+send by name.
+
+<P>
+When the data sent to one host should be protected from disclosure
+to other hosts or the size of the payload is an issue, then it is
+worth it to build the extra logic to project the exact payload
+needed.
+
+<P id="visitN">
+In the next sections we explain the data-flow with examples of
+real code.  This also provides some insight with regaurd to
+replacing another feature of <code class="sh">distrib</code>:
+that program would process a single host multiple times if the
+host were listed in a configuration file more than
+once (<code class="sh">hxmd</code>-based program never do that).
+
+<h3 id="varcmd">Command output to set SEND or MAP</h3>
+
+If we have a shell program that outputs the correct
+<code class="make">SEND</code> file list, then we can just
+set the macro as:
+<blockquote class="file"><pre><code >SEND=`generate-send`</code></pre></blockquote>
+<P>
+Since <code class="sh">msrc</code> uses a shell <code class="sh">echo</code>
+command to output "${SEND}" the shell will evaluate the command-quotes
+to run <code class="sh">generate-send</code>.  The output must be the
+list of files without any extra noise.
+
+<P>
+This tactic doesn't unsually work in practice.  That's because the
+list of files must be the same for every host, as the recipe is
+consulted for configuration information <em>once</em> for all the hosts updated by a single instance of <code class="sh">msrc</code>.
+It does work if the list of files is variable based on something other
+than an attribute of each host, for example the time of day, or
+the group memebership of the administrator.
+
+<h3 id="varyoke">Using a yoke for indirection</h3>
+
+In this case we are going to use the <code class="sh">msrc</code>
+command-line to select both the target hosts and the files to
+send to (map for) them at the same time.
+In which case we can assume that those parameters are
+internally consistent with each other.
+
+<P>Examine the recipe file with contents of:
+<blockquote class="file"><pre><code ># Revision control information
+# Note that this recipe requires -y options for INTO and MAP
+INTO= nonexistent directory: set on the command line</code></pre></blockquote>
+If we run <code class="sh">msrc</code> without
+any <code class="param">yoke</code> and with that as
+the control recipe, <code class="sh">msrc</code> outputs an informative error:
+<blockquote class="file"><pre><code >msrc: Makefile: "INTO" should have exactly one value, not 8</code></pre></blockquote>
+This prevents anyone from using the recipe without the driver
+command that yoke's <code class="make">INTO</code> and any
+other macros needed.  Admittedly the forced error message is
+not as clear as it could be.
+<P>
+To get a better error message use the Easter Egg that (when
+<code class="make">INTO</code> has too many words and the first
+word starts with an underscore) outputs the list of words as an
+error message:
+<blockquote class="file"><pre><code >INTO= _Please set INTO and MAP on the command line</code></pre></blockquote>
+Which outputs a much clearer message:
+<blockquote class="file"><pre><code >msrc: Makefile: Please set INTO and MAP on the command line</code></pre></blockquote>
+This doesn't keep the command-line from <em>only</em> setting
+<code class="make">INTO</code> without setting
+<code class="make">MAP</code>, but it is better than nothing.
+
+<P>
+The details of the driver are explored below, as we use
+"Makefile.host" to drive "Makefile.remote".  You might otherwise use
+<code class="sh">mk</code> to embed the driver code in comments in
+the recipe file itself, or use a recipe in that same file to drive
+<code class="sh">msrc</code>.
+
+<h3 id="varindirect">Local mode indirection</h3>
+
+When <code class="make">MODE</code> selects the "local" tactic
+no data is sent directly to the platform host, rather the files
+to populate the remote directory are copied to a temporary directory
+(this mode is also set via <code class="opt">-l</code> from the command-line).
+While the list of the files copied to that staging area may be fixed
+the contents of the <code class="make">MAP</code>'d file are mapped with
+<code class="sh">m4</code> as usual.
+<P>
+At that point it is up to the coder what to do next.  For example one
+might build an archive of the files for later delivery, or create a
+DVD burn to send to an off-site facility.  Those options are not
+in-scope for this document.  Below we'll consider the case where some
+additional processing is to be finished locally before we engage the
+target machine.
+<P>
+We should, then, build a new control recipe file to drive another instance of
+<code class="sh">msrc</code> with values of <code class="make">MAP</code> and
+<code class="make">SEND</code> of our choosing.  That is to say that the
+file named "Makefile.host"  is not a platform recipe, it is another
+<code class="sh">msrc</code> control file, with <code class="sh">m4</code>
+mark-up expanded to set the macros we need.
+
+<P>
+In the <A href="#leverage">leverage section</A> above I mentioned
+the use of "Makefile.host" to send a platform recipe file that did
+more than just pun the control recipe file.  In this case
+we'll need another <code class="sh">make</code> recipe file
+to drive the platform level after we use "Makefile.host" to drive
+the configured directory on the local host.
+We'll send that file over (mapped or plain) then copy it into
+"Makefile.host" as a generated file just before we push to
+the target platform.
+<P>
+So to count all the <code class="sh">make</code> recipe files needed:
+<dl>
+<dt>Makefile
+<dd>The driver to gather the files and configure the local mode
+instance of <code class="sh">msrc</code>.
+<dt>Makefile.host
+<dd>The configuration file for the remote mode instance of
+<code class="sh">msrc</code>.
+<dt id="remote">Makefile.remote or Remotefile.host
+<dd>Renamed by a recipe in the the previous file to become a
+new "Makefile.host", which is then sent to the platfrom
+to take any actions required.
+</dl>
+
+<h4 id="indirexam">An example of local indirection</h4>
+
+Getting back to the fact that <code class="sh">distrib</code> would
+process a host more than once: we have a system of
+<code class="sh">openvpn</code> links between data centers that
+we want to configure from a secure repository.
+
+<P>
+The old version of this structure used <code class="sh">distrib</code>, so it
+had a line in the configuration file for every host and VPN end-point
+combination (some hosts have more than one end-point): for example
+this file shows "svr10" has 3 VPN ends (green, blue, and red) while
+"svr20", "svr30" and "svr40" each hold one:
+<blockquote class="file"><pre><code >%HOST VPN DIALME TUNNEAR TUNFAR DESTNET KEYFILE
+svr10 green svr20 ...
+svr20 green svr10 ...
+svr10 blue svr30 ...
+svr30 blue svr10 ...
+svr10 red svr40 ...
+svr40 red svr10 ...</code></pre></blockquote>
+<P>
+It is impossible to make <code class="sh">hxmd</code> parse this file
+to give us any value to <code class="attr">VPN</code> that holds all
+three values.  Rather must reformat the file to include both the
+<code class="attr">HOST</code> and the <code class="attr">VPN</code> in
+the same unique token, call this <code class="file">vpn.cf</code>:
+<blockquote class="file"><pre><code >%ENDPT DIALME TUNNEAR TUNFAR DESTNET KEYFILE
+svr10:green svr20 ...
+svr20:green svr10 ...
+svr10:blue svr30 ...
+svr30:blue svr10 ...
+svr10:red svr40 ...
+svr40:red svr10 ...</code></pre></blockquote>
+If we know which host we want, we can raise
+the <code class="attr">ENDPT</code> with a guard:
+<blockquote class="file"><code >-k ENDPT -Cvpn.cf -G "ifelse(0,index(ENDPT,$host:),ENDPT)"</code></blockquote>
+that spell selects all the <code class="attr">ENDPT</code>'s that impact the
+host named in the environment variable <code class="env">host</code>.
+
+<P>
+To use that to build the VPN configurations for each of the 4 hosts
+we'll need a <code class="path">Makefile</code> with some special glue:
+<blockquote class="file"><pre><code >MODE=local
+INTO=/usr/src/local/etc/openvpn
+SEND= generic.conf openvpn.sh vpn.cf *.key Makefile.remote
+IGNORE= README
+...</code></pre></blockquote>
+This recipe tells <code class="sh">msrc</code> to process the strucutre
+into a local stage directory.
+Then we need a <code class="path">Makefile.host</code> with some real
+power in it, here is the special parts:
+<blockquote id="indirHost" class="file"><pre><code >`MODE=local
+SHELL=/bin/sh'
+changequote([,])dnl
+G=`
+changequote(`,')dnl
+`MODE=remote
+IGNORE= generic.conf list Makefile.remote
+GEN=    list Makefile.host
+SOURCE= Makefile rc openvpn.sh
+
+all clean dirs install restart: Makefile.host
+	toSend=${G}tr -s " \\n\\t" "   " &lt;list${G};\
+	msrc -y "INTO=$$REM_INTO" -y "SEND=openvpn.sh $$toSend" -C'HXMD_U_MERGED` -E HOST='HOST` make $@
+
+Makefile.host: Makefile.remote list
+	rmdir rc.d
+	cp Makefile.remote $@
+
+list: vpn.cf
+	hxmd -k ENDPT -Cvpn.cf -G "ifelse(0,index(ENDPT,'HOST`:),ENDPT)" -F2 \
+		"echo %[1:\$$].conf ifdef(\`KEYFILE',\`defn(\`KEYFILE')',\`\`%[1:\$$].key'')" ENDPT &gt;$@
+	xapply -f "make %[1 1]" $@
+
+purple.conf: generic.conf vpn.cf
+	hxmd -k ENDPT -Cvpn.cf -E "ENDPT='HOST`:purple" "cp %1 $@" generic.conf</code></pre></blockquote>
+<P>
+And the blow-by-blow explaination:
+<dl>
+<dt>G=`
+<dd>
+We drop into square bracket quotes to stash a command quote (backquote)
+into the macro <code class="make">G</code>.  I don't like to
+<code class="markup">changequote</code>'s all over the place, this
+allows <code class="sh">make</code> to hide these from
+<code class="sh">m4</code>.
+<dt>GEN=    list Makefile.host
+<dd>
+These two files are built in the local staging directory.
+<dl>
+<dt><code class="path">list</code>
+<dd>Holds the list of VPN configuration files for this host
+<dt><code class="path">Makefile.host</code>
+<dd>A copy of <code class="path">Makefile.remote</code> which
+gets mapped to the target host
+</dl>
+<dt>IGNORE= generic.conf list Makefile.remote
+<dd>
+We don't need to send some of our work files to the target host,
+they don't need to know how we got the payload to them.
+<dt>all clean ...
+<dd>
+Read the prerequisites first.
+<dt>Makefile.host:
+<dd>
+We just copy this from <code class="path">Makefile.remote</code>, in light of
+that name change we'll map it on the way to the target host.
+<dt>list:
+<dd>
+After we've been mapped the <code class="attr">HOST</code> has
+been replaced with our hostname, so the guard raises all the
+<code class="attr">ENDPT</code>'s that we need to configure.
+Then with a blinding combination of quotes, the dicer, and <code class="sh">m4</code>
+markup we produce the list of VPN configuration file and keyfiles we need
+to process this host.
+Each as a pair on a line in the <code class="path">list</code> file.
+<P>
+A note on the blinding quotes: first the command is expanded from
+<code class="path">Makefile.host</code> via <code class="sh">m4</code>
+to replace <code class="attr">HOST</code> with the target hostname.
+That removes the outermost level of <code class="sh">m4</code> quotes.
+Then <code class="sh">make</code> expands dollar macros and removes backslash
+continued newlines (so "$$" becomes "$" and "${G}" becomes "`").
+Then the shell dequotes the double-quotes (so "\$" becomes "$" and "\`" becomes "`").
+Then <code class="sh">m4</code> runs again (via <code class="sh">msrc</code>)
+to replace <code class="attr">KEYFILE</code>.
+Lastly as we call <code class="sh">echo</code> we treat the expansion of
+<code class="attr">ENDPT</code> as "%1" in the dicer, using the
+expression "%[1:$]" to select the VPN name from (ENDPT == HOST:VPN).
+<P>
+To build each necessary configuration file we use
+<code class="sh">xapply</code> to recursively call
+<code class="sh">make</code>.
+(We assume the key files are all present, they could be included in
+the <code class="sh">make</code> recursion.)
+<dt>purple.conf:
+<dd>
+An example target to create one of the configuration files from the
+<code class="path">generic.conf</code> and the <code class="path">vpn.cf</code>
+files.
+<P>
+If you have a <code class="sh">make</code> that does wildcard
+matches (like GNU make) you can make this rule very compact.
+<dt>all clean ...: Makefile.host
+<dd>
+We use the <code class="make">G</code> macro to command quote a
+<code class="sh">tr</code> to turn the <code class="path">list</code>
+into a shell variable without any embedded newlines, then recursively
+call <code class="sh">msrc</code> with a <code class="param">yoke</code>
+to set <code class="make">INTO</code>, and <code class="make">SEND</code>.
+We gather our attributes from a merged configuration file and
+transfer the target we were given to the <code class="sh">make</code> on
+the remote end.
+</dl>
+
+<P>
+To debug any code you craft like this you'll need a few tricks.
+The best is to limit your testing to a single host, then ask
+<code class="sh">mmsrc</code> for a <code class="param">utility</code> of:
+<blockquote class="file"><code >/bin/sh -c "/bin/sh -i &lt;/dev/tty &gt;/dev/tty"</code></blockquote>
+Unless you set <code class="opt">-P1</code>, in that
+shell $<code class="env">ptbw_list</code> is the temporary directory, and
+you'll be able to use most UNIX tools to view files, and test recipes
+in that directory.
+You should copy out anything you need to examine then exit that shell,
+it's not a safe place to work.
+
+<h3 id="cache">Msrc and cache directories for run-time content</h3>
+
+If we want to send real-time content to every host
+we could write markup to <code class="markup">esyscmd</code> a
+shell command based on attributes of the host, like:
+<blockquote class="file"><code >esyscmd(</code><code class="param">some-script</code><code > HOST LOC)dnl</code></blockquote>
+But that has an obvious limitation: the output generated must
+be valid <code class="sh">m4</code> markup, because it will be
+processed by <code class="sh">m4</code> before we see it.  Less obvious is
+that older macro processors lack the <code class="markup">esyscmd</code> macro.
+
+<P>
+Via <code class="sh">m4</code>+<code class="sh">make</code>
+the <code class="sh">hxmd</code> facility for cache directories
+has configuration powers beyond what <code class="sh">msrc</code>
+can easily access though <code class="sh">m4</code>, which
+is <strong>very</strong> useful in some cases.
+(See <A href="../hxmd/hxmd.html#cacheMarkup">Cache control markup</A> in
+the <code class="sh">hxmd</code> HTML page for a refresher.)
+
+<P>
+If we build a directory called <code class="path">First.host</code>, then
+build a cache control recipe file in
+it (always called <code class="path">Cache.m4</code>):
+<blockquote class="file"><pre><code >`# turn this hxmd cache into an echo statement
+
+'HXMD_CACHE_TARGET`:
+        echo "'HXMD_CACHE_TARGET`"
+
+FRC:
+'dnl</code></pre></blockquote>
+
+<P>
+To test that with <code class="sh">hxmd</code> I might run:
+<blockquote class="file"><pre><code >$ hxmd -Cauto.cf -E HOST=localhost cat First.host
+First
+$ hxmd -Cauto.cf -E HOST=localhost cat <em class="new">First.host/</em>
+localhost
+</code></pre></blockquote>
+
+<P>
+Notice that the rules of <code class="sh">hxmd</code> make the
+target name name for the request with the slash on the end different from
+the request without it.
+Since <code class="sh">msrc</code> will <strong>never</strong> put
+the slash on the end you can't get to the (possibly better) case
+where the key macro (hostname) is the target, directly.  If you put
+the slash on the end of a <code class="make">MAP</code>'d file,
+<code class="sh">msrc</code> removes it because that would map
+the name to the empty string on the target host (by the path rules
+that <code class="sh">msrc</code> uses).
+[For that same reason the filename "<code class="path">.host</code>" is
+not allowed to map to an empty filename.]
+
+<P>
+So every cache directory <code class="sh">msrc</code> processes requests
+the name of the directory (with the last dot-extension removed, if any).
+When we stick to the common naming of appending ".host" to all the
+mapped items, we know the name of the recipe we are making is that name.
+That reduces the task to coding a recipe with a shell command (from
+<code class="sh">m4</code>) to output the data we want in the file,
+using the attribute macros defined for the target host.
+It is fine to use the <code class="attr">HXMD_CACHE_TARGET</code>
+macro to make the recipe more generic, so when someone renames the directory
+the spell still works (which is a good thing).
+
+<P>
+The prototype <code class="path">hosts</code>
+<A href="../hxmd/hxmd.html#cacheHosts">example in the
+<code class="sh">hxmd</code> HTML document</A> would be
+included automatically in the <code class="make">MAP</code> macro in
+the control recipe, as the name proposed was <code class="path">hosts.host</code>.
+In the platform recipe a command to install the resulting file into
+<code class="path">/etc/hosts</code> would be easy.
+The configuration of any new machine is built by constucting
+similar recipes for each of its key files.  There is never a
+good reason to build a machine "by hand" when automation coded
+and maintained can do this mundane work for you.
+
+<P>
+This payload might be delivered to the host as an archive, a script,
+or as a raw <code class="sh">rsync</code> -- but the key is that
+the generation of the right "bits" is not only possible, but easier
+than the alternative error-prone typing.
+To put that into a punned recipe:
+<blockquote class="file"><pre><code ># $Id: ...
+# punned recipe to install a basic personal file-set on a host
+
+INTO=/tmp/new-host
+GEN=
+SOURCE= Makfile
+#SEND, MAP, IGNORE set by msrc
+
+install: FRC
+	install -m 644 motd /etc/motd
+	install -m 644 hosts /etc/hosts
+	install -m 644 named.conf /etc/named.conf
+	<I># ...</I>
+	. ./local-post-install
+
+source: ${SOURCE} ${GEN}
+
+FRC:
+
+# classic hook
+__msrc: source</code></pre></blockquote>
+<p>
+This recipe is abstracted from the one I use to configure new machines.
+Each file (e.g. <code class="path">motd</code>) is built by a local
+cache directory or mapped file, the <code class="path">local-post-install</code> script is
+built from a file which looks for class-based and os-based
+logic from some other directories.
+This constructive system allows me to create as many
+virtural or physical hosts as I need (and have resources to provision)
+rather than being limited by my keybord skills.
+
+<h2 id="addHosts">Adding implied hosts</h2>
+
+In some cases an update to a host implies that the same (or a related)
+update must also happen to other hosts.  I break out four cases
+here that I've used.  You can remember then with an acronym "PLUS".
+
+<P>
+Before you implement any of these you should first try
+the generic script version.
+The <code class="path">dmz</code> <A href="dmz.sh">script</A>
+lets you specify the service you want to update rather than the host
+under the <code class="opt">-S</code> option:
+<blockquote class="file"><pre><code >$ dmz <em class="new">-S apache</em> make restart</code></pre></blockquote>
+
+<P>
+Before you go to the trouble to implement one of the tactics below
+you should give the script idea a chance.  When that doesn't work
+move up to the spells below.
+
+<P>
+Redirecting a request to update a single host to <em>really</em> update
+multiple hosts might be crossing that fine-line between clever and
+stupid: the rule of least astonishment says that
+this <strong>could</strong> really be the wrong thing to do.
+I'm going to show you how to do it, because it is a practical spell and
+because you should be the judge of clever at your site.
+Keep in mind that it would be best to document this in
+the control recipe and any <code class="path">README</code> or
+other site specific lore.
+
+<h3 id="addPosse">P - Form a posse and update them all</h3>
+
+Using this posse idea from
+<A href="../../sbin/hxmd/hxmd.html#posseMethod"><code class="sh">hxmd</code>'s Forming a posse</A> we would like to check to see if we have at
+least 1 host from the posse, and when we do we need to push to
+them all, which we call a "posse update".
+So the problem we are trying to solve might be stated as,
+"When any member of the posse is updated we need to update them all."
+
+<P>
+For example updating the master <code class="file">site.cf</code>
+file used to run the master source structure itself at your site: when
+updated in production the same file may have to be update on
+the "failover" host as well as the primary one.  There are many ways to
+provide that backup service, but it would be clever if we could (cheaply)
+make <code class="sh">msrc</code> provide support for itself.
+(In fact the best tools usually "eat their own dog food".)
+
+<!-- a C compiler is coded in C, make is built with make, but
+  ~~ Ada devl environments are coded in C, as is perl, and Java.
+  ~~ It makes you wonder why these lines didn't follow BCPL's
+  ~~ example.  Even the really primative C compilers were coded
+  ~~ in a simpler version of C (than they accpted). - ksb
+  -->
+
+<P>
+For the posse case we need to build list of all the members of the posse
+as a prerequisite to the push (in the control recipe).
+Then in the <code class="path">Msrc.hxmd</code> we can include that
+file in the selection list, if the target host is also in the posse.
+For this example I'll used the service "silver", to do that let's
+add to the local control recipe:
+
+<blockquote class="file"><pre><code >CFG= site.cf
+SOURCE=
+GEN= silver.posse
+
+clean: FRC
+	rm -f ${GEN}
+
+silver.posse:
+	posse silver ${CFG} &gt;$@
+
+source: ${SOURCE} ${GEN}
+# hook
+__msrc: source
+</code></pre></blockquote>
+<P>
+In <code class="file">Msrc.hxmd</code> we include a guard to
+accept any host, and possibly add the whole posse when
+we find any posse member:
+<blockquote class="file"><pre><code ># $Id: ...
+-G "HOST ifelse(yes,SERVICES(silver),`include(silver.posse)')"
+</code></pre></blockquote>
+
+<P>
+This doesn't exclude hosts that lack the service from getting the push,
+but when they get the push we don't tell the posse about it.  With
+a simple restatement of the guard we can exclude those that are not
+in the possie (move the <code class="markup">HOST</code> into the
+then-part of the <code class="markup">ifelse</code>).
+
+<P>
+When we apply a <em>different configuration file</em> to this structure
+we may trigger a bug: the <code class="path">silver.posse</code> file
+may not be updated.  Since any copy from a previous build may still
+exist in the directory (no <code class="file">make clean</code> having
+been executed).  Similarly parallel builds with other admins my
+remove or update the common file while it is in use.
+
+<P>
+As long as the <code class="markup">clean</code> target removes the
+<code class="path">silver.posse</code> file this should work for any posse
+based on a fixed service name.  And it is still less error prone than
+no automation at all.
+
+<h3 id="addLocal">L - Local indirect update of hosts</h3>
+
+The previous tactic has some limitations that we can fix by using a
+local mode push to build the posse list, and by including an
+<code class="sh">hxmd</code> cache directory to select the hosts
+we need to chain.  The cache directory becomes the posse list
+so that we don't need a prerequisite file on
+<code class="markup">__msrc</code> which can become stale.
+
+<P>
+By telling <code class="sh">msrc</code> that a directory named
+<code class="path">Addlist.host</code> should be included in
+<code class="make">MAP</code>:
+<blockquote class="file"><pre><code ># $Id:...
+
+MODE=local
+MAP=Addlist.host
+
+...</code></pre></blockquote>
+<code class="sh">hxmd</code> turn that directory into a file
+with the output of the target <code class="markup">Addlist</code>, which
+is the name of the directory with the ".host" removed from the end:
+<blockquote class="file"><pre><code ># hxmd -I $PWD -Csite.cf -E HOST=sulaco.example.com <em class="new">cat Addlist.host</em>
+sulaco.example.com
+nostromo.exmaple.com</code></pre></blockquote>
+
+<P>
+This means that under <code class="sh">msrc</code> we'll get a file named
+<code class="sh">Addlist</code> with a list of the hosts we want to
+include in the push.  To use that list we'll combine it with the
+<code class="attr">HXMD_U_MERGED</code> list in a recipe on the local
+host, via local mode.  Here is a control make recipe
+(named <code class="sh">Msrc.mk</code>)
+<blockquote class="file"><pre><code ># $Id: ...
+<em class="new">MODE=local</em>
+INTO=/tmp/_unused
+MAP=    Addlist.host Makefile.host
+SEND=   Makefile.remote
+
+GEN=
+SOURCE= Msrc.mk Makefile.remote Makefile.host
+
+clean: FRC
+        rm -f ${GEN}
+
+source: ${SOURCE} ${GEN}
+
+FRC:
+
+__msrc: source</code></pre></blockquote>
+
+<p>
+The above local control recipe sends the current directory to
+a temporary directory under $<code class="env">TMPDIR</code> on
+this host.  From there the processed <code class="sh">Makefile.host</code>
+uses both <code class="attr">HXMD_OPT_C</code> and
+<code class="path">Addlist</code> as configuration files for
+a recursive copy of <code class="sh">msrc</code>.  It sends to all the host
+defined in both of those files, with additional attributes from the
+original configuration files provided in <code class="attr">HXMD_OPT_Z</code>
+and <code class="attr">HXMD_OPT_X</code>.
+
+<P>
+That leaves the <code class="path">Makefile.host</code> to
+send the payload to the hosts we've selected and added.
+Here is a fake one that just outputs the names of the hosts it should visit:
+<blockquote class="file"><pre><code >`# $Id: ...
+list:
+        echo 'HOST` &gt;&gt;Addlist
+        <em class="new">efmd -C 'HXMD_OPT_C`:Addlist -B2 -L</em>
+        rm -f Addlist
+'dnl</code></pre></blockquote>
+
+<P>
+The logic here is that we want to send to all the hosts in the
+<code class="path">Addlist</code> <strong>plus</strong> the target host.
+When we are done (replace the <code class="sh">efmd</code> call with
+a call to <code class="sh">msrc</code> to actually send the payload)
+we need to remove the modified <code class="sh">Addlist</code> so
+the next itteration of the cycle doesn't pick up the changed file.
+The union operation under <code class="opt">-B2</code> is the key-stone,
+we can use any attribute from the configuration file, or add the logic
+to include any <code class="opt">-X</code> and <code class="opt">-Z</code>
+files, to chain to the desired target in
+<code class="sh">Makefile.remote</code>.
+
+
+
+<h3 id="addUniform">U - Uniform addition of an audit host</h3>
+
+In this case we want to notify an audit host (or facillity) of
+every push.  There are several ways to do this, but the most common is
+to setup a host with a <code class="attr">ENTRY_DEFS</code> file
+that just logs the access then continues the normal process.
+(The host must have disk space to hold all of
+the pushed platform data, which is what you want for an audit.)
+
+<P>
+The host is always included by forced <code class="opt">-C</code> and
+<code class="opt">-Y</code> options in <code class="path">Audit.hxmd</code>,
+which is usually a symbolic link to a common file.
+
+<P>
+If you want to log what was run (and still run it) you can cheat by
+using <code class="sh">ptree</code> or <code class="sh">ps</code> to
+find the command-line of the running script then continue the
+normal data-flow.
+The <code class="sh">cd</code> command after the name of
+our script is the target directory that all the other hosts updated.
+For example we hook into the <code class="attr">ENTRY_DEFS</code>
+with a command like:
+<blockquote class="file"><pre><code >#!/bin/ksh
+ptree | grep \ `pwd` | <em class="new">logger ...</em>
+. /usr/local/lib/distrib/local.defs</code></pre></blockquote>
+
+<P>
+If you <strong>don't</strong> want to run the command on the audit host we should
+tune the <code class="sh">ssh</code> configuration apropriately:
+the target account traps the incoming command-request to
+look at <code class="env">SSH_ORIGINAL_COMMAND</code>:
+you'll have to allow the incoming <code class="sh">rsync</code> and
+log the incoming shell command-line.  For example to test this build a script
+named <code class="path">auditMe</code>:
+<blockquote class="file"><pre><code >#!/bin/sh
+date
+pwd
+env
+exit 0</code></pre></blockquote>
+
+Then edit the test account's <code class="path">.ssh/authorized_keys</code>
+to include a <code class="markup">command=./auditMe</code> prefix on
+the key you are using.  When you ssh into the machine you should
+see output like:
+<blockquote class="file"><pre><code >Tue Aug 10 04:30:00 UTC 2010
+/home/8930/ksb
+_=/usr/bin/env
+SSH_CONNECTION=10.7.5.54 53447 10.7.5.70 22
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/home/sac1/ksb/bin
+SHELL=/bin/ksh
+USER=ksb
+SSH_AUTH_SOCK=/tmp/ssh-tnP1nwpI0q/agent.78724
+SSH_ORIGINAL_COMMAND=<em class="new">uptime</em></code></pre></blockquote>
+
+<P>
+To fix that to our purposes we need to trap a command that
+matches <code class="markup">rsync --server</code> and let it
+run (maybe in dry-run mode, with the output logged).  Any other
+command we need to just log as-is.
+
+<P>
+That creates a fair audit trail on the host you added.  Like most
+audit systems it can be defeated, but it is way better than nothing.
+
+<h3 id="addSteps">S - Subdirectory stepwise refinement</h3>
+
+In this tactic we for the whole process in orderly process: from
+one subdirectory to the next.  Using the same logic we built
+for subdirectory <A href="#recursion">recursion</A> we visit
+the directoried in <code class="make">SUBDIR</code> in the order
+specified in the control recipe.  Each of those tasks may use
+a different configuration file (one based on an attribute of the
+current target element) to pick a list of new targets.
+
+<P>
+I'm not going to build a long example, since it requires a lot of
+context.
+
+<P>
+This tactic includes any lateral ("L shaped") push from a posse
+leader to her members: for example having a single compile host
+build the binary files for similarly configured hosts, then
+push the <code class="markup">install</code> target to those
+hosts after a successful compile.  In other cases we might just
+<code class="sh">rsync</code> or <code class="sh">rdist</code>
+the installed files to the rest of the posse (which is what
+<code class="sh">distrib</code> was meant to do).
+
+<h3>The order these pushes</h3>
+
+See <code class="sh">hxmd</code>'s
+<A href="../hxmd/hxmd.html#order">HTML document under</A> under
+"What order are hosts processed in?" for details.
+
+<P>
+In addition to the collation available in the selection phase of
+<code class="sh">hxmd</code> processing we could use a
+cache directory to produce a new configuration file with the
+elements sorted by some external program, then feed that list
+back into another instance of <code class="sh">msrc</code>,
+but I've never had to do that.
+
+<h3 id="opt-m">I need to process a cleanup action after a posse push or cached update</h3>
+
+The best way to process a cleanup action after a complex posse
+push is to use the <code class="opt">-m</code> option with 2
+<code class="sh">make</code> <code class="param">targets</code>
+separated by a colon (<code class="markup">:</code>).
+
+<P>
+The common <code class="param">prereq</code> parameter
+(see <A href="#prereq">the previous description</A>) allows
+the construction of <strong>prerequisites</strong> before
+any files get pushed.  Adding a <code class="param">postreq</code>
+to the specificaion triggers an update of that target
+after the <code class="param">utility</code> completes on
+every target host.  Unlike the <code class="param">prereq</code>
+the target definition <strong>must</strong> be given
+in the  <code class="param">makefile</code>, so there is no
+default value unless you specify a colon on the end of
+<code class="param">prereq</code>, which defaults
+<code class="param">postreq</code> to <code class="markup">__clean</code>
+(double-underbar clean).
+
+<p>
+For example to if the target <code class="markup">clean</code> does
+the right thing in the existing control recipe we can update the common
+tail:
+<blockquote class="file"><pre><code ># $Id:...
+# <em class="new">Use "-m __msrc:__clean" (or just "-m __msrc:") to trigger the cleanup here</em>
+# <em class="new">The marked line below needs to be tuned for your local site policy:</em>
+# <em class="new">	$Push(*): ${msrc:-msrc} -m __msrc: -C%s -f %f $HOSTS make install</em>
+
+<i>...</i>
+clean: FRC
+	<em class="new">cd Hosts.host &amp;&amp; make clean</em>
+	<i>...</i>
+
+FRC:
+<em class="new">__clean: clean</em>
+
+__msrc: source</code></pre></blockquote>
+
+<p>
+The other way to cleanup is via a script that triggers the post action
+internally.  We prefer to integrate the cleanup actions in the
+control recipe to keep it synchronized with the construction recipe.
+Splitting the construction (in the control recipe) from the cleanup
+(coded in a separate script) is much more likely to get get out-of-sync.
+Forgetting the <code>-m</code> specification may be a bug, but the
+fix is just a <code class="sh">make __clean</code> usually.
+
+<P>
+There are other ways to manage this, but all of them fail the
+maintainance criteria, keep the two actions in the recipe file,
+and keep the command-line to trigger them in the recipe file
+as either a target, or in a marked comment line with <code class="sh">mk</code>.
+In both cases it is possible to lock the process with some
+shell level program, like <code class="sh">flock</code>, which
+offers a cheap locking mechanism (see the
+<A href="../../bin/flock/flock.html">HTML document</A>) to lock the
+directory in question (unless you are on a host that doesn't support
+advisory locking, where you might use the control recipe file).
+<blockquote class="file"><pre><code ># $Id:...
+# The marked line below needs to be tuned for your local site policy:
+# 	$Push(*): <em class="new">flock %f </em>${msrc:-msrc} -m __msrc: -C%s -f %f $HOSTS make install</code></pre></blockquote>
+
+<P>
+This could be used as a "lock-and-load" semaphore that
+keeps mutliple copies of the structure from running in parallel, while
+it sets up the task, updates the selected elements, then cleans
+the directory afterwards is really the best tactic.
+
+
+<h3>When my posse is empty I need to take action</h3>
+
+Use the <code class="opt">-N</code> option to trigger an action
+by including it in <code class="path">Msrc.hxmd</code>.
+
+<P>
+Using <code class="attr">HXMD_U_SELECTED</code> in the
+<code class="attr">INIT_CMD</code> section of the update script is
+a sure way to trap the how many hosts were selected, but it
+never gets run when zero were.  You could divert a shell commend into
+the update script to <code class="sh">touch</code> or <code class="sh">rm</code>
+a flag file (which you'd check from a wrapper script).
+
+<!-- quality,   quantity,         time,  resource consumption,
+        risk,  certainty,  parallelism,              efficacy. -->
+
+<h4 id="mergeAdd">Adding hosts via local mode</h4>
+
+Another way to do this is to use <code class="attr">HXMD_U_MERGED</code>
+and the <code class="path">Addlist</code> to send the payload to each
+host exactly once.  To do that we need to use a local push to
+create a "chain mode".
+
+<P>
+If we force the <code class="param">command</code> specified on the
+command line to just save the action we'd like to take, then we can
+re-issue that <code class="param">command</code> later.  To do this
+we'd have to use a <code class="sh">gtfw</code> wrapper, which is beyond
+the scope of this document.  That will be covered in the HTML
+document on <code class="sh">gtfw</code>.
+
+
+<h3 id="cluster">An example of building more complex data for a push</h3>
+
+Say that a cluster of hosts need to know something specific
+about each other: for example their <code class="file">named.conf</code>
+might need to have a <code class="markup">masters</code> configuration for
+a DNS zone.  We can't use the hostname, since <code class="sh">named</code>
+won't use a DNS name to configure the master for a zone.
+
+<P>
+There are a few ways to make this happen, I'm going to show one that
+works for almost any attribute.  In this example I'll use IP address
+since that is easy to lookup from the hostname.
+
+<P>
+We are going to add a <code class="make">GEN</code> element that is
+an <code class="sh">hxmd</code> format configuration file, then link
+it into the push process with a line in <code class="path">Msrc.hxmd</code>.
+That is the easy part is that linkage:
+<blockquote class="file"><pre><code ># $Id: ...
+# link in the address information for the clustered named.conf
+-C synthetic.cl
+</code></pre></blockquote>
+
+<P>
+To build that configuration file we need to add a local reciple
+(in <code class="path">Msrc.mk</code> or <code class="path">Makefile</code>):
+<blockquote class="file"><pre><code >GEN= synthetic.cl
+ADDR_HOOK=
+MYCNF=/usr/local/lib/distrib/cluster.cf
+#MYCNF!=hxmd -C cluster.cf HXMD_OPT_C | oue | tr ":" " "
+
+synthetic.cl: ${MYCNF}
+	hxmd -P1 -C${MYCNF} ${ADDR_HOOK} -F0 addrs.host |oue >$@
+	(echo "g/^[A-Z_]*=/m0"; echo "wq") |ed - $@
+</code></pre></blockquote>
+
+<P>
+That spelling forces <code class="sh">hxmd</code> to process the file
+<code class="path">addrs.host</code> first through <code class="sh">m4</code>
+then the shell for each host.  In the preprocess step, under
+<code class="sh">m4</code>, we'll substriture the <code class="attr">HOST</code>
+macro into the script, then use <code class="sh">host</code> or
+<code class="sh">dig</code> to map the host to her IP address.
+
+<P>
+For example <code class="path">addrs.host</code> might contain:
+<blockquote class="file"><pre><code >`#!/bin/sh
+IP=$(dig +noall +short +answer 'HOST` A |egrep -v "^(10|192\\.168|172\\.(1[6789]|2[0-9]|3[01]))\\." |tail -1)
+echo "%HOST IP"
+echo 'HOST` ${IP:-"."}
+exit 0
+'dnl</code></pre></blockquote>
+
+<P>
+Note that the <code class="sh">oue</code> filter strips out all the
+duplicate header lines, so only the first remains.
+The <code class="sh">ed</code> spell is an example to move any
+global macro assignments up to the top of the file (so they are
+visible to every node) and is not required in the example as given.
+(Some more logic might be required to fetch other columns, but for
+this example we'll leave it with just the <code class="sh">dig</code>.
+
+<P>
+We have now satisfied the <code class="path">Msrc.hxmd</code> goal,
+so each host can see the IP address we had when the spell ran.
+We also put in a dot (<code class="markup">.</code>) where we could not
+find a routable address for the host.
+Of course that IP address might not be the one we have in the future,
+DNS can change and the spell only updates when you ask for it.  But that
+is more of a bug with <code class="sh">named</code>'s glue than our
+push of the file.
+
+
+<h4 id="punexam">An example of a pun'd recipe file</h4>
+
+A pun of an master source make recipe combines both the platform
+and control recipe files into a common <code class="path">Makefile</code>.
+When the task at hand doesn't require the use of <code class="sh">make</code>
+on the target host, or the use of <code class="sh">m4</code> markup to
+customize the platform recipe file for that host we can use this tactic to
+reduce the number of files managed in the source directory.
+<P>
+When we still want to use <code class="sh">make</code> on the target host
+we use the same recipe file as both the <code class="sh">msrc</code>
+configuration and the platform update recipe file.
+Since the only target <code class="sh">msrc</code> must use is
+<code class="markup">__msrc</code>, this leaves the standard targets
+(<code class="markup">all</code>,
+<code class="markup">clean</code>,
+<code class="markup">install</code>, and the like) available for
+the platform use.
+<P>
+Like any other master source recipe it needs
+<code class="make">INTO</code> set, because any
+<code class="sh">rcsvg</code> extraction into <code class="path">/tmp</code>
+would otherwise break it.
+Second it needs <code class="make">DESTDIR</code> logic for
+any package build that needs it.
+Lastly it should not let <code class="markup">install</code> delete the
+original payload, as it might be run from
+the master source (since it is pun'd) and would
+delete the current working file.
+<blockquote id="punRecipe" class="file"><pre><code ># revision info ...
+# A pun'd makefile for tcpmux service to find correct host for
+# VCS service group (by jad and ksb).
+INTO=/usr/src/local/libexec/vcsmux
+
+SOURCE=	Makefile vcsmux.pl
+BIN=${DESTDIR}/usr/local/libexec
+
+all: ${SOURCE}
+
+clean: FRC
+	rm -f ${GEN}
+
+install: all
+	install -c -m 0755 vcsmux.pl ${BIN}/vcsmux
+
+source: ${SOURCE} ${GEN}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# master source hook
+__msrc: source</code></pre></blockquote>
+
+<P>
+There is no <code class="make">GEN</code> in the recipe above, but I left
+it in as an example: it is not really
+<acronym title="you ain't never going to need it">YANGNI</acronym> code,
+as more than half the recipe files I code generate local files.
+The issue here is that any generated files must be `buildable' on
+either the master source host or the platform host to fit the
+pun'd restrictions.
+For example a file recoverd with <code class="sh">wget</code> or
+<code class="sh">rsync</code>from a local repository.
+
+<P>
+The other important restriction is that all targets should (at least) be
+benign when run from either the master source host or from the platform host.
+<em>Never use</em> a punned recipe file when this is not possible.
+The saftey provided by the two-file solution is <em>well worth</em>
+the extra overhead of keeping both files revision controlled.
+
+<H2 id="diversions">Using diversions to modify the send script</H2>
+
+In place of <code class="attr">INIT_CMD</code>,
+<code class="attr">PRE_CMD</code> and <code class="attr">POST_CMD</code>
+one may use <code class="attr">INCLUDE_CMD</code> to incorporate the
+shell code for those actions in <code class="sh">m4</code> diversions.
+
+<P>
+When I included the output above from "<code class="sh">msrc</code>
+<code class="opt">-d S</code>" I left out the many
+<code class="markup">divert</code> calls, here is a more complete
+redering:
+<blockquote><pre><code >dnl remote per-host update script for hxmd
+`#!/bin/sh
+'<em class="new">dnl include shell functions and markup
+divert(1)dnl</em>
+`set . "Makefile" "remote" "'ifdef(`ENTRY_LOGIN',`ENTRY_LOGIN'@)HOST" "/usr/src/local/sbin/msrc"
+<em class="new">dnl after params"</em>
+ifdef(`INCLUDE_CMD',`INCLUDE_CMD(`remote')
+')dnl
+<em class="new">divert(3)dnl</em>
+ifdef(`SSH',`',`define(SSH,`ssh')')dnl
+ifdef(`RSH_PATH',`',`define(RSH_PATH,`SSH')')dnl
+ifdef(`RDIST_PATH',`',`define(RDIST_PATH,`rdist')')dnl
+ifdef(`SDIST',`',`define(SDIST,`RDIST_PATH `'ifdef(`RSH_PATH',`-P`'RSH_PATH') ifdef(`RDISTD_PATH',`-p`'RDISTD_PATH') -f')')dnl
+<em class="new">dnl before INIT
+divert(5)dnl</em>
+ifdef(`INIT_CMD',`INIT_CMD
+')dnl
+dnl myself, subdirs, then files:
+SDIST HXMD_1 myself || exit $?
+dnl SUBDIR is empty
+SDIST HXMD_1 files
+<em class="new">dnl before PRE
+divert(7)dnl</em>
+ifdef(`PRE_CMD',`PRE_CMD
+')dnl
+SSH ifdef(`ENTRY_LOGIN',`ENTRY_LOGIN@')HOST ifdef(`ENTRY_DEFS',`. defn(`ENTRY_DEFS') \&amp;\&amp; ')`cd /usr/src/local/sbin/msrc \&amp;\&amp; :'
+<em class="new">dnl before POST
+divert(9)dnl</em>
+ifdef(`POST_CMD',`POST_CMD
+')dnl</code></pre></blockquote>
+
+<p>
+Since the code is presented in the order the diversions specify,
+they normally don't change anything.
+However if you'd like to include a totally different update protocol, or
+do more than a simple recursive operation you may use the even numbered
+diversions to include any code you like in the update script.  Even calls
+to <code class="sh">msrc</code> or <code class="sh">hxmd</code>.
+
+<p>
+For example a file included under <code class="opt">-j</code> might
+define <code class="attr">INCLUDE_CMD</code> as:
+<blockquote class="file"><pre><code >dnl Use our update, either send-local.m4 or send-remote.m4
+define(`INCLUDE_CMD',`include(send-$1.m4)')dnl
+</code></pre></blockquote>
+
+Each of those files would <code class="markup">define</code> the
+other <code class="sh">m4</code> hooks as local policy specifies,
+potentially ignoring most of the code <code class="sh">msrc</code>
+provided.  For example:
+<blockquote><pre><code >dnl delete msrc update
+define(`INIT_CMD',`cat >/dev/null <<\!rm')dnl
+define(`POST_CMD',`!rm
+`# Example.com local update code
+do-rsync <i>...</i>
+ssh <i>...</i>
+exit
+')dnl
+</code></pre></blockquote>
+
+<H2 id="above">Programs built on top of <code class="sh">msrc</code></H2>
+
+These are ways to save some typing or duplicate files.
+
+<H4 id="dmzsh">The dmz script</H4>
+
+While debugging a master source structure, one ususally only pushes to
+a single test host.
+This is quite cumbersome with the <code class="sh">hxmd</code>
+selection option <code class="opt">-E</code>.
+The clause for a single host would look something like:
+<blockquote class="file"><pre><code >msrc -Csite.cf -E SHORTHOST=lv426 make DEBUG=-g all</code></pre></blockquote>
+
+<P>
+For a short list of test hosts the code gets a lot less obvious:
+<blockquote class="file"><pre><code >msrc -Csite.cf -E "-1!=index(\`_lv426_sulaco_nostromo_',_\`'SHORTHOST\`'_)" make DEBUG=-g all</code></pre></blockquote>
+
+
+<P>
+Which is more than I'd like to type for each compile-edit-debug cycle,
+luckily it is easy to script.
+
+<P>
+Calling <code class="sh">msrc</code> from a short shell script
+reduces the key strokes, and adds some clarity.
+Let's reduce the last example to:
+<blockquote class="file"><pre><code >site lv426,sulaco,nostromo make DEBUG=-g all</code></pre></blockquote>
+
+<P>
+We'll take the name of the script as the basename of the configuration
+files (<code class="opt">-C </code><code class="markup">$0</code><code class="opt">.cf</code>) and build the quoted
+<code class="sh">m4</code> expression to
+search for <code class="attr">SHORTHOST</code> the first parameter.
+Here is a shell fragment I use
+in <A href="dmz.sh">my script</A>:
+<blockquote class="file"><pre><code >DEFCF=`basename $0`.cf
+# ... option parser ...
+HTEMP=`echo _${1}_ | tr -cs '\-.a-zA-Z0-9' '_'`
+shift
+exec msrc ... -C$DEFCF -E "-1!=index(\`$HTEMP',_\`'SHORTHOST\`'_)" "$@"</code></pre></blockquote>
+
+<P>
+Characters from <code class="markup">$1</code> that cannot be part of
+a hostname are mapped to single underscores ("_").
+The list of hosts could be separated by any character the
+customer like (e.g. commas, colons, or white-space).
+The underscores are used a separators in the list, we then search for
+each nodes <code class="attr">SHORTHOST</code> in that list.
+When none matches return "-1", so we don't accept those.
+
+<P>
+There is a valid site policy that I don't use anymore,
+that says every configuration file should
+have a matching zero-configuration file
+(<code class="opt">-C</code> <code class="param">foo</code>.cf implies
+<code class="opt">-Z</code> <code class="param">foo</code>.zf) to support
+it.
+There are some advantages to that structure, but
+the core tools don't enforce it because it is error-prone and
+more complex than you ever really need.
+That means it is up to you to make sure every process <em>always</em>
+calls though an invarient script to make it happen.
+It also means you must <em>know</em> you need it before you start
+coding your local structure, and you don't know that yet.
+<!-- So I guess you don't. -->
+
+
+<H4 id="commonmake">Common <code class="sh">make</code> recipe files</H4>
+
+The <code class="param">makefile</code> specification on
+the <code class="sh">msrc</code> command-line doesn't have to be resident in
+the current working directory.  A program built on top of
+<code class="sh">msrc</code> might specify a
+common <code class="param">makefile</code> for every structure it
+processes.  The value of <code class="make">HXINCLUDE</code> could
+be specified as an absolute path as well.
+
+<P>
+With this in mind, a directory could represent a recurring task like
+data collection, or audit scanning.  The contents of the directory
+would be the files needed to collect, compare/collate with
+a common interface (like <code class="sh">make</code>, or
+<code class="sh">mk</code>, or a shell script).  The recipe file
+would hold the specification for the <code class="attr">INIT_CMD</code>,
+<code class="attr">PRE_CMD</code>,
+<code class="attr">POST_CMD</code> which make the interface
+to the local <A href="../../lib/hxmd/site.html">site configuration</A>.
+
+<P>
+There is a pretty good example in <code class="sh">hxmd</code>'s
+library called <code class="path">gnumake.m4</code>.  If you have
+a list of GNU programs you want to build you can gather the compresses
+archives, build a configuration file that defines the macros used
+in the file, then use <code class="sh">msrc</code> to drive building
+them all.  There are enough hooks (at the <code class="sh">m4</code>
+markup level and at the shell level) to let that recipe template drive
+any build you want.
+
+<P>
+The <code class="markup">sinclude</code> of <code class="path">targets.m4</code>
+produces unique recipes in each created <code class="param">makefile</code>.
+This is context sensetive in two ways: either by changing the current
+working directory, or by tuning <code class="opt">-I</code> (assuming
+you have an <code class="sh">m4</code> that takes that option).
+
+<h2>Summary</h2>
+
+Using the <code class="sh">xapply</code> stack under
+<code class="sh">hxmd</code> to process multiple hosts in
+parallel adds a huge performance advantage for
+applications such as building programs, updating configuration files, and
+collecting data against a large population of hosts.
+
+<P>
+Administrators leverage skills they already have by
+using the standard macro processor, dependency, and recipe processors
+they already use for other common tasks.
+The single new syntax required is the configuration file format that
+requires either <code class="sh">m4</code> or C quoting rules and
+the percent marked column headers.
+
+<P>
+On the down-side the intermixed use of
+<code class="sh">make</code> macros, both <code class="sh">m4</code> and
+<code class="sh">sh</code> markup, and
+<A href="../../bin/wrapw/wrapper.html">wrapper</A> technology does
+make the structure "touchy".
+The learning curve starts with the use of
+<A href="../../bin/xapply/xapply.html">xapply</A>,
+then some understanding of
+<A href="../../bin/xclate/xclate.html">xclate</A> (aka.
+<code class="sh">xapply</code> <code class="opt">-m</code>).
+Add configuration management attributes with
+<A href="../../sbin/hxmd/hxmd.html">hxmd</A> to reach
+a more powerful command environment,
+then add <A href="../../bin/ptbw/ptbw.html">ptbw</A>.
+
+<P>
+After you've mastered those you'll better understand why
+this tool is as it is.  And then you'll want to learn
+how to use <A href="../msync/msync.html">msync</A>,
+<A href="../efmd/efmd.html">efmd</A>, and package
+creation with <A href="/cgi-bin/manpage.cgi?level2s">level2s</A>.
+
+<HR>
+<pre>
+
+$Id: msrc.html,v 1.77 2010/08/13 17:36:59 ksb Exp $
+</pre>
+</BODY></HTML>

@@ -1,0 +1,28 @@
+SAC runs console servers in module I2Center:
+	trixie.sac:	Master	[t]
+	Bus 0 Target 2: Comm    ST-1032          CenData  V5.6
+
+	zveegee:	Pod A	[z]
+	Bus 0 Target 2: Comm    ST-1032          CenData  V5.6
+
+	groobee:	Pod B	[b]
+	Bus 0 Target 2: Comm    ST-1032          CenData  V5.6
+
+	minga:		Pod C	[m]
+	Bus 0 Target 2: Comm    ST-1032          CenData  V5.6
+
+	tara:		Pod D	[r]
+	Bus 0 Target 2: Comm    ST-1032          CenData  V5.6
+
+	goo:		Pod E	[?]
+	Bus 0 Target 2: Comm    ST-1032          CenData  V5.6
+
+	gumby:		Pod F	[?]
+	Bus 0 Target 2: Comm    ST-1032          CenData  V5.6
+
+	nopey:		Pod G	[n]
+	Bus 0 Target 2: Comm    ST-1032          CenData  V5.6
+
+	puffball:	Pod H	[u]
+	Bus 0 Target 2: Comm    ST-1032          CenData  V5.6
+

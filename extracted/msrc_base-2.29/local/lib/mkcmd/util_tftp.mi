@@ -1,0 +1,43 @@
+/* $Id: util_tftp.mi,v 8.20 2000/07/30 20:14:34 ksb Exp $
+ * BSD tftp code copied for mkcmd use by ksb
+ */
+
+/* convert a tftp error code in to a text message			(bsd)
+ */
+static char *
+tftp_error(iError)
+int iError;
+{
+	static char *apcErrs[] = { /* from the RFC */
+		"Undefined error code",
+		"File not found",
+		"Access violation",
+		"Disk full or allocation exceeded",
+		"Illegal TFTP operation",
+		"Unknown transfer ID",
+		"File already exists",
+		"No such user",			/* 7 last one */
+		(char *)0
+	};
+
+	if (iError >= 0 && iError < sizeof(apcErrs)/sizeof(apcErrs[0])) {
+		return apcErrs[iError];
+	}
+	return (char *)0;
+}
+
+%@if "TFTP_DEBUG"
+static void tftp_packet(TFTP_PACKET *pTP, int iLen, const char *pcWho);
+%@else
+#define	tftp_packet(MpTP, MiLen, Mpc)	/* no-op */(void)0
+%@endif
+static int tftp_sync(int sBad);
+static int tftp_request(TFTP_PACKET *pTPMake, int usRequest, const char *pcName, const char *pcMode);
+static int tftp_nak(TFTP_PACKET *pTPMake, int iError);
+static int tftp_ack(TFTP_PACKET *pTPMake, int usBlock);
+static int tftp_pack(TFTP_PACKET *pTPMake, const char *pcMode, FILE *fpFrom);
+static int tftp_hunk(TFTP_PACKET *pTPMake, const char *pcMode, FILE *fpFrom);
+static int tftp_unpack(TFTP_PACKET *pTPMade, int iLen, const char *pcMode, FILE *fpTo);
+static char *tftp_ram(TFTP_PACKET *pTPMade, int iLen, const char *pcMode);
+static char *tftp_output(char *pcMode, void *pvData, int iLen);
+static void tftp_forget(char *pcNewMode);

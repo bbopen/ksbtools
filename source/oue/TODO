@@ -1,0 +1,8 @@
+# $Id: TODO,v 2.10 2012/07/10 16:59:59 ksb Exp $
+
+Nothing.  This takes the place of many other filters, and doesn't require
+a sorted input list.  It does use up to 4 /tmp files.  Just deal with that.
+I use this _all_the_time_ with xapply and grep.
+
+--
+ksb, Jul 2012

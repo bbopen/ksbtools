@@ -1,0 +1,7 @@
+#!/bin/cat
+# $Id: template,v 1.1 2003/09/17 18:47:26 ksb Exp $
+# The tests the template escapes, and is call separately from the Driver (ksb)
+#$Templ(1): [ _"%w" = _"." ]
+#$Templ(1): [ _"%W" = _"." ]
+#$Templ(2): [ _"%Z" = _"template" ]
+#$Templ(3): [ _"`basename %z`" = _"template" ]

@@ -1,0 +1,7 @@
+/* $Id: tftp_server.mh,v 8.21 1998/11/29 18:52:37 ksb Exp $
+ */
+extern int tserv_accept(int, FILE *, const char *);
+extern int tserv_serve(int, FILE *, const char *);
+extern void tserv_init(void);
+extern int tserv_rexmt(int);
+extern int tserv_timeout(int);

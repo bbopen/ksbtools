@@ -1,0 +1,326 @@
+# $Id: INSTALL,v 1.1 2000/08/05 01:28:16 ksb Exp $
+
+This program is a good one.  When it has saved your host a few times
+you might drop me a line.
+
+To get this all working (which is _way_ worth it), follow these steps.
+
+Build it:
+---------
+0) You need my "mkcmd" and "install" to make this work.  You'll be
+   happy later if you install "rsync" (http://rsync.samba.org) before
+   you build and install sbp.
+
+1) Compile the program with the master source clues (see msrc0).
+
+
+Try it:
+-------
+2) Find a blank disk that is the same size (about) as the disk your
+   host is booted from.  For example on an Ultra II Sun I have a 9.1G
+   boot disk as c0t0s0, I put a _blank_ disk in the outboard slot in
+   the U2.  That shows up in format as c0t1d0.
+
+   Warning: on an E450 Sun I've had no luck making and controller
+   other than c0 and c1 boot.  You've been warned.
+
+
+3) Copy the volume table fo contents from the present boot disk to the
+   _blank_.   Under Solaris you can use:
+	cd /tmp
+	prtvtoc /dev/rdsk/c0t0d0s2 > root.vtoc
+	fmthard -c root.vtoc /dev/rdsk/c0t1d0s2
+
+4) Get the hardware path to the blank disk (for the OBP) I used format
+   which in the initial disk selector lists the hardware path under the
+   name:
+       0. c0t0d0 <SUN9.0G cyl 4924 alt 2 hd 27 sec 133>
+          /pci@1f,4000/scsi@3/sd@0,0
+       1. c0t1d0 <SUN9.0G cyl 4924 alt 2 hd 27 sec 133>
+          /pci@1f,4000/scsi@3/sd@1,0
+
+5) Edit /etc/vfstab to build parallel partitions to the boot partitions,
+   you should do at least /, /usr, and /var to get a system that will
+   be useful if the primary disk fails.  I'm assuming in the example that
+   you have it all on "c0t0d0" now.  DON'T CHANGE YOUR PRIMARY boot
+   partitions.  Just add the backups on the blank disk.
+
+   Make look something like:
+	...
+	#
+	# Primary boot: /pci@1f,4000/scsi@3/sd@0,0
+	/dev/dsk/c0t0d0s0 /dev/rdsk/c0t0d0s0 /		ufs 1 no  -
+	/dev/dsk/c0t0d0s3 /dev/rdsk/c0t0d0s3 /usr	ufs 2 no  -
+	/dev/dsk/c0t0d0s4 /dev/rdsk/c0t0d0s4 /var	ufs 2 no  -
+	/dev/dsk/c0t0d0s5 /dev/rdsk/c0t0d0s5 /opt	ufs 3 yes -
+	/dev/dsk/c0t0d0s6 /dev/rdsk/c0t0d0s6 /home	ufs 4 yes -
+ +	#
+ +	# Alternate boot: /pci@1f,4000/scsi@3/sd@1,0
+ +	/dev/dsk/c0t1d0s0 /dev/rdsk/c0t1d0s0 /backup	  ufs 1 no  -
+ +	/dev/dsk/c0t1d0s3 /dev/rdsk/c0t1d0s3 /backup/usr  ufs 2 no  -
+ +	/dev/dsk/c0t1d0s4 /dev/rdsk/c0t1d0s4 /backup/var  ufs 2 no  -
+ +	/dev/dsk/c0t1d0s5 /dev/rdsk/c0t1d0s5 /backup/opt  ufs 3 no -
+ +	/dev/dsk/c0t1d0s6 /dev/rdsk/c0t1d0s6 /backup/home ufs 4 no -
+	...
+
+6) Run sbp to copy the data from you present book disks to the /backup
+   partitions:
+	mkdir -m 555 /backup
+	sbp -v
+
+   You should see stuff like:
+	echo "yes" |newfs  /dev/rdsk/c0t1d0s0
+	<newfs output>
+	mount  /dev/dsk/c0t1d0s0 /backup
+	/usr/lib/fs/ufs/ufsdump 0f - ... | ( cd /backup && ufsrestore ... )
+	<DUMP output>
+
+7) That made the backup if you see the update of /backup/etc/vfstab
+   (or fstab).  ONLY THIS TIME you might make the root partition boot-able.
+
+   On a Sun you must run installboot, like
+	installboot /usr/platform/`uname -m`/lib/fs/ufs/bootblock $DEVICE
+   where $DEVICE is the raw device for the root partition on your blank
+   disk (this is almost always slice 0 for historical reasons).
+
+8) You can check by mounting the /backup partition and making sure it
+   looks mostly like your present /.
+	mount /backup
+	ls /backup
+	umount /backup
+
+9) If the machine you are testing this on is not busy you can try to
+   shutdown and reboot to the "alternate root" you just made.
+	# /usr/sbin/shutdown -g0 -y "alternate root test"
+	<output from shutdown, get into single user mode>
+	# sync;sync;sync
+	# exec halt
+	syncing file systems... done
+	Program terminated
+	{2} ok boot /pci@1f,4000/scsi@3/sd@1,0 -s
+
+	Resetting ...
+	< boot sequence to single user mode>
+
+10) When you get to Single User on the alternate you can play a Very Nifty
+    Trick.  If you have all of your primary boots mirrored you can move
+    to a "split disk" configuration.  This trick is COMPLETELY OPTIONAL,
+    skip to the next step if you are not ready for this.
+
+    Now the disks look about like:
+	+-----------------+	+-----------------+
+	| /               | ->	| /backup         |
+	+-----------------+	+-----------------+
+	| /usr            | ->	| /backup/usr     |
+	+-----------------+	+-----------------+
+	| active swap     |	| idle swap       |
+	+-----------------+	+-----------------+
+	| /var            | ->	| /backup/var     |
+	+-----------------+	+-----------------+
+	| /opt            | ->	| /backup/opt     |
+	+-----------------+	+-----------------+
+
+    Where now one might make the disk look more like this:
+	+-----------------+	+-----------------+
+	| /               | ->	| /backup         |
+	+-----------------+	+-----------------+
+	| /usr            | ->	| /backup/usr     |
+	+-----------------+	+-----------------+
+	| active swap     |	| active swap     |
+	+-----------------+	+-----------------+
+	| /backup/var     | <-	| /var            |
+	+-----------------+	+-----------------+
+	| /backup/opt     | <-	| /opt            |
+	+-----------------+	+-----------------+
+
+    This keeps the disk heads over the "upper half" or the "lower half"
+    of the platter most of the time.  It makes your machine have twice
+    the device swap, plus you get more speed for everything else.
+
+    So from the alternate root we are going to mount the /backup
+    partition (which is the *primary* since our point of view is from
+    the alternate root) to edit the /etc/vfstab file there to reflect
+    our new Split Disk run mode.  Then we'll reboot to the original
+    primary boot disk to be sure it is split correctly.
+	mount /backup
+	TERM=my_terminal_type
+	vi /backup/etc/vfstab
+
+    Warning!  Never split "/" and "/usr" on a Sun.  If the disk with	*
+    "/usr" is toast "/" does little good (unless you can work under a	*
+    "boot -b" shell).  I know how to get out of that, but you need to	*
+    know where the other "/usr" is hiding...  anyway.			*
+
+    Make it look something like this (shift what you want, you might
+    have to look at the format label to see what's "upper" and "lower"):
+ +	/dev/dsk/c0t1d0s1 -     -       swap    -       no      -
+	#
+	# Primary boot: /pci@1f,4000/scsi@3/sd@0,0
+	/dev/dsk/c0t0d0s0 /dev/rdsk/c0t0d0s0 /		ufs 1 no  -
+	/dev/dsk/c0t0d0s3 /dev/rdsk/c0t0d0s3 /usr	ufs 2 no  -
+ !	/dev/dsk/c0t1d0s4 /dev/rdsk/c0t1d0s4 /var	ufs 2 no  -
+ !	/dev/dsk/c0t1d0s5 /dev/rdsk/c0t1d0s5 /opt	ufs 3 yes -
+ !	/dev/dsk/c0t1d0s6 /dev/rdsk/c0t1d0s6 /home	ufs 4 yes -
+	#
+	# Alternate boot: /pci@1f,4000/scsi@3/sd@1,0
+	/dev/dsk/c0t1d0s0 /dev/rdsk/c0t1d0s0 /backup	  ufs 1 no  -
+	/dev/dsk/c0t1d0s3 /dev/rdsk/c0t1d0s3 /backup/usr  ufs 2 no  -
+ !	/dev/dsk/c0t0d0s4 /dev/rdsk/c0t0d0s4 /backup/var  ufs 2 no  -
+ !	/dev/dsk/c0t0d0s5 /dev/rdsk/c0t0d0s5 /backup/opt  ufs 3 no -
+ !	/dev/dsk/c0t0d0s6 /dev/rdsk/c0t0d0s6 /backup/home ufs 4 no -
+	...
+
+    Then unmount the /backup partition.
+	umount /backup
+
+11) Reboot the the host back to the original partitions.
+	sync;sync;sync
+	halt
+	boot
+
+12) Make sure that the file systems mounted look like the ones you
+    remember, maybe with the split disk alternates showing via "df"
+    or "mount".
+
+
+Follow-up:
+---------
+
+13) Before you make a Big Change to the system, or after 4 months
+    have gone by run sbp again like this:
+	sbp -Hrsync -v
+
+    You will not see the "DUMP" spew.  You'll see some nifty rsync
+    spells that will copy the changes only from the primary to the
+    alternates.  This takes far less time than the "ufsdump" way.
+
+    I use this to back-out of Big Changes (tm) to my hosts if they
+    go poorly.  You should NOT use this to replace normal operational
+    dumps of Valuable Data Partitions.  This is a scheme to get you
+    back to a running system after the big upgrade goes splat!
+
+When to use the Alternates:
+---------------------------
+
+Crashes with hard disk errors:
+    Don't panic.
+
+    If it is one of the split disk things we did above
+	a) Just boot the good disk with -s
+		boot the_best_disk_of_the_pair -s
+	b) Run fsck on the partitions you need (/, /usr, /var)
+		fsck ...
+	c) Mount the partitions from the good disk in real places
+		mount -o remount,rw /
+		mount /dev/dsk/.... /usr
+		mount /dev/dsk/.... /var
+	d) Set up TERM so you can edit a file
+		TERM=xterm; export TERM
+	e) Edit /etc/vfstab to tell it we are on just one disk.
+		cp /etc/vfstab /etc/vfstab.bak
+		vi /etc/vfstab
+	   REMEMBER to change both the cooked and raw paths!
+	f) Reboot the system to the good disk.
+
+    If it was not in split disk mode (boot the alternate disk -s):
+	g) If you don't have a good level 0 dump make one of the most
+	   up-to-date data that you can get from the host,
+	h) Send me a nice thank you letter (ksb@sa.fedex.com),
+	i) Put the machine in production and SCHEDULE the down time to
+	   put the new disk in.
+	
+    After the fire is out:
+	j) Find/order a replacement disk,
+	k) Put the new disk in and follow (basically) the steps above to
+	   copy the OS back on the new (blank) disk,
+	l) Put the host back in split disk mode (as above).
+
+Upgrades:
+    To prepared for an OS upgrade, undo the split disk magic:
+	a) build a new disk with all the partitions on the main boot disk.
+	   if you can use the present partition layout you will be able
+	   to skip one step later
+	b) run sbp to sync the backups
+		sbp -Hrsync -v
+	   or
+		sbp -v
+	c) vinst /etc/vfstab to migrate every thing to the disk you
+	   are on right now.
+	d) mount /backup
+	e) vinst /backup/etc/vfstab to migrate it to the present alternate
+	   disk path.
+	f) umount /backup
+    	g) halt the host
+	h) remove the primary disk, replace it with the upgrade
+	i) boot the primary, it should run "single disk"
+	j) test everything
+
+    So it looks like it works:
+	k) take the old boot disk away.  Put it in a box and label it not
+	   to be recycled for 8 months.  Really.
+	l) copy the VTOC from the new disk to the alternate
+	m) check /var/vfstab to be sure slice names didn't change
+	n) run "sbp -jv"  and MAKE SURE that the newfs tune guesser works (*)
+	   if it fails you can run on the partitions it failed on without
+	   the -j, (viz. sbp -v "/backup/home").
+	o) boot from the alternate to check it out
+	p) return to split disk mode if you like
+
+    Follow-up:
+	q) put a job in the hosts atq to remind you that you get a free
+	   disk in 8 months.  If the job runs the machine is still OK.
+
+Clone hosts:
+    You want to bring on many new servers.
+	a) attach a device with N blank disks.
+	b) build mount-points for the disks "/1" "/2".... /N, you only need
+	   as many slots as you can mount at once
+	c) build the entries in /etc/vfstab like "/1" was "/backup" for
+	   each of the disk slots:
+		# /1
+		/dev/dsk/ZZZs0 /dev/rdsk/ZZZs0 /1	ufs 1 no  -
+		/dev/dsk/ZZZs3 /dev/rdsk/ZZZs3 /1/usr	ufs 2 no  -
+		/dev/dsk/ZZZs4 /dev/rdsk/ZZZs4 /1/var	ufs 2 no  -
+		...
+		/dev/dsk/XXXs0 /dev/rdsk/XXXs0 /2	ufs 1 no  -
+		/dev/dsk/XXXs3 /dev/rdsk/XXXs3 /2/usr	ufs 2 no  -
+		/dev/dsk/XXXs4 /dev/rdsk/XXXs4 /2/var	ufs 2 no  -
+		...
+	d) If the disk you want to clone is NOT the boot disk you need
+	   to add a "/src" set for the primary partitions.
+		/dev/dsk/AAAs0 /dev/rdsk/AAAs0 /src	ufs 1 no  -
+		/dev/dsk/AAAs3 /dev/rdsk/AAAs3 /src/usr	ufs 2 no  -
+		/dev/dsk/AAAs4 /dev/rdsk/AAAs4 /src/var	ufs 2 no  -
+	   mount up the source partitions:	
+		mkdir -m 555 /src
+		mount /src
+		mount /src/usr
+		mount /src/var ...
+
+    Crank out some clones:
+	e) Use "xapply" to copy them 2 (or more) at a time:
+		xapply -P2 -v "sbp -m /%1 -v' 1 2 3 4 5 6 ...
+	   or if you have a "/src"
+		xapply -P2 -v "sbp -r /src -m /%1 -v' 1 2 3 4 5 6 ...
+	f) OK.  Now give "/1" a new personality.
+	   First put the mounts for the primary where the disk will be
+	   on the new host (you can cp in a stock one if they are all the
+	   same) then edit the host specific files:
+		mount /1
+		cd /1
+		vinst etc/vfstab
+		xapply vinst etc/nodename etc/hostname.hme0 etc/defaultrouter
+		xapply vinst etc/resov.conf etc/inet/hosts
+		xapply etc/inet/netmasks etc/inet/ntp.conf ...
+	g) run installboot on each disk before you remove it
+	h) Repeat as needed (back to step e) for more groups of blanks
+
+    Follow-up:
+	i) Unmount on /src partitions you don't need
+	j) Rmdir the /1 /2 /3 ... /N dirs
+
+--
+KSBraunsdorf, ksb@sa.fedex.com, June 2000
+
+(*) It is a pain in my side that "newfs" gives bogus errors and doesn't
+    have an good documentation on how to tune a file-system.

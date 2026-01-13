@@ -1,0 +1,50 @@
+# $Id: README,v 3.10 1997/04/14 02:39:05 ksb Exp $
+
+This is the "calls" distribution which contains:
+	calls - output the calling pattern of a C program
+	maketd - use cpp -M like output to update transitive dependencies
+	mkdep - maketd by another name
+	cdecl - construct or explain C declarations (yacc/lex example too)
+
+minus the bogus library (which has been moved to explode's library)
+	libsrtunq - sorted and uniqued strings
+
+Of these both maketd and calls are quite useful.  The mkdep (link to maketd)
+entry emulates that program if you need that.  The cdecl program is OK
+for teaching C declarations (to and from) and a fine example of abusing
+lex and yacc.
+
+The library was just here because maketd used it.  Now we explode it.
+
+This is _ksb_ source.  You'll need the meta source stuff installed to
+use it out of the box, or see the emulation instructions in the meta-source
+distribution (msrc0).
+
+You shall need mkcmd to compile almost anything I've written in the
+last 10 years.  Anything over version 8.2 should work for this product.
+
+We support (at leasr)
+	HPUX NEXT2 NETBSD FREEBSD SUN5 SUN4 SUN3 EPIX IBMR2 IRIX
+in calls/Makefile and maketd/Makefile.  Cdecl is not fully supported.
+
+Calls bugs:
+	Doesn't really parse C very well.  There is a more complex
+	version that does C's parts of speach better.
+
+Changes from 3.3 -> 3.10
+	Mike MacKenzie's fix for an EOF botch in calls/scan.c.
+
+	Suggested option (-z) to sort calls output in alpha order
+	from Christian Marcotte.
+
+	Bug fixes and such from ksb, of course.
+
+	Uses explode to get srtunq.[ch] rather then the library.  Get
+	mkcmd 8.2 or better for that reason alone.
+
+	maketd is almost a total recode from the last release.
+
+	cdecl has not changed at all, I think.
+
+--
+ksb@fedex.com

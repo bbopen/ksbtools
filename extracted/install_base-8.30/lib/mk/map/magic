@@ -1,0 +1,63 @@
+# $Id: magic,v 5.1 1999/02/26 19:45:09 ksb Exp $
+# look at the magic number on a file to see if we need to		(ksb)
+# prescan for a processor for a _non-text_ file format
+
+#%#%08xl		^01010101	MMDF mailbox
+#%#%08xl		^137A2944	NeWS bitmap font
+#%#%08xl		^137A2947	NeWS font family
+#%#%08xl		^2a535441	Aster*x
+#%#%08xl		^32323738	Aster*x Version 2
+#%#%08xl		^59a66a95	rasterfile,
+#%#%08xl		^884f5053	Interleaf fast-saved document
+
+%#%04xw		^1e1f		pre/z
+%#%04xw		^1f8b		pre/gz
+%#%04xw		^1fff		pre/C
+%#%04xw		^8000		pre/lif
+%#1@4%04xw	^92c0		pre/dvi
+%#%04xw		^9d1f		pre/Z
+%#%04xw		^c5a3		pre/W
+%#%04xw		^71c1		pre/cpio
+%#%04xw		^71c2		pre/cpio
+%#%04xw		^71c7		pre/cpio
+%#%04xw		^c771		pre/cpio
+
+%#4%cb		^\\.snd		pre/au
+%#5%cb		^\\*mbx\\*	pre/mbx
+
+#%#4%cb		^%!PS		post/ps
+#%#8cb		^msgcat01$      <NLS message catalog>
+#%#%04xw		^0101		unix-rt ldp
+#%#%04xw		^0105		pdp11 overlay
+#%#%04xw		^0107		pdp11/pre System V vax executable
+#%#%04xw		^0108		pdp11/pre System V vax pure executable
+#%#%04xw		^0109		pdp11 separate I&D
+#%#%04xw		^010b		VAX demand load format a.out object file
+#%#%04xw		^011[bc]	Curses screen image
+#%#%04xw		^011e		vfont definition
+#%#%04xw		^011f		pdp11 kernel overlay
+#%#%04xw		^0140		old Microsoft 8086 x.out
+#%#%04xw		^0142		basic-16 executable
+#%#%04xw		^0143		basic-16 executable (TV)
+#%#%04xw		^0148		x86 executable
+#%#%04xw		^0149		x86 executable (TV)
+#%#%04xw		^014a		iAPX 286 executable small model (COFF)
+#%#%04xw		^014c		iAPX 386 executable (COFF) (deprecated)
+#%#%04xw		^0150		mc68k executable
+#%#%04xw		^0151		mc68k executable (shared)
+#%#%04xw		^0152		iAPX 286 executable large model (COFF)
+#%#%04xw		^0152		mc68k executable (shared demand paged)
+#%#%04xw		^0168		3b20 executable
+#%#%04xw		^0169		3b20 executable (TV)
+#%#%04xw		^0170		WE32000 executable
+#%#%04xw		^0171		WE32000 executable (TV)
+#%#%04xw		^0178		vax executable
+#%#%04xw		^017d		vax pure executable
+#%#%04xw		^0206		Microsoft a.out
+#%#%04xw		^1010		PEX Binary Archive
+#%#%04xw		^1a01		Compiled Terminfo Entry (tic)
+#%#%04xw		^1e1f		packed data
+#%#%04xw		^1f1f		old packed data
+#%#%04xw		^ff65		pdp11/pre System V ar archive
+#%#%04xw		^ff65		x.out
+#%#%04xw		^ff6d		obsolete ar archive

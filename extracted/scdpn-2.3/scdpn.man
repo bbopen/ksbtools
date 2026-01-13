@@ -1,0 +1,119 @@
+.\" $Id: scdpn.man,v 2.6 2012/02/29 18:45:36 ksb Exp $
+.\" by KS Braunsdorf
+.\" $Display: ${groff:-groff} -Tascii -man %f |${PAGER:-less}
+.\" $Display(*): ${groff:-groff} -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man8/scdpn.8
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt]8/scdpn.8*
+.TH SCDPN 8 LOCAL
+.SH NAME
+scdpn - show Cisco Discovery Protocol neighbors
+.SH SYNOPSIS
+.ds PN "scdpn
+\fI\*(PN\fP [\fB\-v\fP] [\fB\-N\fP~\fIname\fP] [\fB\-t\fP~\fIseconds\fP] [\fIinterfaces\fP]
+.br
+\fI\*(PN\fP \fB\-h\fP
+.br
+\fI\*(PN\fP \fB\-V\fP
+
+.SH DESCRIPTION
+When mapping a large-scale complex network of host it is often handy
+to know which host connects to which switch for each virtual network.
+To create a map we'll need seven facts for each link:
+.RS
+.br
+\*(bu the hostname
+.br
+\*(bu the interface name on that host
+.br
+\*(bu the IP address the on that interface
+.br
+\*(bu the MAC address used by that link
+.br
+\*(bu the name of the device at the other end
+.br
+\*(bu the interface name at the other end
+.br
+\*(bu the VLAN name, or other link-type information
+.RE
+If the switches support CDP packets \fI\*(PN\fP is your best friend
+because a CDP packet in combination with information from \fBlibpcap\fP(3)
+delivers exactly that information to you.
+
+.P
+The common application is to loop through each host with a remote access
+tool (aka. \fBssh\fP) to collect the output of \fI\*(PN\fP, which must
+be run with superuser privileges.  The output for a host with a single
+\fBfxp\fP network interface might look like:
+.nf
+	svr66:fxp0:199.81.77.52:0008.0280.739f:swI137:F0/13:vlan77
+.fi
+
+.P
+Once collected a revision controlled repository aggregating those
+facts may be used for a variety of system administration tasks.
+Tracking down miss configurations such as IPs on the wrong VLAN,
+port labels that don't match the host, or hosts that were thought
+to be retired still chatting on the network.  Just finding
+available ports might make this worth while.
+
+.P
+Less obvious uses include: cool reports for management,
+a sane backup order (where we backup hosts from different
+switches in parallel to avoid saturating any uplinks), uplink and
+VLAN balance analysis.
+
+
+.SH OPTIONS
+If the program is called as \fI\*(PN\fP then no options are forced.
+.TP
+\fB\-h\fP
+Print a brief help message.
+.TP
+\fB\-N\fP \fIname\fP
+Hostname to report in column 1.
+.TP
+\fB\-t\fP \fIseconds\fP
+Time to wait for a CDP packet, default is 10 minutes.
+.TP
+\fB\-v\fP
+Give verbose information about each CDP packet.
+.TP
+\fB\-V\fP
+Show only version information.
+
+.SH EXAMPLES
+.TP
+.nf
+\fI\*(PN\fP \-V
+.fi
+Show our standard version information plus the interface names we see.
+.TP
+.nf
+\fI\*(PN\fP
+.fi
+List the interfaces and the collected data for each.
+.TP
+.nf
+\fI\*(PN\fP eth0
+.fi
+Only look for frames on the first ethernet interface.
+
+.SH BUGS
+
+Ten minutes is a terribly long time to wait for a CDP frame, but
+it is the computer's time -- not mine.  Use \fBxapply\fP with a
+large parallel factor, or \fBhxmd\fP to make the time fly.
+.PP
+We are depending on the switches to know their names, lots of
+network groups don't set switch names correctly.
+
+.SH AUTHOR
+KS Braunsdorf and Pete Fritchman
+.br
+NonPlayer Character Guild
+.br
+scdpn at ksb.npcguild dot spamfake.org
+
+.SH "SEE ALSO"
+.hlm 0
+sh(1), pcap(3), xapply(1l), hxmd(8l)

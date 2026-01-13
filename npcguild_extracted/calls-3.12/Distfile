@@ -1,0 +1,11 @@
+# $Id: Distfile,v 3.11 1997/04/14 14:01:05 ksb Exp $
+# N.B. -o nodescend must be set in this Distfile
+`( . ) -> ( 'HOST` )
+	install ${INTO};
+
+( bin README ) -> ( 'HOST` )
+	install -w ${INTO} ;
+
+( @Make.host@ ) -> ( 'HOST` )
+	install -b ${INTO}/Makefile ;
+'dnl

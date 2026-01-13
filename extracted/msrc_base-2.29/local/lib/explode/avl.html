@@ -1,0 +1,378 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Adelson-Velskii Landis Height-Balanced Trees</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: AV
+<BR>
+Authors: Kevin S Braunsdorf, D Scott Guthridge
+<BR>
+Mail: ksb@sa.fedex.com
+<BR>
+Version: 5.5
+<BR>
+Bugs: well documented
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+These routines provide an order(log N) insert/delete/search on any
+ordered key.  An "empirical proof" is, provided that the constant on
+any find operation is worst case ~1.043 (close to one).
+
+<P>
+An AVL tree can be converted to a "LAT" which is a linked-list-AVL-tree.
+In this transient form the tree is not a valid AVL tree; this form
+is used in the Merge operation, and can be created to speed in-order
+input of large trees.  The details of LAT format are not public.
+
+<H1>Configuration</H1>
+
+The AVL code can be configured to maintain ordered, balanced trees for
+any type of data.  The elements needed are:
+
+<DL>
+<DT>AE_ELEMENT
+<DD>
+a typedef for the type to be stored in the tree
+
+<DT>nilAE
+<DD>a nil pointer to an AE_ELEMENT entry (for "not found")
+
+<DT>AECmp(pAEGiven)
+<DD>
+a function to compare a given AE_ELEMENT to the
+"current" one during an insert/search
+
+<DT>AEPrint(pAEOut)
+<DD>
+a function to output an AE_ELEMENT for debugging
+
+<DT>AEInit(pAENew)
+<DD>
+a function to init any new AE_ELEMENT nodes built
+
+<DT>AEMerge(pAELeft, pAERight)
+<DD>
+a function called to select between two AE_ELEMENT during a
+merge should return an int to select a merge action
+<UL>
+<LI>&lt; 0	to take the left argument next in the list
+<LI>== 0	to call AESame on the right argument (&amp; free it)
+<LI>&gt; 0	to take the right argument next in the list
+</UL>
+
+<DT>AESame(pAESame)
+<DD>
+a function to prepare an element from the right list during
+an AVMerge for "deletion"  After this call, AVMerge will free
+the memory and skip this element.
+
+<DT>AEFree(pAEFree)
+<DD>
+a function to prepare the selected AE_ELEMENT for deallocation
+by a call to AVFree (AVFree will call free for you)
+
+<DT>AEDelete(pAEDel)
+<DD>
+a function to prepare the selected AE_ELEMENT for deallocation
+by a call to AVDelete (AVDelete will call free for you)
+
+<DT>AENotfound()
+<DD>
+a function to call when an AVDelete fails
+
+<DT>Squeak(pchErr)
+<DD>
+as always is a routine to process errors (as yyerror() does
+for lex(1)).  Called from "AVVerifiy" only (currently).
+
+</DL>
+
+<P>
+The elements above should be declared in a configuration.h file and included
+before "avl.h" in any file that makes use of the AVL code {see "avltest.h"}.
+
+
+<H1>Provides</H1>
+A typedef "AVL" is provided in "avl.h" that should be used to declare
+any AVL trees as
+<BLOCKQUOTE><CODE>
+	AVL *pAVRoot;
+</CODE></BLOCKQUOTE>
+or for an array of AVL trees
+<BLOCKQUOTE><CODE>
+	AVL *sbpAVList[MAXTABLE];
+</CODE></BLOCKQUOTE>
+
+<P>
+A nil AVL tree is provided as "nilAV", so
+<BLOCKQUOTE>
+	AVL *pAVRoot = nilAV;
+</BLOCKQUOTE>
+
+is a legal initialization. The classic C <CODE>(AVL *)0</CODE> is also a
+legal initialization, but might not mean the same thing to the AVL code.
+
+<P>
+A function "AVInit" can be passed a pointer to an AVL pointer to make
+this assignment (for compatibility with other MICE routines requiring
+Init functions).
+Example:
+<BLOCKQUOTE>
+	AVInit(&amp; pAVRoot);
+</BLOCKQUOTE>
+
+<P>
+Inserting/Searching in a tree is accomplished by
+<OL>
+<LI> notify "AECmp" what the current key is
+		{how this is done is not AVLs concern},
+<LI> call "AVInsert(&amp; pAVRoot, 1)" if new data is to added to the
+	   tree; else "AVInsert(&amp; pAVRoot, 0)" for just search.
+<LI> use "AVpAEInsert", the inserted element
+</OL>
+
+<P>
+The function "AEInit" will be called to initialize any new nodes in the tree
+(if the record already exists "AEInit" is not called); AVpAEInsert is
+set to the located data (in either case).  "AVInsert" returns non-zero if
+the tree grew.
+Example:
+<BLOCKQUOTE><PRE><CODE>pKECmp = gets(sbKey);
+(void) AVInsert(&amp; pAVFile1, 0);
+AEReport(AVpAEInsert);
+...
+</CODE></PRE></BLOCKQUOTE>
+
+
+<P>
+Deleting from the tree is just as easy :-)
+<OL>
+<LI> notify "AECmp" what element we are deleting
+<LI> call "AVDelete(&amp; pAVRoot)"
+<LI> "AENotfound" will be called if no such key can be found
+<LI> "AEDelete" will be called if the key is found
+<LI> AVDelete will free the memory for you
+</OL>
+Example:
+<BLOCKQUOTE><PRE><CODE>pKECmp = "zap_me";
+AVDelete(&amp; pAVRoot);
+</CODE></PRE></BLOCKQUOTE>
+<P>
+To scan every node in the tree in order the user can call "AVScan".  This
+function will call a user supplied function on every AE_ELEMENT in tree, or
+stop when any user function returns non-zero.  "AVScan" returns either
+zero for "not found" or the non-zero return code from some (user) call.
+Example:
+<BLOCKQUOTE><PRE><CODE>(void) AVScan(pAVRoot, puts)
+</CODE></PRE></BLOCKQUOTE>
+
+
+<P>
+To reclaim the memory used by a tree (and destroy the tree) the user may
+call "AVFree" which will recursively delete all nodes in the tree.
+"AEFree" is called to prepare each AE_ELEMENT node for being free-d.
+Example:
+<BLOCKQUOTE><PRE><CODE> AVFree(pAVRoot);
+pAVRoot = nilAV;
+</CODE></PRE></BLOCKQUOTE>
+
+<P>
+The typedef "AVCARDINAL" is used to declare counts of AVL nodes.  It is
+always unsigned, but may be size adjusted for different applications or
+for machine speed optimization.  AVCARDINAL is returned by "AVCount", and
+is used in the arguments of "AVConstruct" and "AVMerge".
+
+<P>
+The "AVCount" function returns the number of elements in an AVL tree;
+this is most useful before a call to "AVConstruct", and even works if
+the tree is currently "LAT".  This is the only AVL routine other than
+"AVConstruct" that is guaranteed not to drop core if this is true!
+Example:
+<BLOCKQUOTE><PRE><CODE>printf("%d", AVCount(pAVTemp));
+</CODE></PRE></BLOCKQUOTE>
+
+
+<P>
+The user should use "AVBegin", "AVEnd", "AVStep" to build an AVL tree
+from any pre-sorted input source.  "AVBegin" will return non-zero if
+any pending in-order input is happening {bug}. "AVStep" will return an
+AE_ELEMENT pointer to the next node in the tree, the user should fill
+in the key info. "AVEnd" returns the root of the tree and closes the
+LAT insertion.
+<BR>
+Example:
+<BLOCKQUOTE><PRE><CODE>register AE_ELEMENT *pAE;
+(void) AVBegin();
+while (NULL != gets(sbBuf)) {
+	pAE = AVStep();
+	MyInit(pAE, sbBuf);
+}
+pAVRoot = AVEnd();
+</CODE></PRE></BLOCKQUOTE>
+
+<P>
+For some cases, it is easy to build a 100% efficient AVL tree from a
+sorted LAT list; "AVConstruct" does the dirty work of doing this.  The
+user usually will use "AVBegin", "AVEnd", "AVStep" to do this.
+"AVConstruct" is passed a LAT list of AVL nodes, a count of the nodes
+it is to build a balanced tree from (type AVCARDINAL), and an address
+to hang the new tree from.  It returns the the node remaining on the
+LAT list (or nilAV).  [Some randomness is used to reduce any chance of
+a deliberate worst-case tree construction :-)]
+<BR>
+Example:
+<BLOCKQUOTE><PRE><CODE>(void) AVConstruct(pAVLat, iCount, &amp; pAVRoot)
+</CODE></PRE></BLOCKQUOTE>
+
+<P>
+The function "AVLat" efficiently turns the bushy AVL tree in a linked-list.
+In this form "AVConstruct" can be called to build a perfect
+tree.  The user will (almost) never call this routine, the only time
+it is suggested is when the tree to be re-constructed is going to be
+searched many, many times without changing.
+<BR>
+Example:
+<BLOCKQUOTE><PRE><CODE>AVCARDINAL n;
+
+n = AVCount(pAVRoot);
+(void) AVLat(pAVRoot, &amp; pAVTemp);
+(void) AVConstruct(pAVTemp, n, &amp; pAVRoot);
+</CODE></PRE></BLOCKQUOTE>
+
+<P>
+To merge two AVL trees into one (destroying both subtrees) we use
+"AVMerge".  See "AEMerge" above.  AEMerge-s third parameter is a
+pointer to an AVCARDINAL.  It is used to record the number of elements
+in the resulting tree, if it is (AVCARDINAL *)0 it will be ignored.
+The first two arguments are the component trees (note that the first
+one has "precidence" over the second by MICE convention).  The function
+"AESame" should be defined to handle return codes of 0 from "AEMerge".
+<BR>
+Example:
+<BLOCKQUOTE><PRE><CODE>/* merge pAV_A, pAV_B */
+pAV_A = AVMerge(pAV_A, pAV_B, &amp; iCountA)
+pAV_B = nilAV;
+iCountB = 0;
+</CODE></PRE></BLOCKQUOTE>
+
+<P>
+If the user believes that the AVL routines have produced an invalid
+tree "AVVerify" may be called to confirm or deny it.  "AVVerify" returns
+the maximum depth of the tree.  If an error is found in the tree "Squeak"
+will be called with a (char *) to indicate the error:
+<TABLE summary="call backs from AVL to use code">
+<TR><th>(char *)</th><th>reason for call</th></TR>
+<TR><td>AVErrNone</td><td>the computed balance factors are impossible</td></TR>
+<TR><td>AVErrLeft</td><td>the tree *should be* balanced left (it is not)</td></TR>
+<TR><td>AVErrRight</td><td>the tree *should be* balanced right</td></TR>
+<TR><td>AVErrCenter</td><td>the tree *should be* balanced exactly</td></TR>
+</TABLE>
+Note that AVpAVInsert is set to the bad node before the call.
+<BR>
+Example:
+<BLOCKQUOTE><PRE><CODE>
+	AVVerify(pAVRoot);
+</CODE></PRE></BLOCKQUOTE>
+
+<P>
+For better debugging an AVL tree may be displayed via "AVPrint"; "AEPrint"
+is called to output each nodes name.  "-", "/", and "\" are used to display
+balance factors. "~" is used to display an empty (sub)tree.
+<BR>
+Example:
+<BLOCKQUOTE><PRE><CODE>
+	AVPrint(pAV);
+	putchar('\n');
+</CODE></PRE></BLOCKQUOTE>
+Output:
+<BLOCKQUOTE><PRE><CODE>
+	k=0\(e=1-(c=6,i=3),s=5-(n=4\(~,o=7),v=2/(t=8,~)))
+</CODE></PRE></BLOCKQUOTE>
+
+<H1>C Identifiers</H1>
+<DL>
+<DT>AVL
+<DD>
+A typedef to declarare AVL trees as <CODE>AVL *pAVRoot;</CODE>.
+
+<DT>void
+<DT>AVInit(ppAV)
+<DD>
+Make an AVL tree empty.
+
+<DT>AVL **
+<DT>AVConstruct(pAVLat, iCount, ppAVRoot)
+<DD>
+Build an AVL tree from the LAT structure.
+
+<DT>AVCARDINAL
+<DT>AVCount(pAV)
+<DD>
+Return the number of elements in an AVL tree.
+
+<DT>int
+<DT>AVDelete(ppAVRoot)
+<DD>
+Delete a node from an AVL tree.
+
+<DT>int
+AVFree(pAVRoot)
+<DD>
+Delete every node in a tree.
+
+<DT>int
+<DT>AVInsert(ppAVRoot)
+<DD>
+Add a new element to an AVL tree.
+
+<DT>AVL **
+<DT>AVLat(pAVCur, ppAVRet)
+<DD>
+Squish an AVL tree to a LAT list.
+
+<DT>AVL *
+<DT>AVMerge(pAVOne, pAVTwo, pi)
+<DD>
+Merge two AVL trees (destroy both component trees in the process).
+
+<DT>int
+<DT>AVPrint(pAV)
+<DD>
+Terse description of the AVL tree to stdout.
+
+<DT>int
+<DT>AVScan(pAVRoot, pFunc)
+<DD>
+Visit every node in an AVL tree in-order.
+
+<DT>int
+<DT>AVBegin()
+<DD>
+Begin construction of an AVL tree from a sorted list.
+
+<DT>AVL *
+<DT>AVEnd()
+<DD>
+End sorted list construction.
+
+<DT>AE_ELEMENT *
+<DT>AVStep()
+<DD>
+Move to next element in sorted list insertion.
+
+<DT>int
+<DT>AVVerify(pAVRoot)
+<DD>
+Verify that the tree is an AVL tree and return depth.
+</DL>
+
+<H1>To Do List</H1>
+
+Nothing.
+
+<HR><PRE>
+$Id: avl.html,v 6.5 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

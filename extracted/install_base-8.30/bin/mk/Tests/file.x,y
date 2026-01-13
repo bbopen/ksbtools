@@ -1,0 +1,46 @@
+#!/bin/cat
+# $Id: file.x,y,v 5.1 2003/09/17 18:47:26 ksb Exp $
+
+$Compile: [ %f = "file.x,y" ] && for marker in Dir Base Ext Cut Type RCS Load\n\tdo\n\t\t%b %o -a -m$marker %f && echo "$marker test OK"\n\tdone
+
+# base names
+$Base(1): [ "file" = "%F" ]
+$Base(2): [ "file" = "%P" ]
+$Base(3): [ "file" = "%p" ]
+
+# extentions
+$Ext(1): [ "x,y" = "%x" ]
+$Ext(2): [ "x,y" = "%X" ]
+
+# Cuts on non-dot extenders that fail
+$Cut(1): [ -z "%u@" ]
+$Cut(2): [ "file.x,y" = "%q@" ]
+$Cut(3)=~*: exit 1 # %U@
+$Cut(4)=~*: exit 1 # %Q@
+
+# Cuts on non-dot extenders that work
+$Cut(5): [ "file.x" = "%q," ]
+$Cut(6): [ "y" = "%u," ]
+$Cut(7): [ "file.x" = "%Q," ]
+$Cut(8): [ "y" = "%U," ]
+
+# file type flags
+$Type(1): [ "f" = "%y" ]%Yf
+$Type(2)=~*: exit 1 # %Yd should stop xlation
+$Type(3)=~*: exit 1 # %Y. should stop error
+
+# directory prefix and suffix
+# match if ./file or $PWD/file
+$Dir(1): [ -z "%d" -o _"%f" = _"%q//%u/" ]
+# match in local case
+$Dir(2): [ _"%D" = _"`dirname %f`" ]
+$Dir(3): [ _"%F.%U." = _"%G" ]
+$Dir(4): [ _"%D" = _"%q/" ]
+$Dir(5): [ _"%p" = _"%q." -a _"%P" = _"%Q." ]
+
+$RCS(1): if [ -d %D/RCS ] ; then [ _"%r" = _"%D/RCS/%G,v" -o _"%r" = _"RCS/%f,v" ] ; else [ _"%r" = _"%D/%G,v" -o _"./%r" = _"%D/%G,v" ] ; fi
+$RCS(2): if [ -d RCS ] ; then [ _"%R" = _"RCS/%G,v" ] ; else [ _"%R" = "_%f,v" ] ; fi
+
+$Load(1): [ _"%#!" = _"/bin/cat" ]
+$Load(2): [ _"%#/" = _"cat" ]
+$Load(3): [ _"%#6cb" = _"#!/bin" ]

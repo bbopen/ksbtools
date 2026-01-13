@@ -1,0 +1,17 @@
+# $Id: TODO,v 2.2 1997/03/08 21:10:32 ksb Exp $
+
+bj: replace USERFS_PREFIX with USERFS_MAPFUNC or something.  write mappings
+    to do USERFS_PREFIX and /home/machine/letter.
+
+ksb: add passive mode (-p).  labd reports once to labwatch with a special
+ "passive" tag in the packet (p:ackport).  labwatch has a heap of passive
+ clients and polls them every <passive> seconds.  This is for demand dial
+ networks that only dial in one direction (from labwatch -> labd).
+ Passive clients:
+	+ keep a few messages in a buffer and deliver them when polled
+	+ still expect an ACK for each report packet (the network connection
+	  should stay up for at least 6 seconds after a poll to deliver
+	  messages)
+
+--
+ksb && bj

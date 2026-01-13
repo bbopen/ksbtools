@@ -1,0 +1,41 @@
+# $Id: README,v 3.3 1995/08/27 16:26:37 kb207252 Exp $
+
+Here are two programs I have found (recently) to be quite useful.
+One of them expands the C-Shell curly braces notation for file name
+building, the other compresses a list of file names into one of
+these expressions.  I called these programs `curly' and `uncurly'.
+
+There is am example usage of {un,}curly in the comments in the code,
+copied below.  I have used them to compress a dictionary (one initial
+letter at a time BTW), and to compress lists of files on tape.
+
+One might pipe the output of a find to uncurly and compress to store
+a list of filenames as:
+
+	$ find . -type f -print | uncurly | gzip > /tmp/files.u.gz
+
+then (later on) we need that list of files again...
+
+	$ gzcat /tmp/files.u.gz | curly | xargs do_something
+
+this yields substantial compression over just gzip (or compress) alone,
+which it shouldn't.  (We know something quite special about the output
+of find on a `normal' find output that gives us an advantage here.)
+
+I always name the output from uncurly as files.u.  Here is some sample
+compression data (for 1962 handy filenames in my home directory):
+
+-rw-r--r--   1 ksb dspd       48335 Apr 19 09:59 /tmp/files	  #100.0%
+-rw-r--r--   1 ksb dspd       15462 Apr 19 10:01 /tmp/files.Z	  # 31.9%
+-rw-r--r--   1 ksb dspd        9092 Apr 19 10:00 /tmp/files.gz	  # 18.8%
+-rw-r--r--   1 ksb dspd       16648 Apr 19 10:00 /tmp/files.u	  # 34.4%
+-rw-r--r--   1 ksb dspd        9240 Apr 19 10:01 /tmp/files.u.Z	  # 19.1%
+-rw-r--r--   1 ksb dspd        7074 Apr 19 10:00 /tmp/files.u.gz  # 14.6%
+
+I would like to be mailed any bug reports so I can fix my own copy.
+
+Known bugs:  doesn't handle files with `{' or `}' in them well.
+
+--
+Enjoy!
+kayessbee (Kevin S Braunsdorf, ksbrauns@fedex.com)

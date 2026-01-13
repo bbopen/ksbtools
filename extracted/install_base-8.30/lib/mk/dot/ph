@@ -1,0 +1,6 @@
+# perl header file							(ksb)
+# $Id: ph,v 5.0 1996/09/09 20:28:57 kb207252 Exp $
+
+$Compile(*):	: 'ignore header file'
+
+$Info(*):	${echo-echo} "perl header file"

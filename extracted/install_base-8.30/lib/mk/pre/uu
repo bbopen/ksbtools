@@ -1,0 +1,21 @@
+# uuencoded files, we hope						(ksb)
+# $Id: uu,v 5.0 1996/09/09 20:16:55 kb207252 Exp $
+
+$Display(*):	${uudecode-uudecode} %f |${PAGER-${more-more}} %s
+$Display(*):	${uudecode-uudecode} %f |${PAGER-${more-more}}
+
+$Clean(*):	${rm-rm} -f %P
+$Clean(*):	${rm-rm} -rf %P
+
+$Info(*):	${echo-echo} "uuencoded data"
+$Info(*):	${echo-echo} "uuencoded `${uudecode-uudecode) %f >%P && %b %o -m%m -d%s %P && rm -f %P`"
+$Info(*):	${echo-echo} "uuencoded `${uudecode-uudecode) %f >%P && %b %o -m%m %P && rm -f %P`"
+$Info(*):	${echo-echo} "uuencoded `${uudecode-uudecode) %f >%F && %b %o -m%m %F && rm -f %F`"
+$Info(*):	${echo-echo} "uuencoded `${uudecode-uudecode} %f >/tmp/u$\$%F && %b %o -m%m -d%s /tmp/u$\$%F && rm -f /tmp/u$\$%F`"
+$*(*):		${echo-echo} "uuencoded `${uudecode-uudecode} %f >/tmp/u$\$%F && %b %o -m%m /tmp/u$\$%F && rm -f /tmp/u$\$%F`"
+
+$*(*):		${uudecode-uudecode) %f >%P && %b %o -m%m -d%s %P && rm -f %P
+$*(*):		${uudecode-uudecode} %f >%P && %b %o -m%m %P && rm -f %P
+$*(*):		${uudecode-uudecode) %f >%F && %b %o -m%m %F && rm -f %F
+$*(*):		${uudecode-uudecode} %f >/tmp/u$\$%F && %b %o -m%m -d%s /tmp/u$\$%F && rm -f /tmp/u$\$%F
+$*(*):		${uudecode-uudecode} %f >/tmp/u$\$%F && %b %o -m%m /tmp/u$\$%F && rm -f /tmp/u$\$%F

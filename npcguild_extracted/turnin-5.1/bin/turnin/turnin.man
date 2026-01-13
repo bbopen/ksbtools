@@ -1,0 +1,122 @@
+.\" $Id: turnin.man,v 5.1 2000/01/06 15:51:24 ksb Exp $
+.\" $Compile: ${nroff-nroff} -man %f |${PAGER-${more-more}}
+.\" $Laser: ${ltroff-ltroff} -man %f
+.TH TURNIN 1L
+.UC 4
+.SH NAME
+turnin \- electronically submit files for grading
+.SH SYNOPSIS
+.B turnin
+[\fB\-i\fP | \fB\-l\fP | \fB\-s\fP] [\fB\-v\fP] [\fB\-c\fP \fIcourse\fP[=\fIsection\fP]] [\fB\-p\fP \fIproject\fP] [\fIfiles\fP]
+.br
+.B turnin
+\fB\-h\fP
+.br
+.B turnin
+\fB\-V\fP
+
+.I files
+.br
+.SH DESCRIPTION
+.I Turnin
+reads each of
+.I files
+in sequence and copies it to the directory designated by the course's
+instructor.  If the file being read is a directory,
+.I turnin
+will recursively copy the entire contents of the directory.
+.PP
+In order for
+.I turnin
+the instructor must have submissions turned on, see \fIproject\fP(1L).
+.PP
+Any previous submissions for the current project are overwritten.
+.SH OPTIONS
+.TP
+\-c \fIcourse\fR[=\fIsection\fP]
+Specify the course.  Must be used if the student is in more than one course
+that uses \fIturnin\fR to collect assignments.  The student is prompted
+for the \fIcourse\fR if they are enrolled in more than one and this option
+isn't used.  The student is prompted for the \fIsection\fP if more than
+one exists for the course and none is provided.
+.TP
+\-h
+Outputs a terse usage message.
+.TP
+\-i
+In this case \fIturnin\fP doesn't actually submit any files.
+Any \fIfiles\fP given are taken to be course names for which to produce
+envrironment settings.
+When no \fIfiles\fP are given,  \fIturnin\fP prompts the user to list all
+the courses they are currently enrolled in.
+The shell commands output on stdout are appropriate to the users SHELL
+environment variable.
+.TP
+\-l
+Lists the projects for the specified class.  Projects open for submissions
+and ones closed to submissions are listed.
+.TP
+\-p \fIproject\fR
+Submit \fIfiles\fP to the specified \fIproject\fP. 
+.TP
+\-s
+Lists the classes that the student is enrolled in.
+.TP
+\-v
+.I Turnin
+displays a \`tar tvf\' of the submitted files when this option is
+specified (either with or without submitting any files).
+.TP
+\-V
+Show the RCS Id for this version of \fIturnin\fP.
+
+.SH EXAMPLES
+.TP
+turnin -c cs100 factorial.p
+Submit the file \*(lqfactorial.p\*(rq to the instructor for cs100.
+.TP
+turnin -v Makefile tour.c passport.c
+Submit three files to the default course
+(or prompt for the course to submit to)
+then display a list of the submitted files.
+.TP
+turnin -v
+Display a list of the files this user most recently submitted
+(for the default project).
+.TP
+turnin -v -p project1-late
+Display a list of the files this user most recently submitted
+for \*(lqproject1-late\*(rq.
+.TP
+turnin -i cs100 >>.login
+Add a \fIcsh\fP(1) command to the users .login to set the users section
+for cs100.
+.TP
+turnin -V
+turnin: $\&Id: turnin.c,v 5.0 90/06/22 11:43:02 ksb Exp $
+
+.SH "UPGRADED"
+This is a modified version of the Original Purdue release.  The
+modifications (made by KSBrausdorf, the original author) are intended
+to improve security.
+
+.SH BUGS
+There is an inherent problem with accepting code from a student that
+you are going to \fBrun\fP as a grader.  If the student breaks the
+grader account they should fail the course.  So all we need to do is
+leave an audit trail to find the Bad Guy.
+
+.PP
+To that end we use another account and \fIssh\fP to copy the files
+down and build/run them (using a special identity).
+If you don't do that (or something like it) the student could introduce
+worms, viruses, bugs etc. into the grader account's files (.login,
+.profile, .rhosts and the like) without detection.
+
+.PP
+No code in \fIturnin\fP will fix these issues.  I did disallow the
+obvious "../../.rhosts" kind of attack in the submitted file list,
+but that doesn't really fix anything.
+
+.SH "SEE ALSO"
+csh(1), project(1L), sh(1), tar(1)

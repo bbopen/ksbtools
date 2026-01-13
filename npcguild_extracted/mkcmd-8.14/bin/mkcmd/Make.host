@@ -1,0 +1,148 @@
+`# Makefile for mkcmd
+# $Id: Make.host,v 8.8 2000/06/20 14:09:17 ksb Exp $
+#			Kevin S Braunsdorf, PUCC
+
+SHELL=/bin/sh
+'ifelse(HOSTTYPE,`PTX',
+`BIN=	${ROOT}/bin',
+`BIN=	${DESTDIR}/usr/local/bin')`
+PROG=	mkcmd
+
+I=/usr/include
+S=/usr/include/sys
+H=${CCS_HDRS}/include
+P=
+
+# Set any of USE_MEMCPY, DEFDIR, TILDE_DIR (from machine.h) below with
+# -D in CDEFS.  See notes in machine.h.  Change LIB (if you move DEFDIR)
+# in the lib source Makefile.
+INCLUDE=
+DEBUG='ifelse(HOSTTYPE,`V386',`',`-O')`
+CDEFS= -D'HOSTTYPE`'ifdef(`CPP_FIX',` CPP_FIX')`'ifelse(
+HOSTTYPE,`IBMR2',` -D_AIX')`
+CFLAGS=	${DEBUG} ${CDEFS} ${INCLUDE}
+INSTALL= install
+
+HDR=	main.h mkcmd.h check.h emit.h key.h list.h parser.h stracc.h option.h \
+	mkusage.h machine.h routine.h type.h scan.h atoc.h
+SRC=	main.c mkcmd.c check.c emit.c key.c list.c parser.c stracc.c option.c \
+	atoc.c mkman.c routine.c type.c scan.c mkusage.c
+OBJ=	main.o mkcmd.o check.o emit.o key.o list.o parser.o stracc.o option.o \
+	scan.o atoc.o mkman.o routine.o type.o mkusage.o
+GENh=	
+GENc=	
+GEN=	${GENc} ${GENh}
+TXT=	README mkcmd.m scan.m mkcmd.mh
+MAN=	mkcmd.man
+SOURCE=	Makefile ${MAN} ${TXT} ${HDR} ${SRC}
+
+# if on HPUX10 and using the "cc" compiler for -Dconst=
+'ifelse(HOSTTYPE,`HPUX9',`CC=gcc',
+HOSTTYPE,`HPUX10',`CC=cc -Dconst=')`
+'ifelse(HOSTTYPE,`NEXT2',`.SUFFIXES:
+.SUFFIXES: .c .h .o .s',`')`
+
+all: mkcmd
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ} 'ifelse(
+HOSTTYPE,`HPUX',`-lBSD',
+HOSTTYPE,`EPIX',`-L/usr/local/lib -lbsd',
+HOSTTYPE,`V386',`-L/usr/local/lib -lbsd',
+`')`
+
+self: mkcmd.m FRC
+	rm -f res
+	mkcmd -G -mres mkcmd.m
+	-diff main.c prog.c
+	-diff main.h prog.h
+
+replace: FRC
+	-(cmp -s prog.c main.c || (mv prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (mv prog.h main.h && echo main.h updated))
+
+boot: all
+	cp ${PROG} ${BIN}/${PROG}
+	chmod 755 ${BIN}/${PROG}
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} prog.[ch] ${GEN} *.o a.out core errs tags
+
+# -F "mkcmd -M %F" -s.c -tmain mkcmd.m
+depend: ${SRC} ${HDR} ${GEN} FRC
+	maketd 'ifelse(
+HOSTTYPE,`NEXT2',`-e "$${CC} -c $${CFLAGS} %F" ',
+`')`${CDEFS} ${INCLUDE} ${SRC} ${GENc}
+
+distrib: FRC
+	distrib -c ${BIN}/${PROG}
+
+install: all FRC
+	${INSTALL} -c -s ${PROG} ${BIN}/${PROG}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${SRC} ${GENc}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR} ${GEN}
+	ctags -t ${SRC} ${HDR} ${GENh} ${GENc}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+main.o: emit.h machine.h main.c parser.h type.h
+
+mkcmd.o: atoc.h check.h emit.h list.h machine.h main.h mkcmd.c mkcmd.h \
+	option.h parser.h scan.h type.h
+
+check.o: check.c check.h emit.h list.h machine.h main.h mkcmd.h option.h \
+	parser.h routine.h scan.h type.h
+
+emit.o: atoc.h check.h emit.c emit.h key.h list.h machine.h main.h mkcmd.h \
+	option.h parser.h routine.h scan.h type.h
+
+key.o: emit.h key.c key.h list.h machine.h main.h mkcmd.h option.h parser.h \
+	routine.h scan.h type.h
+
+list.o: list.c list.h machine.h main.h mkcmd.h
+
+parser.o: check.h emit.h key.h list.h machine.h main.h mkcmd.h mkusage.h \
+	option.h parser.c routine.h scan.h stracc.h type.h
+
+stracc.o: machine.h stracc.c
+
+option.o: atoc.h check.h emit.h key.h list.h machine.h main.h mkcmd.h option.c \
+	option.h parser.h routine.h scan.h type.h
+
+scan.o: list.h machine.h main.h mkcmd.h scan.c scan.h stracc.h
+
+atoc.o: atoc.c atoc.h
+
+mkman.o: atoc.h emit.h list.h machine.h main.h mkcmd.h mkman.c mkusage.h \
+	option.h parser.h routine.h scan.h type.h
+
+routine.o: atoc.h check.h emit.h list.h machine.h main.h mkcmd.h option.h \
+	parser.h routine.c routine.h scan.h type.h
+
+type.o: emit.h key.h list.h machine.h main.h mkcmd.h option.h parser.h \
+	routine.h type.c type.h
+
+mkusage.o: check.h emit.h list.h machine.h main.h mkcmd.h mkusage.c option.h \
+	parser.h scan.h type.h
+
+# *** Do not add anything here - It will go away. ***
+'dnl

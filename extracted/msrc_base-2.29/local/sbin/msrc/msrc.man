@@ -1,0 +1,737 @@
+'\" te
+.\" $Id: msrc.man,v 1.48 2010/08/11 22:43:51 ksb Exp $
+.\" by KS Braunsdorf
+.\" $Compile: Display%h
+.\" $Display: groff -Tascii -man %f | ${PAGER:-less}
+.\" $Display(*): groff -T%s -man %f
+.\" $Install: %b -mDeinstall %o %f && cp %f $DESTDIR/usr/local/man/man8/msrc.8
+.\" $Deinstall: ${rm-rm} -f $DESTDIR/usr/local/man/[cm]a[nt][18]/msrc.8*
+.TH MSRC 8 LOCAL
+.SH NAME
+.ds PN "msrc
+\*(PN \- master source remote command
+.\" or make secure remote command
+.SH SYNOPSIS
+\fI\*(PN\fP [\fB\-lz\fP] [\fB\-\fP\fIpreload\fP] [\fB\-P\fP\fIjobs\fP] [\fB\-d\fP\~\fIflags\fP] [\fB\-m\fP\~\fIprereq\fP[\fB:\fP\fIpostreq\fP]] [\fB\-f\fP\~\fImakefile\fP] [\fB\-u\fP\~\fIlogin\fP] [\fB\-y\fP\~\fIyoke\fP] [\fIhxmd-options\fP] [\fIcommand\fP]
+.br
+\fI\*(PN\fP \-\fBh\fP
+.br
+\fI\*(PN\fP \-\fBV\fP
+.br
+
+.SH DESCRIPTION
+
+Think of this as a network-aware addition to \fBmake\fP.
+The goal is to run a recipe on every host in a (potentially long)
+list of hosts.
+To do that we are going to synchronize some files
+from the current directory to a remote host, then run the
+\fIcommand\fP on that remote host, from the updated directory.
+
+.P
+This is really a front-end for \fBhxmd\fP which makes it less cumbersome to
+call \fBrdist\fP(1), \fBmake\fP(1) and \fBssh\fP(1) to
+update many target hosts.
+This program completes the refactoring and replacement of \fIdistrib\fP
+as the basis of "ksb's master source" software distribution and
+installation system.
+
+.P
+To send the appropriate files to the target host \fI\*(PN\fP classifies
+all the files in the current directory into a few classes:
+.TP
+Those that are sent as-is (\fBSEND\fP)
+Each file is updated as an exact replica on every target host.
+.TP
+Those that are ignored (\fBIGNORE\fP)
+None of these are updated on the target host.
+.TP
+Those that are macro processed for each target (\fBMAP\fP)
+Each file is run through \fBm4\fP with attribute macros defined
+for each target host.  The resulting stream is sent to the target
+host for additional processing.  If the node listed is a directory \fBhxmd\fP
+uses the file \*(lqCache.m4\*(rq as a marked-up recipe file, which it
+processes though \fBm4\fP, then uses to update the directory.  The output
+from that command is sent to the target host.  See \fBhxmd\fP(8L).
+.TP
+Those that contain options to \fBhxmd\fP (\fBHXINCLUDE\fP)
+These are used to tune parameters to the underlying \fBhxmd\fP
+machinery.
+.P
+To do this \fI\*(PN\fP consults macro values from the \fImakefile\fP
+specified.  It appends a generated target to a copy of that recipe file.
+The generated target name is the basename of the program prefixed
+with 2 underscores (\*(lq__\*(rq), so the default one would be
+\*(lq__msrc\*(rq.
+That double-underscore target outputs the value of 7 \fBmake\fP macros:
+\fBINTO\fP, \fBMODE\fP, \fBSEND\fP, \fBMAP\fP, \fBSUBDIR\fP,
+\fBIGNORE\fP, and \fBHXINCLUDE\fP.
+When some of these are left empty \fI\*(PN\fP tries
+to deduce the proper disposition of each filename.
+This chicanery allows the author of the recipe file to
+use any other target for the work at hand, and put explicit
+dependencies in the recipe file for the generated target.
+
+.P
+Usually any explicit dependencies create payload files just before they are
+transmitted to the target hosts.
+
+.P
+\fIMsrc\fP constructs two files from
+the extracted \fBmake\fP macro definitions, the \fIcommand\fP provided,
+and the filenames in the current working directory.
+All of this information is used to create an \fBhxmd\fP(8) instance to
+select the target hosts, update each, then execute \fIcommand\fP on
+each one.
+
+.P
+The first file constructed is an \fBrdist\fP \fIdistfile\fP, with
+\fBm4\fP mark-up, to drive the data synchronization phase of
+the update.
+The second file is a shell script provided as the \fIcontrol\fP
+parameter to \fBhxmd\fP.
+It calls \fBrdist\fP \fB\-f\fP
+on the \fBm4\fP processed \fIdistfile\fP to update the
+remote target, then \fIssh\fP to obtain a shell on the remote
+target, source any entry definitions file, and run the \fIcommand\fP.
+In each of these there are substantial \fBm4\fP hooks to refine
+command-line parameters to effect each facility.
+
+.P
+\fBMake\fP macros explicitly specified in the \fImakefile\fP
+are preferred to generated values constructed from
+the list of files in the current directory.
+Any macro given a non-empty value in the \fImakefile\fP will never be
+adulterated by \fImsrc\fP, unless it contains the meta token "\fB+++\fP"
+(three plus signs).
+All macros left empty (or undefined) assume as many of the
+remaining files as possible, based on the rules below.
+
+.P
+The \fBSEND\fP, \fBMAP\fP, and \fBSUBDIR\fP macros may contain one of
+two meta tokens: \fB+++\fP specifically requests that unassigned files
+be appended to a macro, and \fB.\fP specifically requests that no
+files be assigned to that macro.  (Typically \fBMAP=.\fP would be
+used to avoid any macro replacement on every local file.)
+
+.P
+The default \fIcommand\fP, is \fBmake\fP.
+That strongly implies
+that we send a \fBmake\fP recipe file called either "makefile" or
+"Makefile" to the target hosts.
+.\" or that we really like the error message "make: no target to make."
+
+.SH OPTIONS
+
+Note that (while not listed) any option which might be passed to
+\fBhxmd\fP is allowed in \fI\*(PN\fP's command line.
+We actually call \fBhxmd\fP with our program name forced as
+\fBargv[0]\fP.
+Since \fBhxmd\fP accepts a default zero configuration file via
+the basename in \fBargv[0]\fP we are changing that default value.
+We don't do this when we see an explicit \fB\-Z\fP passed on
+our command line.
+
+.TP
+.nf
+\fB\-\fP\fIpreload\fP
+.fi
+The \fBhxmd\fP instance created to process the request generates all the
+temporary files in advance of the process launch.  The integer sets the
+number of tasks that are prepared for launch in addition to number of
+parallel tasks (under \fB\-P\fP below).
+.TP
+.nf
+\fB\-d\fP \fBP\fP
+.fi
+If any of \fIflags\fP contain the upper case letter 'P' (\fBP\fP for position)
+\fI\*(PN\fP traces the modifications made to
+the original \fImakefile\fP, as well as the disposition of each file in
+the macro lists on \fBstderr\fP.
+.TP
+.nf
+\fB\-d\fP \fBS\fP
+.fi
+If any debug option to \fBm4\fP (passed through \fBhxmd\fP) contains
+the upper case letter 'S' (\fBS\fP for send scripts)
+\fI\*(PN\fP outputs the two files
+constructed for \fBhxmd\fP on \fBstderr\fP (as shell here-documents).
+.TP
+.nf
+\fB\-d\fP \fBX\fP
+.fi
+The "trace execution" switch to \fBhxmd\fP also traces the command line
+given to \fBhxmd\fP, with the \fBargv\fP masking shown.
+.TP
+.nf
+\fB\-f\fP \fImakefile\fP
+.fi
+Specify the \fBmake\fP(1) recipe file \fI\*(PN\fP studies to extract
+any \fBmake\fP macro definitions.
+We search for the names \fBMsrc.mk\fP
+and \fBmsrc.mk\fP before \fBmake\fP's defaults of \fBmakefile\fP
+and \fBMakefile\fP.
+This allows the local control logic to
+be separated from the remote logic (or not).
+.TP
+.nf
+\fB\-F\fP \fIliteral\fP
+.fi
+This option is forced by \fI\*(PN\fP when calling \fIhxmd\fP so
+it may not be presented on the command line.
+.TP
+.nf
+\fB\-h\fP
+.fi
+Print a brief help message.
+.TP
+.nf
+\fB\-l\fP
+.fi
+The environment built resides on the local filesystem, rather than
+the remote host's, and the \fIcommand\fP is run from that temporary
+directory.  This allows the use of some other file synchronization
+utility (rather than \fIrdist\fP) to update the remote host.
+See "LOCAL MODE" below.
+.TP
+.nf
+\fB\-m\fP \fIprereq\fP[\fB:\fP\fIpostreq\fP]
+.fi
+Specify the double-underbar target used to extract any macro values.
+This is intended for scripts built on top of \fB\*(PN\fP, so
+use the default \*(lq__msrc\*(rq for simple tasks.
+.sp
+The optional \fIpostreq\fP is updated with \fBmake\fP after
+the complete build with the macro MSRC_EXITCODE defined as
+the integer exit code from the \fBhxmd\fP update process.
+In that case the cleanup process overlays the original \fB\*(PN\fP.
+A trailing colon implies a \fIpostreq\fP of \*(lq__clean\*(rq.
+.TP
+.nf
+\fB\-P\fP\fIjobs\fP
+.fi
+Specify the number of tasks to run in parallel, default 6.
+See BUGS below.
+.TP
+.nf
+\fB\-u\fP \fIlogin\fP
+.fi
+If \fIlogin\fP is not the empty string it specifies a default value
+for the \fBENTRY_LOGIN\fP \fBm4\fP macro attribute.
+.TP
+.nf
+\fB\-V\fP
+.fi
+Show version information, and some tuning information.
+.TP
+.nf
+\fB\-y\fP \fIyoke\fP
+.fi
+Each \fIyoke\fP specification
+presents a command-line word to the invocation of \fBmake\fP
+used to plunder the \fImakefile\fP, these tie-points allow
+one \fBmake\fP recipe file to syzygy several subdirectories.
+.\" syzygy to align mutliple points (like planets)
+For example to change the \fBINTO\fP macro in
+each directory's control logic.  This option is most often set
+in a \fBPRE_CMD\fP recursively call to \fImsrc\fP for each nested product.
+.TP
+.nf
+\fB\-z\fP
+.fi
+This option removes all the files from the macro \fBHXINCLUDE\fP.
+This saves editing effort when debugging or reusing code, but not
+messing with any \fB$HXMD_PASS\fP environment already set.
+.TP
+.nf
+\fB\-Z\fP \fIconfig\fP
+.fi
+Unless this option is presented the argument vector built for
+\fBhxmd\fP indicates the name of the program is the same as
+the name \fI\*(PN\fP was called.  The has two effects: first
+error messages look like they come from "msrc" rather than "hxmd",
+second this tells \fBhxmd\fP to look for a default zero
+configuration file with our program name as the base.  Thus
+any local configuration may be selected by default (and be
+distinct from \fBhxmd\fP's defaults).
+.\" Overriding the value with an explicit
+.\" \fB\-Z\fP may break this program in strange and unlikely ways.
+
+.SH "MACRO SELECTION"
+
+This is a list of the \fImake\fP(1) macros expected,
+and how each is constructed or derived.
+.TP
+\fBINTO\fP
+This is the name of our remote source cache on each target host.
+A default value is available only when the current working directory
+contains the string "/msrc/".
+In that case the string `/msrc/' in that string is replaced with
+`/src/' to form a default value.
+Otherwise the \fImakefile\fP must set a single explicit value.
+
+.TP
+\fBMODE\fP
+This allows the \fImakefile\fP to request local mode.
+Otherwise the invoker must specify the command-line option \fB\-l\fP,
+which they are apt to forget.  There explicit values are allowed:
+"local", "remote" and "auto".  Local adds \fB\-l\fP to the
+command-line, if not specified.  Remote forbids the use of \fB\-l\fP,
+as well as the use of \fBmmsrc\fP(8).  Auto allows either, and is the default
+value when none is provided.
+
+.P
+All the macros below should consist of filenames from the current
+directory, or possibly regular expressions (for \fBIGNORE\fP) which are
+teated as literals in this phase.  Use an absolute or relative
+path only with care.
+.P
+Next \fI\*(PN\fP assembles a list of all the local filenames which
+do not already appear in any of the macros below (as given by the
+\fImakefile\fP).
+The code in \fI\*(PN\fP deduces the disposition of
+each filename first eliminates any that already appear in a defined
+macro, then includes any remaining filenames in exactly one
+of these macros, which must have started off undefined (or empty):
+.TP
+\fBSUBDIR\fP
+The is constructed from the list of directory nodes in
+the current directory that are not any of "RCS", "SCCS", "CVS", or "SVN".
+As always this macro is left as-is when it is provided in the \fImakefile\fP.
+These directories are added to the generated \fIDistfile\fP, see below.
+.P
+For any non-directory node we select the first macro not set
+in the \fImakefile\fP which might accept each unmatched file.
+Note that a macro accepts all unmatched files, accepting one doesn't
+change the fact that the \fImakefile\fP didn't provide a value.
+.TP
+\fBMAP\fP
+Any file or directory ending in ".host" is added to \fBMAP\fP macro, unless
+that macro was given in the \fImakefile\fP (without the \fB+++\fP markup).
+The ".host" suffix is removed on the remote host, and
+the resulting name is added to \fBIGNORE\fP.
+The name ".host" itself is left untouched to
+avoid an empty filename on the remote host.
+Any file mapped by this macro is run though \fBhxmd\fP's \fBm4\fP
+expansion for the \fIfiles\fP parameter, the results thus generated
+are the contents of the remote version.
+.TP
+\fBHXINCLUDE\fP
+Any filename ending in ".hxmd" is added to \fBHXINCLUDE\fP macro, unless that
+macro was given in the \fImakefile\fP.
+This is a list files containing options to \fIhxmd\fP.
+The special name dot (".") is ignored so that you can force
+the macro to a fixed value that does not tamper with the environment.
+A single file a with only a double-dash ("--") in
+it forces the variable to be set to the empty string (which \fBhxmd\fP ignores).
+Lines in each file beginning with an octothorpe ("#") are ignored, and
+newlines are converted to spaces.
+.TP
+\fBSEND\fP
+Any other name is added to the \fBSEND\fP macro, unless that macro
+was given in the \fImakefile\fP.
+.TP
+\fBIGNORE\fP
+Any name not yet consumed is added to \fBIGNORE\fP, unless that
+macro was given in the \fImakefile\fP.
+
+.PP
+The source paths provisioned in \fBSEND\fP and \fBMAP\fP provide
+data files for the processed files in the platform directory, but the
+names of the files in the platform directory may be spelled
+differently in the target.  There are two different ways to compress
+the source path.
+
+.PP
+Any source path which contains an explicit mention of the dot link in
+its path (as "/./") has the leading elements up to that point removed
+in the destination path.
+The path "/usr/local/lib/other/./chase.c" when sent to "/tmp/lark"
+results in the destination path "/tmp/lark/chase.c".
+If this rule applies to a path the next rule cannot be applied.
+This is copied from \fBrsync\fP's markup rules.
+
+.PP
+Any source path that starts with a reference to the parent directory
+(as "../") has that element removed in the destination path.
+This rule is repeated until all leading dot-dot elements are removed.
+To avoid this rule prefix the path with "././" and the previous rule
+applied first.
+This is based on the operational aspect of \fI\*(PN\fP
+which says we are updating a target directory, not any sibling
+directories.  It allows and small directories to share a common
+file from the parent directory.
+
+.SH "BUILD PHASE"
+
+The \fIdistfile\fP construction builds 3 labeled file distribution
+stanzas one for "myself", one for "dirs" and one for "files".
+See EXAMPLES below for a spell to look at the constructed \fIdistfile\fP.
+In outline it consists of a stanza to replicate the current directory,
+the directories in \fBSUBDIR\fP (without descending into them)
+then replicate the files from from \fBSEND\fP excepting
+the patterns from \fBIGNORE\fP.  Then for each file in \fBMAP\fP
+a separate stanza is constructed to copy the \fBm4\fP processed
+file to the new name on the remote host.
+
+.P
+The \fIscript\fP construction builds a long \fBm4\fP file
+with many \fBifdef\fP hooks in it (see M4 HOOKS below) to help
+fine-tune the actions.   The \fIcommand\fP specified on the \fI\*(PN\fP
+command line is quoted to preserve the meaning as it is passed
+through both \fBm4\fP and the \fIssh\fP shell command evaluation.
+
+.SH "LOCAL MODE"
+
+Under \fP\-l\fP we build a shell command to allocate a temporary
+directory, fill it with the processed files from the local master,
+change directory to that temporary work area, run \fIcommand\fP, then
+remove the work area.  This allows processing for nodes that are
+unwilling or unable to accept \fIrdist\fP or \fIssh\fP connections.
+This also allows meta-processes that should run in a context
+that represents each target host, but need not be resident on that host.
+
+.P
+Tactics to think about at this point:
+.IP \(bu 4
+use \fIrsync\fP to update a host from the cached sources
+.IP \(bu 4
+stash an archive (\fItar\fP comes to mind) of
+the processed files away for the client to fetch later
+.IP \(bu 4
+run a report function for the host, pulling data
+back to the local machine
+.IP \(bu 4
+create a nested instance of \fI\*(PN\fP to process the source
+again for clients related to the target host
+
+.P
+The ephemeral work areas are selected from a pool we construct under
+$TMPDIR, via a \fIptbw\fP we install in the process tree (using
+\fB\-d\fP as not to violate any use of that wrapper the client might
+need).  The same \fBm4\fP hooks are presented to the local process,
+which is always run with \fIstdin\fP redirected from \fB/dev/null\fP.
+.P
+The \fIptbw\fP instance is omitted by \fI\*(PN\fP,
+as an optimization, under \fB\-P1\fP since only one directory may
+be active at a time.
+
+.SH HXMD INTERFACE
+The catenated text of the files in \fBHXINCLUDE\fP
+sets the variable \fB$HXMD_PASS\fP in
+the environment of the new \fBhxmd\fP instance.
+This is used to pass options down to the \fBm4\fP file processing,
+or configuration file parts of \fBhxmd\fP while preserving any
+use of \fB$HXMD\fP (under \fB\-l\fP).
+.P
+For compatibility with \fBmmsrc\fP, please only use the set of
+options common to both \fBmmsrc\fP and \fBhxmd\fP, with
+the addition of \fB\-z\fP to prevent \fB$HXMD_PASS\fP from lingering
+in the environment.  Options to enclosed \fBxclate\fP instances,
+like \fB\-T\fP, won't work when using \fBmmsrc\fP to boot-strap.
+.P
+The command line passed to \fBhxmd\fP process always includes a
+specific \fB\-P\fP, any \fB\-d\fP flags,
+an explicit \fB\-F0\fP, the per-host update
+script, the MAP files and the provision script.  The process may be wrapped
+in an instance of \fBptbw\fP \fB\-d\fP or not, but in either case the
+detached instance environment variable is preserved.
+
+.SH "M4 HOOKS"
+
+Since \fBhxmd\fP makes extensive use of \fBm4\fP
+.\" to say the least
+we provide many \fBm4\fP macro definitions as hooks that
+your \fIconfig\fP (given under \fB\-C\fP, \fB\-X\fP  or \fB\-Z\fP) might
+specify to extend or change the behavior of the processing.
+These may also be specified a \fB\-D\fP parameters to \fIm4\fP on the
+command line, or included in a \fIm4prep\fP file under \fB\-j\fP.
+.TP
+\fISSH\fP
+The name of the secure shell to use for remote target, defaults to "ssh".
+.TP
+\fIRSH_CMD\fP
+A shell word that represents the command \fBrdist\fP should use
+as a path to the remote shell program.  Be aware the \fBrdist\fP
+doesn't like spaces in this value.  It is presented to
+\fISDIST\fP below with a "-P" prefix.  Defaults to "\fBSSH\fP"
+or some other local value.
+(This is \fIdistrib\fP compatible.)
+.TP
+\fIRDIST_PATH\fP
+The path to \fBrdist\fP (or a work-alike) on the local host,
+otherwise "rdist"
+(This is \fIdistrib\fP compatible.)
+.TP
+\fIRDISTD_PATH\fP
+The path to \fBrdistd\fP on the remote host presented to
+\fISDIST\fP below prefixed with "-p", otherwise not used.
+(This is \fIdistrib\fP compatible.)
+.TP
+\fISDIST\fP
+The combination of RDIST_PATH, RSH_COMMAND, RDISTD_PATH and the
+command line option to introduce the constructed \fIdistfile\fP.
+.TP
+\fIENTRY_DEFS\fP
+A filename to source (via the \fI.\fP command) to set shell variable
+definitions in the remote shell, like \fB$PATH\fP or \fB$TZ\fP.
+The default value should be set by the zero configuration file as
+local site policy allows.  The default is none, but might be
+set to "/usr/local/lib/distrib/local.defs" if you used to
+run \fIsmsrc\fP.
+.\" which I bet you didn't
+.TP
+\fIENTRY_LOGIN
+Our remote login name.  With this defined we add \fIENTRY_LOGIN\fP\fB@\fP
+as a prefix on the \fIHOST\fP macro \fBhxmd\fP defines for us.
+.TP
+\fIINCLUDE_CMD\fP(\fImode\fP)
+Placed after the loader line, only when defined, this hook provides a way to
+introduce \fBm4\fP \fIinclude\fP markup at the top of the file.
+The macro parameter (\fI$1\fP) is either the word "local" or the word "remote".
+.TP
+\fIINIT_CMD\fP
+Placed before we update the target directory, only when defined.
+This provides a hook to debug the shell code, for
+example via \*(lq \fB\-D INIT_CMD=\fP'set \-x' \*(rq.
+.TP
+\fIPRE_CMD\fP
+Placed just before the invocation of \fIcommand\fP and
+after the construction of the working directory, only when defined.
+For example this command might recurse into some
+subdirectories to prepare them for the update of the current
+directory.  If this exits we never run \fIcommand\fP, which might
+be what you wanted.
+.TP
+\fIPOST_CMD\fP
+Placed after the \fIcommand\fP to run some cleanup action on the
+localhost, when defined.
+Almost never defined in practice.  This might be used
+to force \fBhxmd\fP to see a specific exit code, for retry logic.
+.TP
+\fIMSRC_MODE\fP
+This is defined on the \fBhxmd\fP command-line as either "local" or
+"remote".  It would be poor form to provide any other definition.
+
+.PP
+In the context of the three "_CMD" macros above 5 shell parameters
+are available to transmit our details to recursive calls to \fImsrc\fP:
+.TP
+\fI${1}\fP  -- where
+Under \fB\-l\fP this is the local cache directory, otherwise ".".
+.TP
+\fI${2}\fP  -- which
+The make recipe file used to process this directory.
+.TP
+\fI${3}\fP -- how
+The mode ("local" or "remote") specified, "auto" is always replaced
+with the selected mode.
+.TP
+\fI${4}\fP -- who
+The credentials suggest to access the target host, either as
+\fIlogin@host\fP or \fIhost\fP.  In local mode the string "localhost"
+is suggested, which doesn't imply that a local \fBssh\fP login is
+required.
+.TP
+\fI${5}\fP -- why
+The value of INTO, either from the \fImakefile\fP, a \fIyoke\fP, or from
+the default rule.  This is the directory we need to update eventually
+(under \fB\-l\fP for example).
+.PP
+Note that the spelling of these parameters is important as
+\fBm4\fP consumes similar names as parameters to its macros.
+Viz. when they are spelled without the curly braces they are
+usually replaced by \fBm4\fP with the empty string.
+
+.SH "DIVERSION HOOKS"
+Rather than using the three "_CMD" macros one may use \fBm4\fP
+\fIdivert\fP markup to include preperatory code above, or
+actions in the remote update script.  Diversion \fB0\fP usually includes
+shell function definitions.
+Diversion \fB2\fP inserts code after the postitional parameters are
+set.  Diversion \fB4\fP inserts code before \fIINIT_CMD\fP.
+Diversion \fB6\fP inserts code before the \fIPRE_CMD\fP.
+Diversion \fB8\fP inserts code before the \fIPOST_CMD\fP.
+.PP
+The common convention for the above is to use the \fIINCLUDE_CMD\fP macro to
+\fIinclude\fP a file with diverted shell commands.  Anther way to use
+this is to include a macro definition of \fIINCLUDE_CMD\fP in
+a file under \fB\-j\fP, which should be ignored by any other markup.
+For additional clues see the output from \fB\-d S\fP.
+
+.SH CLUES
+
+.P
+Get rid of the distracting noise from \fBrdist\fP with
+a shell redirection in \fBRDIST_PATH\fP: unlike
+the \fB\-p\fP and \fB\-P\fP options to \fBrdist\fP the mark-up
+we use allows the redirection.  Just use a configuration line like:
+.RS
+.nf
+RDIST_PATH=`rdist \-q >/dev/null'
+.fi
+.RE
+to squelch the normal \fBrdist\fP output, but not the errors.  The
+real clue here is that a shell redirection can appear within the
+parameter list, which some folks never remember.
+
+.P
+Since \fBhxmd\fP is documented to run all the \fBm4\fP processing in
+sequence (one slot at a time, left to right) it is safe to
+depend on this behavior in \fImsrc\fP.
+But this is only true if you define \fBMAP\fP yourself, if
+\fI\*(PN\fP defines \fBMAP\fP it may select a different
+order for the files (left to right) than you'd expect.
+
+.P
+In the remote case the \fIdistfile\fP is always placed after any
+\fBMAP\fP files, and the \fIscript\fP is always before them.
+Under \fB\-l\fP the code to select the ephemeral directory is always
+first, the code to update that local directory is always last.
+
+.SH EXAMPLES
+.TP
+.nf
+\fI\*(PN\fP \-V
+.fi
+Display the standard version information and the default control command.
+.TP
+.nf
+\fI\*(PN\fP \-C/dev/null \fB\-d S\fP true 2>&1 |less
+.fi
+Look at the constructed \fIdistfile\fP, and control \fIscript\fP for
+the current directory (but don't update any hosts).
+.TP
+.nf
+\fI\*(PN\fP \-C/dev/null \fB\-l\fP \-d S true 2>&1 |less
+.fi
+Look at the constructed control for a local update of this directory.
+.TP
+.nf
+\fI\*(PN\fP \-C/dev/null \-d P true 2>&1 |less
+.fi
+Look at the constructed double-underscore makefile target, and
+\fBmake\fP macros for the current directory, as extracted or
+derived.
+.TP
+.nf
+\fI\*(PN\fP \-B HASSRC \-C dmz.cf \-\- make all
+.fi
+Update all hosts from \fBdmz.cf\fP with the macro \fBHASSRC\fP defined.
+This is very much like what \fIdistrib\fP did under \fB\-S\fP.
+.TP
+.nf
+cd final && \fI\*(PN\fP \-ly INTO=/tmp/space/final \-B \fI...\fP make source
+.fi
+Suggest a value of \fBINTO\fP for the directory \fBfinal\fP that
+places the platform source under our \fB/tmp/space\fP directory.
+The source is positioned in an ephemeral platform directory, then
+the "make source" recipe must copy it into "/tmp/space/final".
+For a more direct route use \fBmmsrc\fP as:
+.sp
+.nf
+cd final && \fImmsrc\fP \-y INTO=/tmp/space/final \-B \fI...\fP :
+.fi
+.sp
+which builds the platform source directly at \fBINTO\fP.
+.TP
+.nf
+\fI\*(PN\fP \-d SPX \-d fl \fI...\fP
+.fi
+Since \fBhxmd\fP only passes the last \fB\-d\fP down to \fBm4\fP the
+second option clears the unknown flags (which prevents \fBm4\fP from
+carping on Solaris hosts).
+.TP
+.nf
+# $Install(*): \fI\*(PN\fP %s \-DENTRY_LOGIN=bob  op make %M
+.fi
+Apply \fImk\fP to update each host as "bob" (the builder) then
+use \fIop\fP to escalate privileges to install the results.
+This is very similar to the common control line in each
+\fBdistrib\fP-based master source \fBMakefile\fP.
+.TP
+.nf
+\fI\*(PN\fP \-C myhost.cl
+.fi
+This is the simplest example I could build:
+given a  list of hosts in the file \fBmyhost.cl\fP:
+.nf
+	SSH=`/usr/local/bin/ssh'
+	localhost
+.fi
+and a Makefile:
+.nf
+	INTO=/tmp/my$${USER:-$$LOGNAME}
+	all:
+		date; pwd; uname \-n
+.fi
+we output the date, current working directory, and hostname
+(note the double-dollars so \fBmake\fP passes a dollar to the shell).
+.TP
+.nf
+\fI\*(PN\fP \-l \-C myhost.cl
+.fi
+The same as above, but us a local ephemeral working directory,
+rather than the defined \fBINTO\fP.
+.TP
+.nf
+\fI\*(PN\fP \-zP10 \-C all.cf \-C test.cf \-B2 ./regression \e*.data
+.fi
+Use \fBhxmd\fP to intersect \fBall.cf\fP and \fBtest.cf\fP, run
+the \fBregression\fP program on each host against \fI*.data\fP.
+Take those hosts 10 wide.  Ignore the \fBHXINCLUDE\fP in the local
+makefile.
+.TP
+.nf
+\fI\*(PN\fP \-zP10 \-C all.cf:test.cf -m :purge \-B2 ./regression \e*.data
+.fi
+Almost the same as above, but trigger a \fBpurge\fP target in the
+control recipe file after the show is over.
+
+.SH BUGS
+
+The use of the \fBmake\fP target "__msrc" while plundering the
+\fImakefile\fP is presumptuous. This is also a feature, as the
+\fImakefile\fP may force dependencies on that target to create
+a powerful "preparation work" features.
+
+.P
+Because the shell won't duplicate a file descriptor greater than 9,
+\fI\*(PN\fP depends on having at least 1 file-descriptor  in the
+range 3 to 9 available for plundering the \fImakefile\fP.
+
+.P
+We do \fBnot\fP guarantee that we call \fImake\fP exactly once.
+Depending on the availability of low numbered file descriptors
+in the \fImsrc\fP processes environment we may execute multiple
+instances of \fBmake\fP, and therefore any dependent checks.
+
+.P
+It is also a fine-line feature that renaming \fI\*(PN\fP
+is the only way to change the default zero-configuration file.
+
+.P
+We should really get the default for \fB\-P\fP from \fIptbw\fP.
+That would make it all so well connected.
+But you can do it with \fB\-P\fP given the output of:
+.RS
+.nf
+ptbw \-V | sed \-n \-e 's/.*tokens: //p'
+.fi
+.RE
+
+.P
+Before \fIhxmd\fP is installed (and \fIxapply\fP, \fIxclate\fP, et cetera)
+it is not possible to install this program with itself: you'll have to
+use \fImmsrc\fP (mini-msrc) to get the ball moving.  There is a README
+in that program's source, and a web page, to help you.
+
+.SH AUTHOR
+KS Braunsdorf, NonPlayer Character Guild
+.br
+msrc swirl ksb.npcguild.org
+
+.SH "SEE ALSO"
+sh(1), rdist(1), make(1), rsync(1), rdist(1), ssh(1), hxmd(8L),
+.br
+xapply(1L), xclate(1L), and ptbw(1L), mmsrc(8L), efmd(8L), mk(1L)

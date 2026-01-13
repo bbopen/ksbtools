@@ -1,0 +1,49 @@
+#!/bin/ksh
+# $Id: unbundle,v 2.0 1996/11/07 17:35:40 kb207252 Exp $
+#
+# This is the template unbundle script !!! DELETE THIS LINE !!!
+# !!! Change the text below !!!
+
+cat <<\!
+
+			Example 1.4
+
+This is the example tape.  If you don't want to add the example
+software to you system type "no" at the prompt below.
+
+Otherwise this tape adds all the example software to your system.
+The example software doesn't really do anything to your machine.
+
+!
+
+# canned confirmation
+while : ; do
+	print - '\n\nShall we add this distribution to this host? ["yes" or "no"] \c'
+	read ans
+	case "$ans" in
+	yes|YES|\"yes\"|\"YES\")
+		echo "OK"
+		break ;;
+	no|NO|\"no\"|\"NO\")
+		echo "Aborting install."
+		exit 0 ;;
+	*)
+		echo '\nOnly "yes" or "no", please.' ;;
+	esac
+done
+
+# OK, $TAPE_DEVICE and $TAPE_DIR have the info we need
+# (and we are started from $TAPE_DIR, BTW).
+
+if [ _"$TAPE_DIR" != _"`pwd`" ] ; then
+	echo "We should be in \`$TAPE_DIR' not `pwd`."
+fi
+
+PS1="tpsh# "
+PATH=$TAPE_DIR/bin:$PATH
+export PATH PS1
+
+# !!! put your text here !!!
+# !!! put your commands (gzip, installus?) in bin !!!
+
+exit 0

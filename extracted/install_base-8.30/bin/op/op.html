@@ -1,0 +1,1742 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD>
+<!-- $Id: op.html,v 2.58 2010/08/13 19:22:25 ksb Exp $ -->
+<TITLE>Privilege escalation via op</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+
+<h1 id="top">What you need to know to understand this document</h1>
+
+This document assumes you are familiar with UNIX shell commands and
+have run some system level utilities.  It also assumes that you
+have access to a UNIX system as the superuser.  The document also
+uses my "code.css" style sheet to denote the difference between
+markup <code class="markup">terms</code>,
+parameter <code class="param">designations</code>, and
+command-line <code class="opt">options</code>,
+environment <code class="env">variables</code>, and a
+path <code class="path">/seen/in/the</code> filesystem.
+
+<h1 id="start">Privilege escalation in general</h1>
+
+UNIX &trade; and Linux services use the least privilege required to
+perform each task, which makes the whole system more secure.
+Special groups (viz. "operator", "lp", "mail") give some applications
+access to protected resources (data, devices, directories), rather than
+running all local service as the superuser.
+Everyone takes great care to use secure network protocols
+(viz. <code class="sh">ssh</code> and
+<code class="markup">https</code>) for private data, and
+to avoid injection attacks or releasing private data to
+third parties.
+<P>
+Any tools that escalate privilege must also be capable of
+very fine-grained control, and be as secure as possible by default.
+Part of that control would include rejection of simple typographical
+errors and overt acts of subornation, and a clear audit trail.
+This document describes how to use <code class="sh">op</code> (with my
+modifications) to get exactly what you want, and nothing else.
+<P>
+As a first example allow anyone to change their own shell (under Solaris):
+<blockquote class="file"><pre><code >chsh	/bin/passwd -e $l ;
+	users=.*
+	uid=root
+</code></pre></blockquote>
+<P>
+A slightly more complex example: allow any Customer in group "web" to
+restart Apache:
+<blockquote class="file"><pre><code >apachectl /usr/local/sbin/apachectl $1 ;
+	$1=^(restart)$
+	groups=^web$
+	uid=root
+</code></pre></blockquote>
+With that in place anyone in group "web" may run:
+<blockquote class="file"><pre><code >op apachectl restart
+</code></pre></blockquote>
+to restart the running Apache instance.  They can't pass any other
+verb (stop, configcheck, etc.) unless it is added to the
+<code class="markup">$1</code> regular expression list in
+that rule definition, or another rule is created.
+
+<P>
+Tip: I almost always use group membership as the key to
+escalated access.  It is easy to maintain as my Customers
+change political groups, I don't have to change the
+<code class="sh">op</code> configuration, because their
+login names never appear in the rules, just their groups.
+And group access is key to other features of UNIX -- so use it.
+
+<P>
+<code class="sh">Op</code> allows much more complex checking and
+control, some of which may be out-sourced to an arbitrary helper
+application.  Before we dig into all that we need to explain the
+basis of design.
+
+<P>
+Think of <code class="sh">op</code> as a <em>firewall</em>.  It keeps
+Bad Guys away from sensitive commands while allowing Good Customers
+access to make their tasks easier.
+This is what an IP firewall does, but <code class="sh">op</code> does it with
+shell commands rather than network resources.
+We follow the same paradigms as any firewall:
+<ul>
+<LI>limit access to only those we expect
+<LI>inspect and pass only valid payloads
+<LI><A href="refs.html#logs">log access</A> attempts we do or don't allow
+</ul>
+
+<h2 id="model">UNIX models</h2>
+
+The general-purpose privilege escalation on a UNIX system comes
+in 2 flavors: the setuid bits, and proxy access through a system daemon.
+
+<P>
+Any program with setuid (setgid) on in its permissions bits
+runs with effective-uid (effective-gid) set to the uid (gid) of
+the file owner (see <code class="sh">chmod</code>(1)).
+This allows a mortal login to run an application with
+the privilege of the owner of the application.
+The application can "drop" back to
+the original login at anytime (for example after opening a
+protected file).
+
+<P>
+Other privilege escalation is done by connecting to an
+existing process with any of
+the interprocess communication facilities: sockets, FIFOs,
+shared memory, semaphores, message queues,
+ptrace, and/or signals.
+In this case the client cannot <strong>start</strong> the
+process, so when it doesn't exist no escalation is possible.
+The system daemons which accept these connections may appear to "start on
+demand" from <code class="sh">inetd</code>/<code class="sh">tcpmux</code>,
+<code class="sh">sshd</code>, <code class="sh">launchd</code> or the like,
+but the IPC connection is made to an existing end-point that was
+present shortly after the host booted, or the user logged in.
+These services are started with escalated privilege to allow access to
+private resources.  The <code class="sh">sendmail</code> MTA is an
+example of this type of escalation.
+
+<h2 id="op-model">How <code class="sh">op</code> does it</h2>
+
+For <code class="sh">op</code> we want to focus on the first tactic:
+<code class="sh">op</code> runs with a setuid bit and an owner of
+the superuser ("root").
+But <code class="sh">op</code> is designed to "drop" to a particular login
+and group set specifically for each configured application.
+
+<P>
+For example, a program that needs to remove a mailbox from the
+local e-mail spool might only have to run with the "mail"
+group.  Coding a whole new application just to run <code class="sh">rm</code>
+would be a waste of time: we can tell <code class="sh">op</code> (in part):
+<blockquote class="file"><pre><code >rm-mail	/bin/rm -f /var/mail/$1 ;
+	uid=.
+	gid=mail
+</code></pre></blockquote>
+
+<P>
+That specification tells <code class="sh">op</code> to treat anyone running the command:
+<blockquote class="file"><pre><code >$ op rm-mail lark
+</code></pre></blockquote>
+as if the login running this command were in the group "mail" and ran:
+<blockquote class="file"><pre><code >$ rm -f /var/mail/lark
+</code></pre></blockquote>
+
+<P>
+The advantages to this:
+<dl>
+<dt>There is no special path to find "rm-mail".
+<dd>
+Either you fill "/usr/local/bin" with lots of adapter scripts,
+or you add new directories to each Customer's $PATH variables.
+By putting the adapter logic in the <code class="sh">op</code> rule,
+we obviated the need to add most scripts or extend $PATH.
+
+<dt>Setuid shell scripts are a security issue.
+<dd>
+Don't ever make a setgid (or setuid) script: there is
+a race condition in the indirect execution of
+shell scripts via a symbolic link that allows Bad Guys to break them.
+<code class="sh">Op</code> provides a secure path to any script it
+runs, and doesn't need setgid (or setuid) bits on the script, it
+drops to the correct credentials before it executes the target application.
+
+<dt>We can revision control and audit the <code class="sh">op</code> rule-base
+<dd>
+So we remember who built "rm-mail", why she did it, and who needed it.
+If we do have to put some adapter logic into a script we use the
+<code class="sh">op</code> rule-base as an index to keep track of where they
+are, not the Customer's $PATH.
+
+<dt>We keep the filesystem cleaner
+<DD>
+Over the years we've found that little adapter scripts get lost,
+out-of-date, or otherwise mismanaged.
+Either they never get deleted, or get deleted while still (rarely) needed.
+With a well-known structure and policy to grant access and index them
+we have the elements we need to manage the ones we do need.
+</DL>
+<P>
+The disadvantages to the example presented:
+<dl>
+<dt>Insecure in that we might be able to remove unexpected files
+<dd>
+As coded (in the example) that would allow the removal of
+any file on the filesystem that the group "mail" could remove.
+We can tighten that up later -- it is just an example.
+<P>
+Think about giving that rule <code class="path">/var/mail/../*/*"</code>:
+since we didn't forbid the "/../" string that might be able to
+remove some other files not under <code class="path">/var/mail</code>.
+<dt>Anyone can access the rule
+<dd>
+We didn't limit the rule to a list of groups or users.  We should always
+be explicit when we make a rule as to <em>who</em> we expect to
+access it.
+</dl>
+<P>
+Later we'll see how to remedy these issues, and how to code more complex
+rules.
+
+<h1 id="mechanics">Mechanics of escalation: building rules</h1>
+
+"Who can execute this <code class="param">mnemonic</code>?" is
+the first question we need to answer for each rule.  That question
+is answered in <code class="sh">op</code>'s configuration file in
+three parts: parameter matching, basic authorization, detailed
+authorization.
+
+<P>
+To describe these we are going to jump right into <code class="sh">op</code>'s
+configuration file, because it is the best way to get you started.
+To find <code class="sh">op</code>'s configuration file you should ask <code class="sh">op</code>
+with the version option (<tt>-V</tt>):
+<blockquote><pre>$ <code class="sh">op</code> -V
+op: $<!-- -->Id: op.m,v 2.78 2010/03/25 18:18:14 ksb<i>...</i> $
+op: access file `/usr/local/lib/op/access.cf'
+op: using regex
+op: multiple configuration files accepted
+op: inline script and $s accepted
+op: with pam support, default application "op"
+</pre></blockquote>
+
+<P>
+That tells us to look in <tt>/usr/local/lib/op/access.cf</tt>.
+Because <code class="sh">op</code> is really picky about that file,
+you would have to <code class="sh">su</code> to root to see it.
+When the file is insecure, the version command above will complain about it.
+
+<h2 id="cfg1">Starting with access.cf</h2>
+
+Looking at the default configuration file for <code class="sh">op</code> we
+see the "help" spell, which looks something like this:
+<blockquote class="file"><pre><code >help	/usr/local/libexec/op/help ;
+	users=.*
+	dir=/usr/local/lib/op
+</code></pre></blockquote>
+
+<P>
+In brief that says, in English:
+<blockquote>the mnemonic "help" means run
+<code class="path">/usr/local/libexec/op/help</code> with no arguments,
+let any login run this and
+change the process's current working directory to
+<code class="path">/usr/local/lib/op</code>.</blockquote>
+
+<P>
+If you actually run, as yourself:
+<blockquote class="file"><pre><code >$ op help</code></pre></blockquote>
+then you should see a list of the <code class="sh">op</code>
+<code class="param">mnemonics</code> configured for your local host.
+This doesn't mean you have permission to escalate to use any of them -- we
+don't want to give the Bad Guys a list of the accounts to attack for free.
+
+<P>
+In fact <code class="sh">op</code> makes a lot of effort to skate on
+a fine line between telling the Bad Guy too much and telling the
+Good Customer too little.  Sometimes a local admin might change
+<code class="sh">op</code> to be a little less verbose if there might
+be more Bad Guys about.
+In fact the "help" script may not be installed at your site, or
+<code class="opt">-l</code> might show an error message about
+such listings being "forbidden by site policy".
+
+<P>
+With more examples like the one above we will poke at the other
+features of <code class="sh">op</code>.  This only works if you have
+access to a machine where you can edit access.cf (as root).
+If you don't have a host to do that on you can just read the
+<A href="/cgi-bin/manpage.cgi?op">manual page</A>, as this
+tutorial won't help you very much.
+<P id="bnfback">
+See also the more technical <A href="refs.html#bnf">review of the configuration file format</A>.
+
+
+<h2 id="which">Which rule should we select?</h2>
+
+The configuration file may define more than one rule for a given
+mnemonic: but the first one that matches the input arguments is
+the only one that the Customer may access.  If they do not have
+credentials to run that one <code class="sh">op</code> rejects
+the attempt.
+
+<P>
+After the mnemonic name matches additional attributes may be added to
+the definition of a mnemonic to
+specify expressions that must match the argument list to
+select the proper rule.
+
+<dl>
+<dt id="mnemonic"><code class="param">mnemonic</code>
+<dd>
+The first thing that has to match is the mnemonic name itself.
+That is a literal string match, because RE matched proved too
+produce unexpected results.  By convention mnemonic names should
+be short strings with no shell-special characters in them.
+<dt id="number"><code class="markup">$#</code>=<code class="param">number</code>
+<dd>
+Force the count of the number of words allowed on the command-line
+to be exactly <code class="param">number</code>.
+When two mnemonics have the same name, forcing a different number of
+allowed arguments disambiguates them.
+<dt id="param"><code class="markup">$</code><code class="param">N</code>
+<dt id="parameq"><code class="markup">$</code><code class="param">N</code>=<code class="param">REs</code>
+<DD>
+The named positional parameter (viz. <code class="markup">$1</code>,
+<code class="markup">$2</code>, <code class="markup">$3</code>, and so on)
+must match one of these REs, otherwise another
+<code class="param">mnemonic</code> may be selected.
+The default <code class="param">RE</code> is a single dot (.).
+<dt id="allparam"><code class="markup">$*</code>=<code class="param">REs</code>
+<dd>
+Every other positional parameter must match one of these REs.
+This is often used to prevent leading dashes in parameters.
+</dl>
+
+<h3 id="ex_param">Examples of parameter matching</h3>
+
+<P>
+My customer want to run <code class="sh">rndc</code> with several
+keyword option: <code class="markup">start</code>,
+<code class="markup">stop</code>, <code class="markup">reload</code>,
+<code class="markup">status</code>, <code class="markup">reconfig</code>,
+and <code class="markup">querylog</code>.
+
+<P>
+Most of these the native <code class="sh">rndc</code> will do, but
+both "start" and "restart" need to
+call the <code class="path">/etc/rc.d/named</code> script:
+<blockquote class="file"><pre><code >rndc	/etc/rc.d/named $1 ;
+	$1=^(start|restart)$
+	...
+
+rndc	/usr/sbin/rndc $* ;
+	$1=^(stop|reload|status|reconfig|querylog|help)$
+	...
+</code></pre></blockquote>
+
+<P>
+In the example above I anchored the "stop,reload,..." list
+because that helps <code class="sh">op</code> build the correct
+usage message under <code class="opt">-l</code>.
+I also could build another rule with
+"freeze" and "thaw" if I needed one.
+By keying on <code class="markup">$1</code> we make it look like
+the command namespace is not as flat as it really is.
+<P>
+In older versions of <code class="sh">op</code> we would have named
+the rules as:
+<blockquote class="file"><pre><code ><em class="error">rndc-start	/etc/rc.d/named start ;
+	...
+rndc-restart	/etc/rc.d/named restart ;
+	...
+rndc-stop	/usr/sbin/rndc stop ;
+	...</em>
+</code></pre></blockquote>
+That really wastes space in the configuration file and causes the
+Customers to wonder if it was a hyphen or an under-bar they needed?
+It is almost as bad as the little adapter scripts.  The better solution
+is to match on <code class="markup">$1</code> and the like.
+
+<P>
+In this example I need to pass a helper script some values:
+<blockquote class="file"><pre><code >apachectl /opt/web/bin/apachectl $1 $2 ;
+	$1=^unsecure$,^secure$
+	$2=^(start|stop|restart|graceful|configtest)$
+</code></pre></blockquote>
+This uses a little different matching tactic for
+<code class="markup">$1</code>:
+a list of <code class="param">REs</code> that each match a single word.
+<code class="sh">Op</code> knows how to output either
+under <code class="opt">-l</code>:
+<blockquote class="file"><pre><code >op apachectl unsecure|secure start|stop|restart|graceful|configtest
+</code></pre></blockquote>
+
+<h2 id="who">Who can run an escalated rule?</h2>
+
+Now that we've filtered down to a single rule we need to check
+to see if the Customer is allowed access to it.
+<code class="sh">Op</code> controls access to
+each <code class="param">mnemonic</code> based on five attributes.
+A client <em>must</em> match at least one of this group of three:
+
+<dl>
+<dt id="groups"><code class="markup">groups</code>=<code class="param">REs</code>
+<dd>
+Allow execution only for clients that have a group matching one of these
+<code class="param">REs</code>. If any <code class="param">RE</code>
+is prefixed with a octothorp (hash, "#") then the match is against
+the numeric gid, not the group name.
+<dt id="users"><code class="markup">users</code>=<code class="param">REs</code>
+<dd>
+Allow execution only for logins clients that have a login matching one of these
+<code class="param">REs</code>.  If any <code class="param">RE</code>
+is prefixed with a octothorp (hash, "#") then the match is against
+the numeric uid, not the login name.
+<dt id="netgroups"><code class="markup">netgroups</code>=<code class="param">words</code>
+<dd>
+Allow execution only for clients that are a member of one of
+the listed netgroups.
+See <A href="/cgi-bin/manpage.cgi?innetgr"><code class="libc">innetgr</code>(3)</A>.
+</dl>
+
+If they don't pass any of those they get a nice error message and
+<code class="sh">op</code> exits with a non-zero status (usually 1).
+
+<P>
+As I said above: use <code class="markup">groups</code> in
+preference to <code class="markup">users</code> to make your
+life easier.  I also prefer <code class="markup">netgroups</code>
+to <code class="markup">users</code>, but I don't use them much
+as group membership works almost every time.  I do use
+"<code class="markup">users</code>=.*" to mean "anyone", which
+<code class="sh">op</code> even outputs under <code class="opt">-w</code>.
+
+<P>
+If any of the above match, then these four
+optional attributes may check deeper:
+
+<dl id="main_cred">
+<dt><code class="markup">password</code>
+<dd>
+Ask for the user's password to credential the execution.
+Before being asked they must have been allowed by one of the
+first three attributes.  If this is set as a DEFAULT (see below)
+then it cannot be reset per-rule.
+<dt><code class="markup">password</code>=<code class="param">logins</code>
+<dd>
+As above, but check against the password of each of the specified
+<code class="param">logins</code>.  If a PAM authentication fails a
+password specification may still allow the escalation.
+When a list of logins is configured and matched, three
+additional specifications are allowed, besides a literal name:
+<dl>
+<dt><code class="markup">.</code>
+<dd>
+The client's password.
+<dt><code class="markup">%u</code>
+<dd>
+The password for the login specified under <code class="opt">-u</code>
+(see below).
+<dt><code class="markup">%f</code>
+<dd>
+The password for the owner of the file specified under
+<code class="opt">-f</code> (see below).
+</dl>
+
+<dt id="pamNot"><code class="markup">pam</code>
+<dd>
+Unlike some other attributes, the empty value turns off PAM authentication.
+This allows a rule with a common set of <code class="markup">DEFAULT</code>
+attributes to skip PAM authentication.
+<dt id="pamSpec"><code class="markup">pam</code>=<code class="param">application</code>
+<dd>
+The specified PAM application must authenticate the requesting
+user before any escalation is allowed.
+The requesting user and the remote user are both set to the requesting login,
+the remote host is "localhost".
+<P>
+Commonly specified applications:
+"su", "login" or "system".
+Using "sudo" would tie <code class="sh">op</code> and
+<code class="sh">sudo</code> to the same policy, which could be clever.
+<P>
+This option fulfills (skips) any password check when satisfied.
+Other specifications:
+<dl>
+<dt><code class="markup">.</code>
+<dd>
+Dot is taken as the default application, which is listed in the version
+output under <code class="opt">-V</code>, usually "op".
+</dl>
+<dt id="helmetSpec"><code class="markup">helmet</code>=<code class="param">path</code>
+<dd>
+The the program specified by <code class="param">path</code> as root,
+if it exits zero the access is allowed.  Such a program is only
+consulted if one of the first three rules above allowed the access,
+and any password specification was met.
+<dt id="jacketSpec"><code class="markup">jacket</code>=<code class="param">path</code>
+<dd>
+The program specified by <code class="param">path</code> as root to
+monitor the progress (and completion) of the new process.
+Such a program is only executed after all other authorization checks,
+including any helmet provided.
+<P>
+This is not really intended to deny access, but it can and should
+in some cases, <A href="#jacket">see "jacket", below</A>.
+</dl>
+
+<P>
+Helmets and jackets have other uses, see
+<A href="#external">"Helmet and jacket programs", below</A>.
+But for now just take it on faith that these provide some additional
+checks that you might want someday, and move ahead.
+
+<h3 id="ex_access">Examples for matching for access</h3>
+
+To explicitly match all customers (to prevent the sanity check for complaining):
+<blockquote class="file"><pre><code >users=.*
+</code></pre></blockquote>
+To match members of group 0 as a client, by gid:
+<blockquote class="file"><pre><code >groups=#^0$
+</code></pre></blockquote>
+<P>
+To allow everyone in group staff that knows the "operator" password:
+<blockquote class="file"><pre><code >groups=^staff$
+password=operator
+</code></pre></blockquote>
+<P>
+To allow any member of group "wheel" that can also su:
+<blockquote class="file"><pre><code >groups=^wheel$
+pam=su
+</code></pre></blockquote>
+<P>
+To allow the owner of a workstation access to install a set of
+<code class="param">mnemonics</code> put them in a netgroup
+named "owner" and set:
+<blockquote class="file"><pre><code >netgroups=owner
+</code></pre></blockquote>
+This is how we specify host-based access in <code class="sh">op</code>'s
+configuration.  There is no other way to directly limit the
+scope of a <code class="param">mnemonic</code> to a
+given host: that is a job for <code class="sh">msrc</code>,
+<code class="sh">hxmd</code>, or a helmet.
+<P>
+This is <strong>broken</strong>, as the <code class="markup">netgroups</code>
+code cannot get a list of netgroups to match REs against.
+<blockquote class="file"><pre><code ><em class="error">netgroups=.*</em>
+</code></pre></blockquote>
+Always list <code class="markup">netgroups</code> lists explicitly
+<em>without RE markup</em>:
+<blockquote class="file"><pre><code >netgroups=localadmin,netadmin,operator
+</code></pre></blockquote>
+<P>
+This allows anyone to try the rule, but the <code class="param">helmet</code>
+rejects clients without LDAP authentication:
+<blockquote class="file"><pre><code >users=.*
+helemt=/usr/local/libexex/ldapcred
+$LDAP_CRED=$l:$r
+$LDAP_LEVEL=admin
+</code></pre></blockquote>
+The "ldapcred" helmet exits 0 for success and may remove the
+two parameter environment variables via the API below.  Note that
+<code class="env">LDAP_CRED</code> and <code class="env">LDAP_LEVEL</code>
+are arbitrary names I picked, while <code class="markup">$l</code> and
+<code class="markup">$r</code> are <code class="sh">op</code>
+<A href="#unix_exp">markup described below</A>.
+
+
+<h2 id="opts">Required options may be added</h2>
+
+In addition to those access limits above, a rule may require any combination of
+three <code class="sh">op</code> command-line options (specified before the
+<code class="param">mnemonic</code>):
+<dl>
+<dt><code class="opt">-f</code> <code class="param">file</code>
+<dd>
+The specified <code class="param">file</code> is matched against
+(possibly many) attributes before the name of
+the file or an open file descriptor on that file is passed to
+the escalated command.  A failure to match any attribute denys
+access to the <code class="param">mnemonic</code>.
+<dt><code class="opt">-g</code> <code class="param">group</code>
+<dd>
+The specified <code class="param">group</code> is matched
+against several attribute checks before allowing access to the
+<code class="param">mnemonic</code>.
+<dt><code class="opt">-u</code> <code class="param">login</code>
+<dd>
+The specified <code class="param">login</code> is matched
+against several attribute checks before allowing access to the
+<code class="param">mnemonic</code>.
+</dl>
+
+<P>
+These options are mandatory whenever each of them is called
+upon for a value.  If the option's value is never required
+then the specification of the option doesn't allow access with
+an error message, for example:
+<blockquote class="file"><pre><code >$ op -f /dev/null help
+op: Command line -f /dev/null not allowed
+</code></pre></blockquote>
+
+<P>
+There are two ways <code class="sh">op</code> calls for a
+value from the command-line: by a reference in the context
+of an attribute as a percent macro (<code class="markup">%f</code>), or
+as a parameter specification when building the actual command as
+a dollar expansion (<code class="markup">$f</code>).
+<P>
+The first type allows <code class="sh">op</code> options in
+the rule definition to reference any
+<code class="markup">%f</code>, <code class="markup">%g</code>, or
+<code class="markup">%u</code> as the target value for the option.
+The second expands the the appropriate value from the command-line option of
+the same letter when building a command (or environment variable).
+For example, using <code class="markup">%f</code>
+when a login name is expected, substitutes the owner of the file.
+Using <code class="markup">$f</code> in the <code class="param">args</code>
+section of the rule definition substitutes the path as part of
+the executed command.  We don't use the percent form there because
+we don't want to make percents special in that context, and we don't
+use dollar in the other place as that is a legitimate value for
+some options (for example part of an RE).
+<P>
+In the <code class="markup">password</code> description above we've
+already seen that in that context <code class="markup">%u</code>
+expands to the <code class="param">user</code>'s login.
+
+
+<h3 id="optperm">Permission configuration for option values</h3>
+
+These attributes specify <em>who</em> may access the <code class="param">mnemonic</code>.
+
+<dl>
+<dt><code class="markup">%g</code>=<code class="param">REs</code>
+<dd>
+The command-line <code class="opt">-g</code>'s
+<code class="param">group</code> must match one of
+these <code class="param">REs</code>.
+<dt><code class="markup">!g</code>=<code class="param">REs</code>
+<dd>
+The <code class="param">group</code> specified on the command-line
+must <strong>not</strong> match any of
+the listed <code class="param">REs</code>.
+<dt><code class="markup">%u</code>=<code class="param">REs</code>
+<dd>
+The <code class="param">login</code> specified on the command-line
+must match one of the listed REs.
+<dt><code class="markup">!u</code>=<code class="param">REs</code>
+<dd>
+The <code class="param">login</code> specified on the command-line
+must <strong>not</strong> match any of the listed REs.
+<dt><code class="markup">%u@g</code>=<code class="param">REs</code>
+<dd>
+The <code class="param">login</code> specified on the command-line
+must be a member of a group that matches one of the listed REs.
+<dt><code class="markup">!u@g</code>=<code class="param">REs</code>
+<dd>
+The <code class="param">login</code> specified on the command-line
+must <strong>not</strong> be a member of any group that matches one of
+the listed <code class="param">REs</code>.
+<dt><code class="markup">%f.</code><code class="param">attr</code>=<code class="param">REs</code>
+<dd>
+The <code class="param">file</code> specified on the command-line has its
+<code class="libc">stat</code>(2) attribute checked against the listed
+<code class="param">REs</code>, one of which must match.
+<dt><code class="markup">!f.</code><code class="param">attr</code>=<code class="
+param">REs</code>
+<dd>
+Same as above, but none of the <code class="param">REs</code> are
+allowed to match the attribute.
+</dl>
+
+For the case of <code class="markup">%f</code> the
+<code class="param">attr</code> must come from this list, most of
+which are taken from <code class="libc">struct stat</code> members
+with the leading "st_" removed.
+
+<dl>
+<dt><code class="markup">dev</code>
+<dd>The <code class="param">file</code>'s device number in decimal.
+<dt><code class="markup">ino</code>
+<dd>The <code class="param">file</code>'s inode number in decimal.
+<dt><code class="markup">nlink</code>
+<dd>The <code class="param">file</code>'s link count in decimal.
+<dt><code class="markup">atime</code>
+<dd>The <code class="param">file</code>'s access time in decimal.
+<dt><code class="markup">mtime</code>
+<dd>The <code class="param">file</code>'s modification time in decimal.
+<dt><code class="markup">ctime</code>
+<dd>The <code class="param">file</code>'s change time in decimal.
+<dt><code class="markup">btime</code> or <code class="markup">birthtime</code>
+<dd>The <code class="param">file</code>'s birth time in decimal
+(not available on platforms other than FreeBSD).
+<dt><code class="markup">size</code>
+<dd>The <code class="param">file</code>'s size in decimal bytes.
+<dt><code class="markup">blksize</code>
+<dd>The <code class="param">file</code>'s block size in decimal.
+<dt><code class="markup">blocks</code>
+<dd>The <code class="param">file</code>'s size in 512 byte blocks.
+<dt><code class="markup">uid</code>
+<dd>The <code class="param">file</code>'s owner as a decimal uid.
+<dt><code class="markup">login</code>
+<dd>The <code class="param">file</code>'s owner converted to a login name.
+<dt><code class="markup">gid</code>
+<dd>The <code class="param">file</code>'s group as a decimal gid.
+<dt><code class="markup">group</code>
+<dd>The <code class="param">file</code>'s group, converted to a group name.
+<dt><code class="markup">login@g</code>
+<dd>The <code class="param">file</code>'s owner is treated as <code class="markup">%u@g</code>:
+the owner must be a member of a group matching one of the given
+<code class="param">REs</code> for the file to pass.
+Inverted under <code class="markup">!f</code>, of course.
+<dt><code class="markup">mode</code>
+<dd>The <code class="param">file</code>'s mode as
+a four-digit <strong>octal</strong> number.
+<dt><code class="markup">perms</code>
+<dd>The <code class="param">file</code>'s permissions as <code class="sh">ls</code> might display it.
+<dt><code class="markup">path</code>
+<dd>The <code class="param">file</code>'s absolute path.
+<dt><code class="markup">access</code>
+<dd>A four character string representing the return values from four
+calls to <code class="libc">access</code>(2) against the
+<code class="param">file</code>'s: "rwxf" would indicate all access,
+while "----" would indicate no access at all.
+<dt><code class="markup">type</code>
+<dd>The <code class="param">file</code>'s type letter as
+<code class="sh">ls</code> would display it in
+the first column of the symbolic permissions.
+After the type some other details about the file may be available:
+if the file is a directory the letter 'm' will be suffixed if
+it is an active mount-point, and the letter 'e' will be suffixed
+if it is empty.  If the file is a symbolic link
+and <code class="markup">%f.type</code> matches the letter 'l', then
+the type of the file the symbolic link points will be added.
+</dl>
+
+<h3 id="ex_opts">Examples of argument specifications</h3>
+
+<P>
+To fix the first example (rm-mail) we can make sure the name of the
+mailbox is a valid login name:
+<blockquote class="file"><pre><code >rm-mail	/bin/rm -f /var/mail/$u ;
+	uid=.
+	gid=mail
+	%u=^.*$
+</code></pre></blockquote>
+
+<P>
+To allow any <code class="param">file</code> under <code class="path">/tmp</code>, not owned by login sshd:
+<blockquote class="file"><pre><code >	%f.path=^/tmp/.*$
+	!f.login=^sshd$
+</code></pre></blockquote>
+
+<P>
+To allow anyone in group source to specify another member of
+group source (even themselves):
+<blockquote class="file"><pre><code >	groups=^source$
+	%u@g=^source$
+</code></pre></blockquote>
+<P>
+To allow any group that contains "web" in the name we could use
+an unanchored RE, but then sanity will carp at us, better to be
+more explicit:
+<blockquote class="file"><pre><code >	%g=^.*web.*$
+</code></pre></blockquote>
+<P>
+And lastly the ever popular "anyone but the superuser":
+<blockquote class="file"><pre><code >	!u=#^0$
+</code></pre></blockquote>
+
+<h2 id="change">What can <code class="sh">op</code> change about a process?</h2>
+
+There are about 20 attributes of a process one might escalate or
+remove to make escalation safer.  That is to say any tool like
+<code class="sh">op</code> should be able to change any these attributes in
+a predictable way to assure that the new privileged command is as
+safe as it can be.
+Under <code class="sh">op</code> most of those attributes may be forced
+to specific values.
+
+<P>
+By default <code class="sh">op</code> modifies the environment for
+a mnemonic command by changing the effective uid to 0 (the superuser), and
+removing any supplementary groups, then cleaning the environment.
+This default is modified by putting attribute settings on
+the mnemonic "DEFAULT"
+(which is never used as a Customer driven mnemonic).
+
+<P>
+For a specific rule, any default should be replaced with an explicit
+value that gives the <em>minimal privilege</em> required to
+meet the intent of the rule.
+
+<P>
+Below we list the process attributes that <code class="sh">op</code>
+might change, and some idea of why that is something <code class="sh">op</code> might do.
+
+<dl id="attrlist">
+<dt id="passenv"><code class="markup">$</code><code class="param">VAR</code>
+<DD>
+Pass the given environment variable as-is: don't remove it from the
+original environment.  This might be used to pass $TERM for example.
+<dt id="setenv"><code class="markup">$</code><code class="param">VAR</code>=<code class="param">value</code>
+<DD>
+Set the given environment variable to the exact value.
+This might be used to set a $PATH, or $TZ.
+<P>
+There is a limit in <code class="sh">op</code>'s parser that
+doesn't allow <code class="param">values</code> with embedded
+white-space to be set directly.  Later we'll see how to do that
+with a <code class="param">helmet</code>.
+<dt id="argv0"><code class="markup">basename</code>=<code class="param">word</code>
+<DD>
+Force a different <code class="markup">argv[0]</code> for the new process.
+Some programs (like <code class="sh">sbp</code>) look at
+the name of the program to force command-line options.  Also most shells
+look for a leading dash (`-') in the name to start a login shell.
+Not often used.
+<dt id="chroot"><code class="markup">chroot</code>=<code class="param">directory</code>
+<DD>
+Change root for the process.
+Used to start network programs that use a restricted environment.
+On some systems this is way harder to setup than others.
+<dt id="daemon"><code class="markup">daemon</code>
+<dd>
+Double-fork the process into the background, redirect I/O to /dev/null.
+Used to start daemons processes: these also don't stay connected to the
+controlling terminal device,
+see <A href="/cgi-bin/manpage.cgi?setsid"><code class="libc">setsid</code>(2)</A>.
+<dt id="chdir"><code class="markup">dir</code>=<code class="param">directory</code>
+<dd>
+Change directory here first.
+Has the obvious use.  Usually changes to the root directory, or a
+directory that the Customer normally could not access.
+<dt id="envall"><code class="markup">environment</code>
+<dd>
+Allow all existing environment variables to pass.
+This is only used when the effective uid and gid are left
+as they were; then we can pass the environment as-is because no
+possible compromising escalation was done.
+<dt id="envre"><code class="markup">environment</code>=<code class="param">REs</code>
+<dd>
+Allow any existing environment variable which match any of the listed
+<code class="param">REs</code> through to the new process.
+This is often used to allow access to one of ksb's wrapper applications.
+<dt><code class="markup">gid</code>=<code class="param">words</code>
+<dd>
+Force the real uid to this <code class="param">login</code>,
+<code class="param">uid</code>, <code class="markup">%g</code>,
+<code class="markup">%f</code>,
+or <code class="markup">.</code> (use the invokers gid)
+The real group identifier might be used by the escalated process to
+restore the user's original group.
+<p>
+Note that this can be a list of groups, the first will be the real
+group id, the others are added with
+<A href="/cgi-bin/manpage.cgi?setgroups"><code class="libc">setgroups</code>(2)</A>
+in place of a call to
+<A href="/cgi-bin/manpage.cgi?initgroups"><code class="libc">initgroups</code>(3)</A>.
+When the rule has both a <code class="markup">gid</code> list and
+an <code class="markup">initgroups</code> attribute the results should
+be the unique elements from both the list and the groups from the
+specified login, but we may run out of slots.
+<dt><code class="markup">egid</code>=<code class="param">word</code>
+<dd>
+The effective group may be different from the real only if these are both set.
+Takes the same specification as <code class="markup">gid</code>.
+This is also always the first group in the group list, because that's the
+convention on a lot of UNIX systems.
+<dt><code class="markup">uid</code>=<code class="param">word</code>
+<dd>
+The real user identifier is forced to the specified value.
+The <code class="param">word</code> may be a login, uid,
+<code class="markup">%u</code>, <code class="markup">%f</code> or
+<code class="markup">.</code> (use the invoker's uid).
+The default uid is the effective uid given by the setuid bit on
+the <code class="sh">op</code> binary, usually the superuser.  Since that might
+give away too much privilege the sanity check asks that you
+specify an explicit uid for each command.  You can suppress by
+setting one for the <code class="markup">DEFAULT</code> stanza.
+<dt><code class="markup">euid</code>=<code class="param">word</code>
+<dd>
+The effective user identifier is forced to that given value.
+The default is that value of uid.
+<dt id="initgroups"><code class="markup">initgroups</code>
+<dd>
+When no <code class="param">word</code> is
+provided <code class="sh">op</code>
+calls <A href="/cgi-bin/manpage.cgi?initgroups"><code class="libc">initgroups</code>(3)</A> on
+the same login as the uid set (either effective or real).
+<dt><code class="markup">initgroups</code>=<code class="param">word</code>
+<dd>
+Force an <code class="libc">initgroups</code> call on a specific login with
+this specification: one of
+<code class="markup">%u</code>, <code class="markup">%f</code>,
+or <code class="markup">.</code> (the current list), or any valid
+login name.
+<dt><code class="markup">fib</code>=<code class="param">number</code>
+<dd>
+Use the <code class="libc">setfib</code>(2) system call to set the
+routing table for the new process.  This is only available on
+FreeBSD systems, see <code class="opt">-H</code> output.
+<dt><code class="markup">nice</code>=<code class="param">number</code>
+<dd>
+This allows tasks to run with greater priority than the default.
+The nice value ranged from -20 to 20 on most UNIX systems.
+<dt><code class="markup">stdin</code>=<code class="param">redir</code>
+<dt><code class="markup">stderr</code>=<code class="param">redir</code>
+<dt><code class="markup">stdout</code>=<code class="param">redir</code>
+<dd>
+Force the input (output, error) channel of the new process to
+<code class="param">redir</code>.
+<code class="param">Redir</code>
+may be prefixed with the standard shell input/output redirection markups
+(<code class="markup">&lt;</code>, <code class="markup">&lt;&gt;</code>,
+<code class="markup">&gt;</code>, <code class="markup">&gt;&gt;</code>)
+to modify the <code class="libc">open</code>(2) flags.
+The file may be specified as <code class="markup">%f</code>, or
+an path to an existing file.
+<code class="sh">Op</code> won't create a file with such redirection.
+<dt id="session"><code class="markup">session</code>
+<dd>
+Turn off any PAM session default.
+<dt id="sessionUser"><code class="markup">session</code>=<code class="param">login</code>
+<dd>
+Setup a PAM session for the given <code class="param">login</code>.
+The application requesting the session is <em>always</em> the
+default on listed under <code class="opt">-V</code>, usually "op".
+The remote user is the requesting login, the remote host is "localhost".
+<p>
+The login may also be specified  one of the following:
+<dl>
+<dt><code class="markup">.</code>
+<dd>
+The original user.
+<dt><code class="markup">%i</code>
+<dd>
+The <code class="markup">initgroups</code> login, or the value
+of <code class="markup">uid</code> or <code class="markup">euid</code>
+in that order.  This value is only available under session, since
+usually it makes the most sence to provide a session for the same
+login as the <code class="markup">initgroups</code>.
+<dt><code class="markup">%u</code>
+<dd>
+Forcing <code class="opt">-u</code>, the command-line specified
+<code class="param">login</code>.
+<dt><code class="markup">%f</code>
+<dd>
+Forcing <code class="opt">-f</code>, the owner of the specified
+<code class="param">file</code>.
+</dl>
+<dt id="cleanup"><code class="markup">cleanup</code>
+<dd>
+Turn off any cleanup default.
+<dt id="cleanupUser"><code class="markup">cleanup</code>=<code class="param">login</code>
+<dd>
+Taking the same specification as <code class="markup">session</code>,
+<code class="libc">fork</code>(2) a process to call
+<code class="libc">pam_session_close</code>(3) after the
+escalated process exits.  The same specifications as
+<code class="markup">session</code> are allowed, with the special
+dot (<code class="markup">.</code>) specification interpreted as
+a request to exactly copy the <code class="markup">session</code>
+specification (even if empty).
+<P>
+This specification is normally not required unless the session
+started a co-process (for example an instance of
+<code class="sh">ssh-agent</code> in the case of
+<code class="sh">pam_ssh</code>).
+<dt><code class="markup">umask</code>=<code class="param">octal</code>
+<dd>
+Set the processes umask (default 022).
+Mostly used to unsure that the client doesn't make a file with escalated
+privileges that is insecure.
+</DL>
+
+<h3 id="ex_limits">Examples of limits</h3>
+<P>
+To start the real-time Large Hadron Collider process with elevated
+scheduler priority:
+<blockquote class="file"><pre><code >cruncher /opt/atomic/bin/smasher $* ;
+	stderr=>>/var/atomic/errors
+	nice=-4  umask=0026
+	uid=mighty gid=mouse
+	groups=^lhc$,^eotw$,^admin$ ...
+	$PATH=/opt/atomic/bin:${PATH}
+</code></pre></blockquote>
+
+<P>
+To allow users in group "operator" to <code class="sh">cat</code> any single
+plain file on the filesystem:
+<blockquote class="file"><pre><code >cat	/bin/cat ;
+	groups=^operator$
+	%f.type=^-$
+	stdin=&lt;%f
+	uid=. gid=.
+</code></pre></blockquote>
+The only part of the escalation that runs as the superuser is the
+<code class="libc">open</code> of the file.
+The <code class="sh">cat</code> process runs as the mortal that ran
+<code class="sh">op</code>.  That is so cool.
+
+<h2 id="impact">Seeing the impact of each one</h2>
+
+Most of a process's attributes may be displayed by running
+the <A href="refs.html#showme">showme.sh script</A>.
+I often use this script to test <code class="sh">op</code>'s
+environment logic in new rules I crafted.  For more advanced checks
+you might need a <code class="sh">perl</code> or C program to
+produce special output. <!-- forkcheck is nice too -->
+
+
+<h1 id="building">Building the command to run</h1>
+
+If the first <code class="param">word</code> after
+the mnemonic is a full path to
+a shell program, then the <code class="param">args</code> after that are
+all positional parameters to that <code class="param">utility</code>.
+<P>
+When the first <code class="param">word</code> after the mnemonic is a lone open curly brace
+(<code class="markup">{</code> followed by white-space)
+then the lexical part of the <A href="refs.html#config">configuration file parser</A> builds an
+in-line script out of all the characters until it finds a close
+curly brace (<code class="markup">}</code>) as the first
+non-white-space character on a line.  The script is
+effectively replaced with 3 tokens (<code class="markup">$S -c $s</code>).
+the <code class="param">args</code> after
+that are positional parameters to that <code class="param">script</code>.
+<P>
+If the first <code class="param">word</code> is
+<code class="markup">MAGIC_SHELL</code> then
+something totally different happens.
+The <code class="markup">MAGIC_SHELL</code> token is discarded.
+If that leaves no <code class="param">args</code> then a
+default argument list will be constructed later.  Otherwise
+the argument list is expanded as given, but the meaning of
+<code class="markup">$*</code> and <code class="markup">$@</code>
+changes, see the <A href="#MAGIC_SHELL">explanation below</A>.
+
+<h2 id="build">Expander markup for building commands</h2>
+
+The arguments to the new process are expanded from the list of
+words after the <code class="param">mnemonic</code> and before the
+delimiting semicolon (<code class="markop">;"</code>) or
+ampersand (<code class="markop">amp</code>).
+These words are expanded via a shell-like substitution.
+The dollar-sign ("$") is the only special character.
+No backslashes, no quotes for white-space.
+This is an attempt to make it clear to
+an auditor what the expansion will output, while still allowing
+useful replacement operations.
+
+<h3 id="exp_rule">Expanded from the rule definition</h3>
+
+<dl>
+<dt><code class="markup">$0</code>
+<dd>
+The <code class="markup">mnemonic</code> specified on the command-line.
+<dt><code class="markup">$_</code>
+<dd>
+The path to the program we are going to execute.
+This cannot be used to create itself, of course.
+<dt><code class="markup">$s</code>
+<dd>
+The in-line script provided in place of a <code class="param">command</code>
+path, without the delimiting curly braces.  This is an exception
+to the rule about case (below), this is just the best letter to represent the
+<code class="param">script</code> text, and it is often used with
+<code class="markup">$S</code>.
+<dt><code class="markup">$w</code>
+<dd>
+The name of the configuration file that defined the access rule.
+<dt><code class="markup">$W</code>
+<dd>
+The line number in <code class="markup">$w</code> that started
+the rule stanza.
+</dl>
+
+<h3 id="unix_exp">Expanded from the UNIX credentials</h3>
+
+In general each lower-case letter is a string, while the upper-case
+version is a number.  For example <code class="markup">$l</code> is
+a login name with <code class="markup">$L</code> as that login's uid.
+
+<P>
+These are expanded from the credentials that the UNIX process holds
+(<code class="param">uids</code> real and effective and the like), and
+the provided environment, and the command-line:
+
+<dl>
+<dt><code class="markup">$a</code>
+<dd>The group list of the client process.  For example "staff,wiz"
+when the process was in two groups.
+Which makes <code class="markup">$A</code> a list of the gids.
+<dt><code class="markup">$i</code>
+<dd>
+The target login for any <code class="libc">initgroups</code>(3) call
+from the rule.  Which makes <code class="markup">$I</code> the uid
+of that login.
+<dt><code class="markup">$h</code>
+<dd>
+The home directory of the client login.
+<dt><code class="markup">$H</code>
+<dd>
+The home directory of the target login.  This doesn't follow
+the case convention, but the numeric rule doesn't really apply
+to a home directory.
+<dt><code class="markup">$l</code>
+<dd>
+The client login name.  Which makes <code class="markup">$L</code>
+their uid.
+<dt><code class="markup">$n</code>
+<dd>
+The new group list given to <code class="libc">setgroups</code>(2),
+which makes <code class="markup">$N</code> a gid list.
+<dt><code class="markup">$o</code>
+<dd>
+The target real group, which makes <code class="markup">$O</code> the
+group's gid.
+<dt><code class="markup">$r</code>
+<dd>
+The clients real group, which makes <code class="markup">$R</code>
+that group's gid.
+<dt><code class="markup">$t</code>
+<dd>
+The target login, which makes <code class="markup">$T</code> be
+the target uid.
+<dt><code class="markup">${</code><code class="param">ENV</code><code class="markup">}</code>
+<dd>
+The value of the environment variable <code class="param">ENV</code> as
+it was in the original environment.
+<dt><code class="markup">$S</code>
+<dd>
+The value of $<code class="env">SHELL</code> if allowed from the
+original environment, or <code class="path">/bin/sh</code> when
+no value for <code class="env">SHELL</code> is present (or allowed).
+This is for MAGIC_SHELL support.
+</dl>
+
+<h3 id="exp_cmd">Expansion based on the command-line presented</h3>
+<P>
+There are several expansions used to construct the utility command
+and parameters executed by <code class="sh">op</code>:
+
+<dl>
+<dt><code class="markup">$1</code>, <code class="markup">$2</code>, ...
+<dd>
+Each positional parameter after the mnemonic is available by the same name a
+shell script would use.  Mentioning the name as a word, or substring of
+a word expands the actual value in place of the markup.
+<dt><code class="markup">$</code><code class="param">N</code>
+<dd>
+The <code class="param">N</code>-th command-line parameter (like the shell)
+<code class="markup">$1</code>, <code class="markup">$2</code>,
+<code class="markup">$3</code> and so on.
+<dt><code class="markup">$*</code>
+<dt><code class="markup">$@</code>
+<dd>
+The arguments specified on the command line that were matched by
+the <code class="markup">$*</code> attribute below.  When called
+as <code class="markup">$*</code> empty parameter words are squeezed out.
+<dt><code class="markup">$*</code> (under <code class="markup">MAGIC_SHELL</code>)
+<dd>
+Under MAGIC_SHELL the expansion of this changes to a single word.
+Used to form a <code class="opt">-c</code> specification to
+the specified shell.
+<dt><code class="markup">$#</code>
+<dd>
+The number of words presented on the command-line.  This doesn't
+always match the number of words in <code class="markup">$@</code>
+as some of them might have matched fixed
+<code class="markup">$</code><code class="param">N</code>'s.
+<dt><code class="markup">$f</code>
+<dd>
+The absolute path to the <code class="param">file</code> given
+on the command-line.
+<dt><code class="markup">$F</code>
+<dd>
+Substitutes an open file descriptor (small integer in decimal) open
+to the <code class="param">file</code> specified on the command-line.  This
+descriptor will be read/write if possible, else read-only.
+It is safer to ask for read or write with the
+<code class="markup">stdin</code>, or <code class="markup">stdout</code>
+attributes below when possible, viz.  <code class="makrup">stdin=%f</code>.
+
+<dt><code class="markup">$g</code>
+<dd>
+The group name provided to <code class="opt">-g</code>, or the
+part of the <code class="param">login</code> specification after the colon.
+Any mention of this in a rule forces <code class="opt">-g</code> on
+the command-line (unless a
+<code class="opt">-u</code> specified as
+<code class="param">login</code><code class="markup">:</code><code class="param">group</code> is included).
+<dt><code class="markup">$G</code>
+<dd>
+The gid of the group name provided to <code class="opt">-g</code>
+(also honors the group name after the colon under <code class="opt">-u</code>).
+<dt><code class="markup">$u</code>
+<dd>
+The <code class="param">login</code> provided to
+<code class="opt">-u</code>.  Mention of
+this anywhere in the parameter list forces the need for
+a <code class="opt">-u</code> on the command-line.
+<dt><code class="markup">$U</code>
+<dd>
+The uid of the <code class="param">login</code> provided to
+<code class="opt">-u</code> (which also forces the need for that option).
+
+<dt><code class="markup">$d</code>
+<dd>
+The directory part of the <code class="opt">-f</code>'s
+<code class="param">file</code> value.
+Substitutes the absolute path to the directory containing the
+<code class="param">file</code> specified on the command-line.
+
+<dt><code class="markup">$D</code>
+<dd>
+Substitutes an open read-only file descriptor (small integer in decimal)
+on the directory part of <code class="param">file</code>.
+<em class="error">Caution:</em> this can break the
+<code class="markup">chroot</code> attribute (below).
+</dl>
+
+<h3 id="exp_fixed">Fixed strings</h3>
+
+<P>
+These are fixed strings that are useful markup, largely to overcome
+limitations in <code class="sh">op</code>'s configuration parser.
+
+<dl>
+<dt><code class="markup">$|</code>
+<dd>
+The empty string.  This is useful to deny a semicolon its special
+meaning, see the examples below.
+<dt><code class="markup">$\</code><code class="param">c</code>
+<dd>
+Allow any of the black-slash escapes <code class="sh">tr</code>(1)
+allows for special characters:
+<dl>
+<dt>a&nbsp;&nbsp; alert character
+<dt>b&nbsp;&nbsp; backspace
+<dt>f&nbsp;&nbsp; form-feed
+<dt>n&nbsp;&nbsp; newline
+<dt>r&nbsp;&nbsp; carriage return
+<dt>t&nbsp;&nbsp; tab
+<dt>v&nbsp;&nbsp; vertical tab
+<dt>s&nbsp;&nbsp; a space (not from <code class="sh">tr</code>)
+<dd>
+This was added in a hollow attempt to allow spaces in command arguments.
+It is just too much noise to type <code class="markup">$1</code>.<code class="markup">$2$\s$3</code>
+for long commands.
+</dl>
+
+<dt><code class="markup">$$</code>
+<dd>
+A literal dollar sign.
+<dt><code class="markup">$|</code>
+<dd>
+The empty string.  This allows "<code class="markup">$1</code>"
+to be followed directly by digit "3", as "<code class="markup">$1$|</code>3".
+</dl>
+
+<h3 id="ex_expand">Examples of expander markup</h3>
+
+<P>
+To remember the original login name in $<code class="env">ORIG_LOGIN</code>:
+<blockquote class="file"><pre><code >rule	command ... ;
+	$ORIG_LOGIN=$l
+</code></pre></blockquote>
+<P>
+To get a rule to echo a semicolon use:
+<blockquote class="file"><pre><code >echo	/bin/echo $|;$| ;
+	uid=. gid=. users=.*
+</code></pre></blockquote>
+<P id="inline_back">
+To get a parameter with an embedded space:
+<blockquote class="file"><pre><code >date	/bin/date +%a$\s%b$\s%e ;
+	uid=. gid=. users=.*
+</code></pre></blockquote>
+or you could use an in-line script, but I don't use them often
+for <A href="refs.html#inline">these reasons</A>.  Here is an example
+where I might:
+<blockquote class="file"><pre><code >date	{
+		/bin/date +"%a %b %e"
+	}
+	uid=. gid=. users=.*
+</code></pre></blockquote>
+<P id="dynamicDNS">
+A different use of the in-line script is a dynamic
+<acronym title="Domain Name System">DNS</acronym> update with
+<code class="sh">nsupdte</code>.  Since we need to keep the
+authentication key secret, and the <code class="sh">op</code> rule-base
+is already protected we can stash the whole update script here.
+<blockquote class="file"><pre><code >dnsSet	{
+		exec nsupdate -v <<-!
+		server 10.10.10.254
+		zone dynamic.example.com.
+		key dynamicKey aabbCCddEE00FF==
+		update delete sulaco.dynamic.example.com. A
+		update add sulaco.dynamic.example.com. 86400 A ${1}
+		show
+		send
+		!
+	} $1 ;
+	$1=^[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*$
+	uid=. gid=. users=^root$,#^0$ netgroups=owner
+</code></pre></blockquote>
+This is not a perfect solution: the process table may display the dynamic
+key for a very short window of time, but in practice it has been much
+more likely that the key file leaked in a more public way.
+This rule is usually only run by <code class="sh">dhclient</code> from
+<code class="path">/etc/dhclient-exit-hooks</code> as the superuser, or as the
+owner of each workstation.
+<P>
+To get the rule above to the target host without giving away the crypto-key
+is a whole topic all by itself.  Here I'll just say that
+<code class="sh">msrc</code> can merge the dynamic name of the host
+and the appropriate key from a file that mortals cannot normally read,
+and <code class="sh">op</code> work for that step as well.
+
+<P>
+To set some of the same environment variables <code class="sh">sudo</code> might:
+<blockquote class="file"><pre><code >rule	...
+	environment=^(COLORS|DISPLAY|HOSTNAME|KRB5CCNAME|LS_COLORS|MAIL|PATH|PS1|PS2|TZ|XAUTHORITY|XAUTHORIZATION)$
+	$SUDO_COMMAND=$_
+	$SUDO_USER=$l
+	$SUDO_UID=$L
+	$SUDO_GID=$G
+	$LOGNAME=$t
+	$USER=$t
+	$USERNAME=$t
+	$HOME=$H
+	TERM=unknown
+</code></pre></blockquote>
+Note that <code class="env">SUDO_COMMAND</code> will not be
+exactly the same, we didn't put the argument list on it.
+If I really wanted to emulate <code class="sh">sudo</code> I
+think I would code a helmet to do it: I believe the rules
+structure in <code class="sh">sudo</code> is
+<A href="refs.html#sudo">far too complex</A> to really audit.
+
+<P>
+To set some of the same environment
+variables <code class="sh">super</code> might:
+<blockquote class="file"><pre><code >rule	...
+	ORIG_USER=$l ORIG_LOGNAME=$l ORIG_HOME=$h
+	USER=$t LOGNAME=$t HOME=$H
+	IFS=$\s$\t$\n
+	PATH=/bin:/usr/bin
+	SUPERCMD=$0
+</code></pre></blockquote>
+I'm not really sure about <code class="env">HOME</code>, since the
+wording in the manual page is unclear (to me).
+
+<h2 id="external">Helmet and jacket programs</h2>
+
+Other privilege escalation tools try to think of every aspect one
+might with to use limit access, or to log about an access:
+<code class="sh">op</code> has a simple, but complete API to
+allow the administrator to "plugin" any check they can code in
+a program.
+<P>
+The basic protection is provided by a <em class="new">helmet</em>
+(that is a play on the idea that it protects your head).
+A helmet is a program that is called to approve the access just
+before <code class="sh">op</code> is ready to run the program.
+It receives a long list of options and parameters the explain
+the context that <code class="sh">op</code> is in, and expects the
+program to <code class="libc">exit</code> 0 only if the access
+should be granted.
+<P>
+The helmet may add or delete environment variables from the
+target process's environment with an overly simple protocol.
+And it may recommend a failure exit-code back to <code class="sh">op</code>.
+Usually a helmet is passed any addition specifications via
+environment variables set in the rule's configuration.
+These are removed by the helmet if they should not be leaked to others
+(although they may appear in the process table for a
+very short time as the helmet executes).
+
+<P>
+For example below I made up a rule that called the helmet "time-box"
+to check a time-box of 22:00 to 06:00 for the start of the "backup"
+mnemonic:
+<blockquote class="file"><pre><code >backup	/usr/local/libexec/doBackups ... ;
+	groups=^operator$
+	<em class="new">helmet=/usr/local/libexec/helmet/time-box
+	$TIME_BOX=2200-2400,0000-0600</em>
+	$TZ=...
+</code></pre></blockquote>
+That helmet should remove $<code class="env">TIME_BOX</code> from the
+environment for two reasons: (1) other programs might use it in
+conjunction for some <em>unrelated</em> filter when set,
+and we don't want to trigger that by accident,
+and (2) we don't need to radiate information about the allowed access.
+Also note that we need to set $<code class="env">TZ</code> if we
+are going to look at the clock, right?
+
+<P id="jackback">
+There is an example <code class="sh">perl</code> script
+(<A href="jacket.pl">jacket.pl</A> in the source to <code class="sh">op</code>,
+or you can view <A href="refs.html#jacketpl">an HTML version</A> of the
+same code.
+
+Checking to see if the current hour and minute is in a range of
+integer values is left as an exercise to the reader.  But if we had
+that check we could use the jacket.pl code above and add to
+our "CHECKS AND REPARATIONS":
+<blockquote class="file"><pre><code >	use POSIX qw(strftime);
+	my($hhmm);
+	$hhmm = strftime "%H%M", localtime;
+	if (<em class="error">your code here</em>) {
+		print "-TIME_BOX\n";
+		exit 0;
+	}
+	print STDERR "It is not your time\n";
+	exit 69;
+</code></pre></blockquote>
+
+<h3 id="jacket">A jacket</h3>
+
+A jacket wraps the escalated process so it can wait for it to exit.
+Along the way it could time the process, kill the process, restart
+failed processes, or block other people from using the same resources
+as the process.  It might even run a wrapper diversion for the task,
+like <code class="sh">ptbw</code>.
+<P>
+It can do anything any co-process might.  It is up to you to
+justify the use of the extra process.  It may cleanup after the
+escalated program or run the parts of the application that
+need elevated privileges. <!-- and I would be the one to hold you down -->
+<P>
+The original <code class="sh">op</code> process becomes the
+<code class="param">jacket</code> program, a child process (already
+<code class="libc">fork</code>'d) is about to
+<code class="libc">execve</code> the escalated program.  Before it
+does it blocks reading from <code class="param">stdout</code>
+from the <code class="param">jacket</code>.
+<P>
+The <code class="param">jacket</code> sets up any times, file locks,
+or what-not it needs, then closes <code class="param">stdout</code>
+to free the blocked child.  If it can't gain the locks it needs
+or smells something bad, it can write a non-zero exit code to the
+child (say 75) and <code class="sh">op</code> will abort the
+execution and exit without starting the target program.
+<P>
+The same program might be both a helmet and a jacket: it can tell which
+context it is in by the <code class="opt">-P</code> option, only
+jackets get that one.
+
+<h2 id="MAGIC_SHELL">The MAGIC_SHELL form</h2>
+
+This form usually allows arbitrary command execution, so I don't favor it.
+In fact the number of times I'll installed a production magic shell
+rule is exactly two.  I'd rather use <code class="sh">ssh</code> and
+a well controlled <code class="path">authorized_keys</code> file
+as local policy at NPC Guild.org.
+At the very least you should be really picky about the who can
+use this access: at the least I'd limit it to
+a single (special purpose) login.
+
+<h3 id="star_merged">Change to $*</h3>
+
+The first change from a standard rule is the <code class="markup">$*</code>
+gets all of the command-line parameters bound to it merged into a
+single parameter.  Any sense of word separation is lost (replaced with
+a single space).  So, for example:
+<blockquote class="file"><pre><code >test1	MAGIC_SHELL /bin/$1 -c $* ;
+	users=^anybloke$
+	$1=^sh$,^ksh$,^bash$
+	uid=. gid=.
+</code></pre></blockquote>
+The <code class="opt">-c</code>'s single argument is all the words
+on the original command-line after <code class="markup">$1</code>.
+To test this I ran
+<blockquote class="file"><pre><code >op test1 sh date \; hostname
+</code></pre></blockquote>
+and got the output from <code class="sh">date</code> and
+<code class="sh">hostname</code>.  Note that I back-quoted the
+semicolon to get it passed as a literal word to <code class="sh">op</code>.
+<P>
+If you remove the <code class="markup">MAGIC_SHELL</code> token
+you'll only get the output from <code class="sh">date</code>, as
+the semicolon and hostname tokens are now parameters to
+<code class="path">/bin/sh</code>, rather than included in
+<code class="opt">-c</code>'s argument.
+
+<h2 id="magic_def">Default argument template</h2>
+
+The next strange thing is that no <code class="param">args</code>
+need be specified: <code class="sh">op</code> build one of two
+default argument lists, when presented with parameters it builds:
+<blockquote><pre><code class="markup">$S -c $*
+</code></pre></blockquote>
+When presented with no arguments it builds:
+<blockquote><pre><code class="markup">$S
+</code></pre></blockquote>
+<P>
+This provides an interactive shell with no command-line parameters,
+otherwise it runs the command you gave it with the selected shell
+under -c.
+<P>
+There is one other magic element: if the shell you set contains the
+string "perl" then the "-c" is changed to "-e" because that's what
+<code class="sh">perl</code> wants.
+
+<h3 id="magic_alt">Alternatives</h3>
+
+By putting <code class="markup">$*</code> in the context of an
+environment specification the same transformation (joining the
+words together with spaces) may be rendered:
+<blockquote class="file"><pre><code >	$OP_ARGV=$*
+	$OP_ARGC=$#
+</code></pre></blockquote>
+which does give the new process a different way to get the command-line
+parameters joined into a single word.  This might also be useful to
+pass the arguments to a helmet or a jacket.
+
+<h3 id="ex_magicsh">Examples of MAGIC_SHELL specifications</h3>
+
+<P>
+To allow anyone in group "wheel" to become the login "operator"
+on demand:
+<blockquote class="file"><pre><code >operator MAGIC_SHELL ;
+	groups=^wheel$
+	uid=operator initgroups=operator
+</code></pre></blockquote>
+
+<P>
+To force that access though the restricted shell and limit the
+first word a little:
+<blockquote class="file"><pre><code >operator MAGIC_SHELL /bin/ksh -r -c $* ;
+	groups=^wheel$
+	uid=operator initgroups=operator
+	$1=^/sbin/dump$,^/sbin/restore$
+</code></pre></blockquote>
+Note that the <code class="markup">$1</code> limitation doesn't really
+add any security, as $2 might be an option that makes the command exit
+to allow a command after a literal semicolon to run anything.  By giving
+access to a shell you are removing almost any limit from the Customer.
+
+<P>
+This is a feature that people like, but I don't really think you need
+to use it in production.  The operator example above could be better
+thought-out an expressed as the 3 things you really need to do as
+the operator login, not a general shell access.
+Maybe a command to remove a dump, create a dump, and one to
+get started with <code class="sh">restore</code>.  I doubt there
+are so many commands one would run as operator that they cannot
+be matched by <code class="sh">op</code>'s RE logic.
+
+<P>
+My favorite exploit was passing the text below to a magic shell to
+get an interactive session as the target login:
+<blockquote class="file"><pre><code >$(DISPLAY=localhost:11 /usr/local/bin/xterm -ls)
+</code></pre></blockquote>
+
+<P>
+You can depend on your Customers to be more creative than you thought
+they could be.  If they can load commands that are then run by
+<code class="sh">op</code>, then they <em>will</em> load a command with
+an option to get a shell, count on it.
+
+<h2 id="sanity">Sanity checks</h2>
+
+Under the <code class="opt">-S</code> option <code class="sh">op</code>
+tests each rule in the rule-base against my own ideas of what is "sane".
+When it finds something it should flag as "insane", it produces an error
+message on <code class="param">stderr</code>.  If the error is
+serious it exits with a non-zero exit-code from &lt;sysexits.h&gt;.
+
+<P>
+The sanity drops to the real uid of the invoker when frisking
+any files given on the command-line.  But an <code class="sh">op</code>
+rule to allow a mortal administrator to run "<code class="sh">op</code>
+<code class="opt">-S</code>" is not out of the question.
+
+<h3 id="ex_sanity">Example sanity checks</h3>
+
+Allowing unanchored regular expressions to match
+<code class="markup">users</code> or <code class="markup">groups</code>
+might be silly (as noted in the examples in that section).
+<p>
+Giving non-numeric values to <code class="markup">nice</code>,
+<code class="markup">umask</code>, or
+<code class="markup">$#</code>, or <code class="param">N</code> in
+<code class="markup">$</code><code class="param">N</code> is really
+frowned upon.
+<P>
+Giving specifications for <code class="opt">-u</code>,
+<code class="opt">-g</code>, or <code class="opt">-f</code> then
+not using them in the rule (or the opposite).
+<P>
+Requiring a <code class="markup">password</code> from a login that
+doesn't exist on the host.
+<P>
+Setting a <code class="markup">DEFAULT</code> rule that is never used.
+<P>
+Adding rules that match the same patterns as one above it.  Or putting
+the same <code class="param">mnemonic</code> in more than one file
+(as you can't be sure which is consulted first).
+<P>
+There are a lot of path checks as well, and some others that I hope
+you'll never see.
+
+<h1 id="cmd_line">The command line</h1>
+
+The command-line for <code class="sh">op</code> has more
+modes that most tools:
+<dl>
+<dt>op [<code class="opt">-f</code>&nbsp;<code class="param">file</code>]
+[<code class="opt">-g</code>&nbsp;<code class="param">group</code>]
+[<code class="opt">-u</code>&nbsp;<code class="param">login</code>]
+<code class="param">mnemonic</code> [<code class="param">args</code>]
+<dd>
+In this mode <code class="sh">op</code> looks up
+the <code class="param">mnemonic</code> that matches the
+<code class="param">args</code> given, then uses the context of
+the current process to authorize the escalation.
+When all goes well the <code class="sh">op</code> process becomes
+(or <A href="#jacket">jackets</A>) the requested process.
+<P>
+Any command-line <code class="param">login</code> and
+<code class="param">group</code> must match and rules for
+<code class="markup">%u</code>, <code class="markup">!u</code>,
+<code class="markup">%u@g</code>, <code class="markup">!u@g</code>, and
+<code class="markup">%g</code>, <code class="markup">!g</code>.
+Any command-line <code class="param">file</code> must
+match all the <code class="markup">%f</code>, <code class="markup">!f</code>
+qualifiers.
+<dt>op <code class="opt">-l</code> [<code class="param">login</code>]
+<dd>
+This mode requests the <em>list</em> of rules the current user might request.
+The superuser may specify a <code class="param">login</code> to
+request another's list.
+<dt>op <code class="opt">-r</code> [<code class="param">login</code>]
+<dt>op <code class="opt">-w</code> [<code class="param">login</code>]
+<dd>
+List what <code class="sh">op</code> might <em>run</em> as the result of
+the corresponding <code class="opt">-l</code> command.  This
+sometimes help Customers see which rule they want.  Under the
+<code class="opt">-w</code> option also list <em>why</em> each
+role is allowed.  This is great for audits.
+<!-- let me know how to make sudo do that, would you? -->
+<dt>op <code class="opt">-S</code> [<code class="param">files</code>]
+<dd>
+This mode is only used to sanity check the addition of new files to
+the existing <code class="sh">op</code> rules, or when no
+<code class="param">files</code> are provided to sanity check
+the existing policy.
+<dt>op <code class="opt">-Sn</code> [<code class="param">files</code>]
+<dd>
+Under this switch <code class="sh">op</code> does <em>not</em>
+read the existing rule-base to check for integration with the
+current rules.  If the file you are checking is a new version of
+an existing file you'll need this to remove errors about duplicate rules.
+<dt>op <code class="opt">-h</code>
+<dd>
+The standard on-line help all my tools provide.
+<dt>op <code class="opt">-H</code>
+<dd>
+This is an extended help text to allow rule writers a "quick reference"
+view of the configuration attributes.  It is built from the same list
+the sanity checker uses to list unknown attribute settings.
+<dt>op <code class="opt">-V</code>
+<dd>
+The standard on-line version information, plus any compile-time
+option settings.
+</dl>
+
+<h2 id="strange">Strange addition to -f</h2>
+
+One may specify a nonexistent file under <code class="opt">-f</code>,
+as long as the attributes only match:
+<dl>
+<dt><code class="markup">path</code>
+<dd>
+To force the nonexistent file's location.
+<dt><code class="markup">perms</code> (always <code class="markup">n---------</code>),
+<dt><code class="markup">type</code> (always <code class="markup">n</code>),
+<dd>
+To check for the file's nonexistence.
+<dt><code class="markup">access</code> (always <code class="markup">----</code>)
+<dd>
+A nonexistent file has no access available.
+<dt><em class="error">anything else</em>
+<dd>
+A match against any other <code class="markup">%f</code> or
+<code class="markup">!f</code> attribute rejects the attempt.
+</dl>
+
+
+<h1 id="not_added">What I didn't add</h1>
+
+I didn't add a bunch of checks that you'll never need.  If
+<code class="sh">op</code> gets though the basic allow checks and
+the checks for the <code class="opt">-f</code>,
+<code class="opt">-g</code>, and <code class="opt">-u</code> options
+then any additional checks you build into a helmet is usually just for
+the over-cautious, or for a local policy no other site would use or
+understand.
+
+<h2 id="not_missing">Features that are not missing, just less obvious</h2>
+
+<P>
+<code class="sh">Op</code> eats its own dog food to allow administrators
+to access <code class="opt">-l</code> for other logins.
+Use this rule to allow anyone in groups "wheel" or "staff" to see
+anyone but root's allowed rule list:
+<blockquote class="file"><pre><code >op	/usr/local/bin/op $1 $2 ;
+	groups=^wheel$,^staff$
+	$1=^-[lrw]$
+	uid=0 gid=.
+</code></pre></blockquote>
+Run this rule as:
+<blockquote class="file"><pre><code >op op -l ksb
+</code></pre></blockquote>
+
+<P>
+More dog food: use <code class="sh">op</code> to let anyone in group
+zero run a sanity check as the superuser:
+<blockquote class="file"><pre><code >op	/usr/local/bin/op $1 $* ;
+	groups=^0$
+	$1=^-S$
+	uid=0 gid=. initgroups=root
+</code></pre></blockquote>
+I don't match <code class="markup">$2</code> because <code class="sh">op</code>
+does a fine job of that for me.
+
+<h2 id="summary">Summary</h2>
+
+<code class="sh">Op</code> offers all the features you want in a
+privilege escalation strtucture with an easy to audit configuration.
+Simple rules are clear and isolated in definition and in scope, while
+complex rules are possible.  Support for some less often required
+services (such as timeboxing access to rules) is out-sourced to
+<code class="markup">helmet</code> or <code class="markup">jacket</code>
+co-processes.
+
+<P>
+The <code class="sh">op</code> rule-base is broken into separate files to
+allow deployment of subsets of the rule-base to different hosts.
+Host specific access may be granted by selective deployment of rule, or by
+the netgroups facility.
+
+<P>
+Customer access may be granted by login name, uid, group memebership, lack of
+group membership or any rule coded in a <code class="markup">helmet</code>.
+Resources are accessed by name, ownership, group ownership or
+any other <code class="libc">stat</code>(2) attribute, as well as by
+existence (or nonexistence).
+
+<P>
+These features together offer a complete privilege escalation strtucture
+without forcing the administrator to give away arbitrary superuser access.
+
+<hr>
+<pre>$Id: op.html,v 2.58 2010/08/13 19:22:25 ksb Exp $
+</pre>
+</BODY></HTML>

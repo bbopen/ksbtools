@@ -1,0 +1,118 @@
+`#	$Id: Make.host,v 2.6 2000/06/20 14:06:37 ksb Exp $
+#
+#	Makefile for installus
+#
+SHELL=/bin/sh
+PROG=	installus
+ETC=	${DESTDIR}/usr/local/etc
+DOC=	${DESTDIR}/usr/man
+
+I=/usr/include
+S=/usr/include/sys
+L=/usr/local/include
+P=
+
+# We can for USE_MD5 here because default FreeBSD is hardly ever
+# really used. -- ksb
+INCLUDE=
+DEBUG='ifelse(HOSTTYPE,`V386',`',`-O')`
+CDEFS=  -D'HOSTTYPE`'ifelse(
+SHORTHOST,`dial',` -DUSE_MD5=0',
+HOSTTYPE,`LINUX',` -DUSE_MD5=1',
+HOSTTYPE,`FREEBSD',` -DUSE_MD5=0')`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+YFLAGS=	
+
+GENC=	main.c ckpass.c
+GENH=	main.h ckpass.h
+GEN=	${GENC} ${GENH}
+HDR=	argvutil.h control.h glob.h machine.h sendfd.h
+SRC=	argvutil.c control.c glob.c machine.c sendfd.c
+DEP=	${GENC} ${SRC}
+OBJ=	main.o argvutil.o control.o glob.o machine.o sendfd.o ckpass.o
+MAN=	installus.man owners.man
+OTHER=	README INSTALL TODO Owners mkowner.ksh
+SOURCE=	Makefile ${OTHER} ${MAN} ${HDR} ${SRC}
+
+all: ${PROG}
+
+${PROG}:$P ${OBJ}
+	${CC} -o $@ ${CFLAGS} ${OBJ}'ifelse(
+HOSTTYPE,`SUN5',` -lsocket',
+HOSTTYPE,`FREEBSD',` -lcrypt',
+HOSTTYPE,`NETBSD',` -lcrypt',
+HOSTTYPE,`LINUX',` -lcrypt')`
+
+main.h: main.c
+
+main.c: ${PROG}.m
+	mkcmd ${PROG}.m
+	-(cmp -s prog.c main.c || (cp prog.c main.c && echo main.c updated))
+	-(cmp -s prog.h main.h || (cp prog.h main.h && echo main.h updated))
+	rm -f prog.[ch]
+
+ckpass.c ckpass.h:
+	MACHINE_H="#include \"machine.h\"" explode $@
+
+clean: FRC
+	rm -f Makefile.bak ${PROG} ${GEN} *.o a.out core errs lint.out tags
+
+calls: ${SRC} ${HDR} ${GEN} FRC
+	calls ${CDEFS} ${INCLUDE} ${DEP}
+
+deinstall: ${MAN} ${DOC} FRC
+	install -R ${ETC}/${PROG}
+	mkcat -r${DOC} -D ${MAN}
+
+depend: ${SRC} ${HDR} ${GEN} FRC
+	maketd ${CDEFS} ${INCLUDE} ${DEP}
+
+dirs: ${ETC}
+
+distrib: FRC
+	distrib -c ${ETC}/${PROG} HOST
+
+install: all dirs FRC
+	install -cs -o root -m 4711 ${PROG} ${ETC}/${PROG}
+
+lint: ${SRC} ${HDR} ${GEN} FRC
+	lint -h ${CDEFS} ${INCLUDE} ${DEP}
+
+mkcat: ${MAN} ${DOC} FRC
+	mkcat -r${DOC} ${MAN}
+
+print: source FRC
+	lpr -J"${PROG} source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${HDR} ${SRC} ${GEN}
+	ctags -t ${HDR} ${SRC} ${GEN}
+
+${ETC}:
+	install -dr $@
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - make depend DEPENDS ON IT
+
+main.o: argvutil.h control.h installus.m machine.h main.c sendfd.h
+
+argvutil.o: argvutil.c
+
+control.o: ckpass.h control.c glob.h installus.m machine.h main.h
+
+glob.o: glob.c
+
+machine.o: machine.c machine.h
+
+sendfd.o: sendfd.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

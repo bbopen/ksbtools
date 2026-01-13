@@ -1,0 +1,66 @@
+`# makefile for flock
+# $Id: Make.host,v 2.5 2000/06/20 14:10:03 ksb Exp $
+#			by Kevin S Braunsdorf, FedEx
+
+SHELL=/bin/sh
+BIN=${DESTDIR}'ifdef(`DSPD_SUPPORT',
+`/opt/fedex/support/bin',`/usr/local/bin')`
+
+P=
+I=/usr/include
+S=/usr/include/sys
+
+INCLUDE=
+DEBUG=	-O
+CDEFS=	-D'HOSTTYPE`
+CFLAGS= ${DEBUG} ${CDEFS} ${INCLUDE}
+
+HDR=	
+SRC=	flock.c
+OBJ=	flock.o
+MAN=	flock.man
+SOURCE=	Makefile README ${HDR} ${SRC} ${MAN}
+
+all: flock
+
+flock:
+	${CC} -o $@ ${CFLAGS} flock.c'ifelse(
+HOSTTYPE,IBMR2,` -lbsd',`')`
+
+clean: FRC
+	rm -f Makefile.bak flock *.o a.out core errs tags
+
+depend: ${SRC} ${HDR} FRC
+	maketd ${CDEFS} ${INCLUDE} -b flock.c
+
+install: all FRC
+	install -c -s flock ${BIN}
+
+lint: ${HDR} ${SRC} FRC
+	lint -hnx ${CDEFS} ${INCLUDE} ${SRC}
+
+mkcat: ${MAN}
+	mkcat ${MAN}
+
+print: source FRC
+	lpr -J"flock source" ${SOURCE}
+
+source: ${SOURCE}
+
+spotless: clean
+	rcsclean ${SOURCE}
+
+tags: ${SRC} ${HDR}
+	ctags -t ${SRC} ${HDR}
+
+${SOURCE}:
+	co -q $@
+
+FRC:
+
+# DO NOT DELETE THIS LINE - maketd DEPENDS ON IT
+
+flock: machine.h flock.c
+
+# *** Do not add anything here - It will go away. ***
+'dnl

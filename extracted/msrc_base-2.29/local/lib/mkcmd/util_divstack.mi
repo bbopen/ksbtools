@@ -1,0 +1,6 @@
+/* $Id: util_divstack.mi,v 1.6 2008/08/25 14:18:37 ksb Exp $
+ */
+%extern void %K<divVersion>/ef%;
+%extern unsigned %K<divInit>/ef%;
+%extern char *%K<divCurrent>/ef, *%K<divSelect>/ef, *%K<divIndex>/ef%;
+%extern int %K<divNumber>/ef, %K<divSearch>/ef, %K<divResults>/ef, %K<divPush>/ef, %K<divDetach>/ef%;

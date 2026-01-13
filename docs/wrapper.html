@@ -1,0 +1,696 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head>
+<!-- $Id: wrapper.html,v 1.21 2012/10/07 01:02:53 ksb Exp $ -->
+<title>Wrappers</title>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css" />
+</head><body>
+<h1 id="known">To understand this document</h1>
+Having a good working knowledge of the UNIX process model, the
+environment, and local domain sockets would help you a lot.
+
+<h1 id="intro">More than a pipe</h1>
+Because the idea of a "pipe" in the standard UNIX model is well
+understood by the community, we've come believe that pipes are `as
+good as it gets'.  In this document I propose a slightly different
+data-flow abstraction that is useful in situations where a mono-directional
+pipe is not adequate.
+This tactic builds on existing technology,
+requires no new kernel features, and
+has a good chance of being as useful as the pipe abstraction.
+
+<P>
+A <em>wrapper</em> is a shell command that creates a service dedicated to a
+process tree: this service is available to any descendant process
+by virtue of socket bound to a unique name in the filesystem.  Such
+services are not limited by ephemeral TCP/IP ports, or to the
+resource limits of a single process -- they are limited only by the
+number of processes that may be started on the host and by the
+name-space available for UNIX domain sockets.  In effect such services scale
+out to the total capacity of the supporting host.
+
+<P>
+Such a service is called a "wrapper" because it wraps the descendant
+process tree, existing only to
+serve until that process tree <code class="libc">exit</code>s.
+
+<P>
+Wrappers have <em>scope</em>, in that they are intended to serve a
+fixed process tree.  Each can be viewed as part of the mechanics of
+that environment, not just the global environment.
+Contrast that with a daemon, which exists for the life of the host,
+started at system boot running until shutdown, or a network service
+started as-needed by <code class="sh">inetd</code> or
+a <acronym TITLE="common gateway interface">CGI</acronym>
+started by a web server, or
+a service accessed via
+the <acronym TITLE="remote procedure call">RPC</acronym> port mapper.
+
+
+<P>
+Each of those has its place in the structure of an information
+technologies environment.  The wrapper has some features that
+make it attractive, and that's what we'll start with below.
+
+<h2 id="feautes">Features of the wrapper tactic</h2>
+
+As we've already mentioned the primary features of a wrapper-based
+service are <em>scope</em> and <em>scale</em>.
+
+<p id="scope">
+By scope we mean that each of the many users on a machine
+may have multiple instances of any wrapper active at the same
+time, and those instances may be enclosed in other instances
+of the same, or another wrapper.  More on that <A href="#eating">below</A>.
+
+<p id="scale">
+By scale we mean that we are not limited to the number of
+TCP ports, RPC program numbers, or a system configuration
+that only the super user can update.
+Starting many wrapper instances to get the structure required
+is like starting many filters to get the output format required.
+It might take nesting wrappers compositionally or
+running multiple instances in parallel to
+produce the desired effect.
+<!-- code the required machine. -->
+
+<p>
+In the sections below we examine other features of wrappers.
+
+<h3 id="eating">Eat our own dog food</h3>
+
+By their nature wrapping services can wrap themselves, in fact the
+most useful ones depend on this aspect.  Each instance of a wrapping
+service is called a "diversion", much as each element in a pipeline
+is a "filter".  A diversion has a notion of its current state, which
+is often called the "tableau", and a notion of how it is nested
+inside any enclosing instances.  It may also know something about
+other related wrappers that cooperate to provide an enhanced
+service to the client applications.
+
+<P>
+An example at this point helps:  say a wrapper offers
+a spell checking service.
+At start-up the spelling wrapper would first check for an enclosing
+copy of itself, then read stored preferences from any cache in the
+client's home directory, then check for a cache in the current
+directory (with appropriate security checks).  It might even check
+parent directories, if that preference is set.
+The outer-most service, finding no enclosing diversion,
+begins with a set tableau from the preferences located,
+or from a default file like <code class="path">/usr/share/dict/words</code>.
+
+<P>
+As words are offered and corrected they might be added to permanent
+folder in the clients home directory, or kept only in memory.
+This limits any locale, language, or similar preference kept by the
+spelling wrapper to the domain of that program, not any client
+program that needs the spelling service.
+
+<P>
+Each login on the system may start as many "spelling wrappers" as
+needed.  Nested wrapper should consult any outer wrapper (if that
+is the client's preference) to expand the tableau of available words
+and assume the active preferences.  Newly corrected submissions should
+be propagated as the client has directed, either
+back to the outer-most instance or trapped below.
+
+
+<P>
+As more applications reuse the common spelling wrapper the
+work needed to correct documents becomes less for the clients;
+more "clues" are banked in both the running wrapper's state
+and any configuration files.
+Those clues are all scoped to the right level, which makes the
+whole structure better for the client.
+
+<P>
+Spelling wrappers for more than one language might be active at
+the same time for the same login.  There is no throttle-point
+in the structure to prevent it -- so it should be supported.
+
+
+<h3 id="finding">Finding the best source</h3>
+
+How should a client pick from many possible diversions?
+The answer is based on the assumption that the tightest enclosing diversion
+has the most specific scope.  That is to say that it may have indirect
+access to any less specific elements, and direct access to
+local elements.
+So the tightest enclosing diversion is always implied by default.
+
+<P>
+Clients should be able to select any outer diversion, when that makes
+sense in the context of the application.  There are two suggested
+ways to select an outer diversion: a `depth' count, and a `direct
+path'.
+
+<P id="depth">
+The command line specification for <code class="param">depth</code>
+is an integer prefixed by the option dash.
+The unspecified depth for the outer,
+<code class="opt">-1</code> for the next one
+out, then <code class="opt">-2</code>
+and <code class="opt">-3</code> and so-on.
+As a degenerate case an explicit depth of
+zero (<code class="opt">-0</code>) is also allowed, but
+it is better form to just leave that option out.
+
+<P id="direct">
+Some other command-line option should provide a way to specify
+a path to the controlling unix domain socket for any
+active diversion's socket.
+This allows a client to pick a diversion that might not
+be part of the current process tree.
+How the client gets the path to the socket is
+dependent on the implementation,
+or might be drawn from the common implementation described below.
+<P>
+A direct path of "<code class="opt">-</code>" is another name for
+the tightest enclosing diversion.  That same symbol is often
+taken, in a filter context, as <i>stdin</i> or <i>stdout</i>:
+it may be used as either of those as well.
+
+<P>
+To keep track of the diversion we use the
+<code class="param">name</code>=<code class="param">value</code> pair environment
+as a fundamental abstraction.  Each service selects a unique prefix
+(for example a string based on the program named, followed by an
+under-bar) to manage its diversions.
+Two key variables are constructed in the environment
+based on that prefix:
+<dl>
+<dt>A "link" suffix to denote the count of the active diversions
+<dd>
+This variable serves as a top-of-stack indicator.
+Given the token "spck" for the spell check wrapper, a link value of 2
+would be given as:
+<blockquote class="file"><pre><code >spck_link=2</code></pre></blockquote>
+<dt>A number of index variables that act as a diversion stack
+<dd>
+Continuing with the "spck" stack we should see at least 2 environment
+variables in addition to the link value of 2:
+<blockquote class="file"><pre><code >spck_1=/tmp/spck<i>XXXXXX</i>/s1
+spck_2=/tmp/spck<i>XXXXXX</i>/s2</code></pre></blockquote>
+<dt id="altd">a "d" suffix for a diversion that is disconnected
+<dd>
+There is a alternate diversion which is used in special cases.
+Rather than a number it has a name, "d".
+Like the numbered stack this diversion may be selected from the
+environment.  The "d" replaces the number, for example:
+<blockquote class="file"><pre><code >spck_d=/tmp/ptbw<i>XXXXXX</i>/s5</code></pre></blockquote>
+</dl>
+
+<P>
+The wrapper programs I've coded all use the same 300 line C module to
+handle all the manipulation of these variables (viz. ptbw, xclate).
+The same abstraction in perl is much shorter.
+
+<H3 id="failure">Limited impact of failures</H3>
+
+When a global service, like <code class="sh">inetd</code>, fails it
+impacts a large groups of services.  When a wrapper fails if
+should only impact a small portion of the system.
+
+<P>
+For example, misspelled words may be inserted into
+a spelling wrapper's tableau.  This happens because the
+spelling wrapper, by its nature, believes the Customer.
+So an instance believes the Customer when she tells it that
+a Polish word belongs in the Spanish database.
+In the wrapper model this should never impact other Spanish
+speakers.
+
+<h3 id="terms">Clear terminology</h3>
+
+Wrapper technology, like any geek-technology, has a vocabulary that
+the cool kids use.  This make is clear which side of the wrapped
+service you are talking about, and from what view.  Remember that
+the client/server terms don't always work, because the program itself
+is both a server and a client.
+
+<dl>
+<dt>the <em>program</em>
+<dd>
+Since almost every wrapper application is both the master and a client
+we speak of the program when we mean the command in general.
+The following two sentences are good examples:
+<blockquote>
+Usually the command-line option <code class="opt">-m</code>
+forces the program to start a new diversion in master mode.
+In some cases the client provided by the program is less feature-rich
+than more specialized clients.
+</blockquote>
+
+<dt>the <em>parent name-space</em>
+<dd>
+Because the unix domain socket used to connect to an enclosing master
+must exist for the life of the utility it is
+possible for nested masters to use the same temporary
+directory to hold their unix domain socket.
+As long as they remove their socket before
+they <code class="libc">exit</code>, the enclosing master doesn't have to
+know about the transient entry in this directory.  Leaving junk files in
+a parent name-space is really <em>poor form</em>.
+
+<dt>a <em>master</em>
+<dd>
+The application that manages the diversion to provide a service to
+clients.
+Wrappers are <strong>always</strong> accessed by a unix domain socket;
+accepting incoming client connections and servicing them in a
+fair manner is the primary function of the master process.
+<dt>the <em>utility</em>
+<dd>
+This is the process started by the master after the diversion socket
+is ready to accept client connections.
+This may either be a client (itself) or a program that starts
+clients indirectly.  There are also special cases of the
+utility which are outlined <A href="#specailu">below</A>.
+<dd>
+The diversion is always closed after
+the utility <code class="libc">exit</code>'s.
+The time between the process termination and the socket
+shutdown is application specific.
+<dd>
+There is a special case <A href="#colon">below</A> in which no
+process is actually started.
+
+<dt>the <em>tableau</em>
+<dd>
+The state of each diversion is called its tableau.
+As clients interact with the master they change the state of the
+the tableau.  There may be an option to the client to display a
+diversions tableau, usually a client of dash (<code class="markup">-</code>).
+
+<dt><em>client code</em>
+<dd>
+The part of the program that connects to the diversion master, just like
+in a traditional client/server application.  To be a client
+an application must open the master's unix domain socket to
+chat with the service.
+<dd>
+The client code might also be a library or module that is included in
+some other program to make a direct inquiry to a master instance
+without <code class="libc">fork</code>'ing a process.
+
+<dt>the <em>client</em>
+<dd>
+The shell program run by a client instance of the program.  The client
+program usually uses parameters appended to the argument vector, or
+environment variables inserted by the client instance to access the
+(parts of the) tableau allocated for it.
+
+<dt id="stack">a <em>stack</em>
+<dd>
+Related wrappers have some special knowledge about how to
+work with each other.  They might use another wrapper as a
+default utility, client, or friendly name-space to nest inside.
+These relationships form a "stack", we refer to
+the "<code class="sh">xapply</code> stack" when we are talking
+about the close relationship between
+<code class="sh">xapply</code>, <code class="sh">xclate</code>, and
+<code class="sh">ptbw</code>.
+<dd>
+A stack may share name-spaces with other members of that stack.
+For example when an enclosing diversion of <code class="sh">xclate</code> is
+active a new <code class="sh">ptbw</code> instance uses the open name-space
+for the new control socket.
+
+<dt id="diversion">a <em>diversion</em>
+<dd>
+Every time a wrapper pushes a new link in to the environment it is
+making a diversion.  That is to say it is changing the flow of
+data through the wrapped environment by diverting some of it
+through the new tableau.
+</dl>
+
+<h2 id="example">A more detailed example</h2>
+
+For example the wrapper "escrow" might use the prefix `esc_' in the
+environment to denote the service variables.  The first instance of
+escrow would create a directory via mkdtemp(3) (say "/tmp/escdX1234Q") to
+construct the service socket under.  Then build two environment
+variables:
+<BR>
+<blockquote class="file"><pre><code >esc_link=1
+esc_1=/tmp/escdX1234Q/e1</code></pre></blockquote>
+
+<P>
+When a client of that wrapper looks for $<code class="env">esc_link</code> in
+the environment it notes 2 things:
+<ol>
+<li> by the existence of the variables there is at least 1
+   active diversion.
+<li> The top-of-stack for this diversion is "1", looking at
+   $<code class="env">esc_1</code> the client connects directly to
+   the service.
+</ol>
+
+<P>
+When another instance of the service (a diversion "master") opens
+a new diversion it finds the same information and build a new
+unix domain socket (possibly in the same directory)
+<blockquote class="file"><pre><code >esc_link=2
+esc_2=/tmp/escdX1234Q/e2</code></pre></blockquote>
+
+<P>
+Now clients will connect to the new (more local) diversion in
+preference to the older outer one.  The more local diversion
+may pass some requests on to "e1", or answer them based on the
+function of the program.  Results may be passed verbatim, or
+modified based on the parameters given to each master in the chain.
+
+<P>
+This is the general idea.  Below we go into some specific details
+which I'm suggesting become standard features.
+
+<h2 id="hidden">Disconnected diversions</h2>
+
+The normal nested diversion system allows applications to
+predict what the <code class="param">depth</code> option means.
+In other words it would be unexpected for an application that
+used a wrapper <em>internally</em> to add to the diversion stack.
+
+<P>
+Any applications that want to hide their use of a master from
+the diversion stack may do so.
+The unix domain socket is built in
+the "d" <A href="#altd">alternate diversion</A> environment
+variable (usually specified by the command-line option
+<code class="opt">-d</code>).
+
+<P>
+Note that a client never falls back to the alternate diversion.
+It is supposed to be hidden from the normal use, so there are
+three ways to force it into scope:
+<dl>
+<dt>Use the alternate diversion variable as a direct path
+<dd>
+The command-line option <code class="opt">-N</code> is often
+the direct path option (in my wrappers).  So, for example,
+to force <code class="sh">xclate</code> to use the alternate
+diversion one might code:
+<blockquote class="file"><pre><code >xclate -N $xcl_d <i>....</i></code></pre></blockquote>
+<dt>Set the "link" variable to "d"
+<dd>
+This is not a good solution as it looses the current top-of-stack
+state in the <code class="param">client</code> process.
+It is, however, supported in the clients I've coded.  The
+above example would be phrased as:
+<blockquote class="file"><pre><code >xcl_link=d xclate <i>....</i></code></pre></blockquote>
+<dt>Force the name of the unix domain socket in the master
+<dd>
+My wrapper programs bind to a specific name in the filesystem under
+<code class="opt">-N</code> in combination with <code class="opt">-md</code>.
+When the application has a safe name-space to allocate a specific
+socket name it should force the name, then send the name to any
+client processes by its own means.
+</dl>
+
+<P id="autowrap">
+A good example of the use of disconnected diversions comes from
+<code class="sh">xapply</code> under its <code class="opt">-m</code>
+option.  Under this option <code class="sh">xapply</code> uses the
+top-of-stack <code class="sh">xclate</code> diversion, if any exists.
+When none exists it builds a new instance and uses it.
+The new instances may be disconnected (under <code class="opt">-d</code>) or
+may start a new stack for descendent <code class="sh">xapply</code>
+instances and <code class="sh">xclate</code> clients.  This
+"auto-wrap" feature of <code class="sh">xapply</code> makes it part of
+the "stack" -- even though it is not itself a wrapper.
+
+<h2 id="colon">Global master behavior</h2>
+
+Starting a "global" master instance of a wrapper in effect
+wraps the whole process tree.  It is often a useful abstraction.
+For example a we might want to provide a global modem pool to
+a few application that all run on a common server.
+Consider what <code class="param">utility</code> we could use to hold
+the master instance open for the entire production run of the
+system?  We can't really wrap <code class="sh">init</code>(8).
+
+<P>
+We could wrap a <code class="sh">sleep</code> command, but they do
+timeout eventually, and we'd be wasting a process.  It would be
+even worse to code a program to sleep forever (just to waste a process).
+Well, here is that process (in case you need it):
+<blockquote class="file"><pre><code >perl -e 'my($in,$out);pipe($in,$out);print <$in>;'</code></pre></blockquote>
+
+<P>
+All the wrappers I've coded accept the pseudo-utility colon (":")
+as an internal command that never exits.  In this case a client
+may send a shutdown command to the wrapper (under <code class="opt">-Q</code>).
+This shutdown takes effect after that client finishes their interaction
+with the diversion.
+This doesn't really limit the use of the ":" command, as it is
+a shell built-in command and can't be <code class="libc">execve</code>'d
+anyway.
+
+<P>
+As an alternative one could export the service via another transport.
+For example some process might provision an
+<acronym TITLE="remote procedure call">RPC</acronym>
+service using a wrapper as a primary data source.  In that case
+the master mode should wrap the server process, not meet it
+at a private socket address.
+<P>
+The global mode is <em>not</em> intended to "swallow" the process tree.
+That is to say that we don't expect an environment variable representing
+the global diversion to be inherited throughout the whole process tree.
+Any global instance is usually referenced by a site policy file, which
+contains the diversion's control socket name, or a convention that the
+global diversion's control socket is always in the same place under
+<code class="path">/var/run</code> (or the like).
+
+<h2 id="argv0">How the program name impacts a wrapper</h2>
+
+A wrapper runs another process to do the "real work".  Some programs
+look at the name they were called as part of the specification of the
+work they should do.  For example a shell (<code class="sh">sh</code> or
+<code class="sh">bash</code>) knows it is a "login shell" if the
+name of the program in <code class="markup">argv[0]</code> starts
+with a dash.
+
+<P>
+The behavior of a wrapper is based on knowing its own "common" name.
+The specification of any other name might be treated as an
+"option" by a wrapper, in other words it might change the
+behavior of the program.
+
+<P>
+There are the suggested rules for dealing with the name of the program
+for all wrappers.  Not every wrapper implements all of these, but most
+should follow the intent here:
+<OL>
+<LI>an option may be provided to set <code class="markup">argv[0]</code>
+to an explicit value, but is not required (nor
+do I have a suggested name for this option),
+<LI>if <code class="markup">argv[0]</code> starts with a dash
+then remove the dash and make this process a session leader
+(see <code class="libc">setsid</code>(2)).
+<LI>when the <code class="markup">argv[0]</code> is the empty string
+it should be replaced with the default program name.
+<LI>if <code class="markup">argv[0]</code> is <em>not</em> the
+common name of the wrapper it should be used as an explicit
+<code class="markup">argv[0]</code> for the inferior process
+<LI>use the internal colon behavior when the wrapper is a master instance, and
+<code class="markup">argv[0]</code> is just a colon (":"),
+and there is no explicit <code class="param">utility</code> specified
+</OL>
+
+<h2 id="cdata">Finding data</h2>
+
+A client requests some service from a master via the unix domain socket
+provided in the environment.
+Then it <code class="libc">fork</code>'s a process
+with the recovered data provided through one of two channels.
+
+<h3 id="passed">Passed in the environment</h3>
+
+The standard model for the client-side of a wrapper exports a "list"
+environment variable containing the requested data, or the path to
+the requested data.
+
+<P>
+The <code class="sh">ptbw</code> wrapper makes an easy example.
+We'll create a tableau of the first 7 ordinal numbers, then ask
+a client instance to allocate the first 2, in that environment we'll
+ask the shell to <code class="sh">echo</code> those numbers:
+<blockquote class="file"><pre><code >ptbw -m -J7 ptbw -R2 sh -c 'echo $ptbw_list'
+</code></pre></blockquote>
+
+<P>
+The example above outputs "0 1", which are the first two ordinal numbers.
+The data channel that <code class="sh">ptbw</code> uses to send the
+shell the recovered data follows the same paradigm as
+any "link" suffix variables: the common prefix for the wrapper application
+specifies which data channel, the value of the variable specifies
+the payload.
+
+<P>
+Sensitive data is always placed in a file, the name of the file should
+give little information to anyone reading the process table for arguments
+or environment variable values.  This is just good application programming,
+not anything special to wrappers.
+
+<h3 id="argument">As an argument list</h3>
+
+An alternative method is to pass the requested elements from the
+tableau as positional parameters to the client.
+
+<P>
+In this case we run the same master instance, but request the data
+under the <code class="opt">-A</code>, the client program is
+<code class="path">/bin/echo</code>, rather than a shell:
+<blockquote class="file"><pre><code >ptbw -m -J7 ptbw -A -R2 echo
+</code></pre></blockquote>
+
+<h3 id="tableau">Only display the tableau</h3>
+
+Most wrappers have a client option to just display the tableau, for
+example <code class="sh">ptbw</code> uses
+the common dash (<code class="markup">-</code>) pseudo-client:
+<blockquote class="file"><pre><code >ptbw -m -J3 -R2 ptbw -
+</code></pre></blockquote>
+Which outputs a very descriptive table of the 6 tokens, their names,
+the fact that none of them are locked, and the request size.
+<blockquote class="file"><pre><code >ptbw: master has 6 tokens, max length 1 (total space 12)
+ Master tokens from the internal function: iota
+ Index	Lock	Tokens (request in groups of 2)
+     0	0	0
+     1	0	1
+     2	0	2
+     3	0	3
+     4	0	4
+     5	0	5
+</code></pre></blockquote>
+
+<h2 id="existing">Existing wrappers from the past</h2>
+
+Several UNIX tools actually do exactly what a wrapper should do, but
+might not support multiple nested diversions.
+
+<P id="screen">
+For example <code class="sh">screen</code> builds a UNIX domain
+socket and enters a "master mode" unless it sees a running socket
+in which case it runs as a client.
+But doesn't allow nested diversions -- that is to say you can't get
+a nested screen to exchange data over the local socket with the
+master above.  Which really models a diversion stack of 1 instance.
+
+<p id="sshAgent">
+The <code class="sh">ssh-agent</code> program builds a UNIX
+domain socket, publishes an environment and acts as a master, with
+other applications (<code class="sh">ssh-add</code>,
+<code class="sh">ssh</code>) to act as the clients.
+In this case it would make a lot of sense for <code class="sh">ssh-agent</code>
+to allow nested agents to chain key requests, with keys that could be deleted by
+just <code class="libc">exit</code>'ing the <code class="param">utility</code>.
+But it is presently limited to 1 level, and it checks the unix credentials of
+every client access, which breaks access from escalated applications
+(like <code class="sh">op</code>, <code class="sh">sudo</code>,
+<code class="sh">newgrp</code> and <code class="sh">su</code>).  I would
+believe the file permissions on the socket, because that's what they
+are their for.  If you want to deny access by default, change the mode after
+the bind, don't check on every connect for peer credentials.  If you really
+can't trust the superuser on the host you shouldn't be trusting the
+binary for any applications.
+
+<P id="window">
+The <code class="sh">window</code> program is a lot like
+<code class="sh">screen</code> but less like a wrapper.  The program doesn't
+ever act as a client for
+itself (it just starts new masters) when enclosed in itself.  On the other
+hand, it does confine itself to the window it is running in, so it
+does have some recursive functions.
+
+<P id="x11">
+The <code class="sh">X</code> server provides graphics services to
+processes that can see the environment variable
+<code class="env">DISPLAY</code>.  It is not a true wrapper as
+it only runs in the global mode (that is, it doesn't wait for
+any wrapped process to exit).  If you think of <code class="sh">Xnest</code>
+as a client that creates a new diversion then that makes a whole wrapper
+stack out of <code class="sh">X</code>. (But both programs should take
+a <code class="param">utility</code> specification.)
+
+<P id="process">
+The <code class="sh">nice</code> program is a very primitive wrapper.
+Any enclosed processes can see the effect, and enclosed instances
+can modify the nice value.  The same is true for <code class="sh">chroot</code>,
+<code class="sh">env</code>,
+<code class="sh">nohup</code>, <code class="sh">su</code>, and
+<code class="sh">newgrp</code> because they all work on
+attributes of a process.
+Privilege escalation with <code class="sh">sudo</code> or
+<code class="sh">op</code> might also be part of the same application class.
+None of these use a socket to nest instances, and the tableau is the
+process itself.
+
+<P id="debug">
+Another class would be debuggers, which start a process tree that is
+served by an enclosing master: viz.
+<code class="sh">adb</code>,
+<code class="sh">gdb</code>, and
+<code class="sh">mdb</code>.
+One might include <code class="sh">truss</code> and
+<code class="sh">ptrace</code> in that group in-spite of their
+non-interactive nature.  They don't use a diversion socket, but if you
+are really desperate you can use one to debug itself.
+
+<!--
+ - In a strange way <code class="sh">find ... -exec</code>,
+ - <code class="sh">apply</code>, and <code class="sh">xargs</code>
+ - provide a wrapped environment, but not nearly at the level of
+ - power needed to call them "wrappers", even though they may
+ - enclose instances of themselves.
+-->
+
+<h2 id="coded">Several wrappers I've already coded</h2>
+
+<dl>
+<dt id="ptbw"><a href="../ptbw/ptbw.html"><code class="sh">ptbw</code></a>
+<dd>
+The parallel token broker allows parallel processes to gain
+exclusive access to a "token" for the life of a process.
+Other clients could be coded to do more fine-grained locking
+of tokens.
+<dt id="xclate"><a href="../xclate/xclate.html"><code class="sh">xclate</code></a>
+<dd>
+The <code class="sh">xapply</code>'s collation wrapper buffers output
+such that parallel processes output a single collated stream without
+blocking each other, as much as they otherwise would.
+<dt id="xapply"><a href="../xapply/xapply.html"><code class="sh">xapply</code></a>
+<dd>
+This program doesn't provide a wrapper service, but it does
+wrap itself in instances of <code class="sh">ptbw</code> and
+<code class="sh">xclate</code> to provide services.
+<dt id="wrapw"><a href="wrapw.html"><code class="sh">wrapw</code></a>
+<dd>
+Replaces the index environment variables for each diversion in scope with
+a proxy variable, which the standard wrapper code knows how to use.
+Then installs a link environment variable for itself
+and starts its <code class="param">utility</code>.  This maps all the
+traffic for the whole diversion-stack through a single socket.
+<dt id="hxmd"><a href="../../sbin/hxmd/hxmd.html"><code class="sh">hxmd</code></a>
+<dd>
+Like <code class="sh">xapply</code> this is not itself a wrapper,
+but it knows host to setup <code class="sh">xclate</code> and
+<code class="sh">gtfw</code> diversion.
+<dt id="sshw"><a href="../sshw/sshw.html"><code class="sh">sshw</code></a>
+<dd>
+Not released yet.
+Execute a <code class="param">utility</code> enclosed by
+a <code class="sh">wrapw</code> client instance on a remote host, proxy
+the wrapped environment connections over the <code class="sh">ssh</code>
+connection.
+The <code class="sh">wrapw</code> proxy forward of the stack allows
+the proxy back from the remote machine.
+<dt id="gtfw"><a href="../gtfw/gtfw.html"><code class="sh">gtfw</code></a>
+<dd>
+Not released yet.  Makes <code class="sh">sshw</code> evem more useful
+by adding a global file proxy (requires FUSE filesystem access).
+</dl>
+
+<hr><pre>
+$Id: wrapper.html,v 1.21 2012/10/07 01:02:53 ksb Exp $</pre></body></html>

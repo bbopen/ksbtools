@@ -1,0 +1,21 @@
+# This file checks mk's table facility				(ksb)
+# $Id: table,v 5.0 1999/02/26 17:43:03 ksb Exp $
+
+# $Compile(*): for MARK in Abc Def Xyz Not ; do %b -m$MARK %o %f ; done
+
+# $Abc(*): [ "%<%f>" = Alpha ]
+# $Def(*): [ "%<%f>" = Beta ]
+# $Xyz(*): [ "%<%f>" = UPPER -o "%<%f>" = lower ]
+# $Not(*): [ "%<%f>" = yes ]
+
+# text	R.E.		substitution
+%m	^[Aa]bc		Alpha
+%m	[Dd]ef$		Beta
+%m	xyz		lower
+%m	Xyz		UPPER
+
+%G	^table$		yes
+
+%x	^[chi]$		C
+%x	^[Ff]$		FORTRAN
+%x	^[p]$		Pascal

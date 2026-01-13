@@ -1,0 +1,37 @@
+# $Id: README,v 2.1 2008/11/19 21:28:26 ksb Exp $
+
+This program reports a line in the format PEG uses for interface lists:
+	host : interface : IP : MAC : switch|host : interface : vlan
+the complete list for every interface on every host in the data center
+is way more useful than you'd think.
+
+An obvious list of:
+	+ all the hosts
+	+ all the network (TCP, SAN, NAS, and the like) cables one might lable
+	+ all the IP's that should reverse in DNS (and maybe forward)
+	+ MAC addresses to trace bad IP bindings, or lost switch ports
+	+ all the switches you depend on, and they depend on...
+	+ all the port lables one should have in the "description" attributes
+	+ list of ports should all the cables need to come off a switch
+	  (to replace it, or move a host, or split a vlan)
+	+ find ports where the vlan doesn't match the IP
+
+Less obvious:
+	+ iLO/ALOM host database for lights-out management links
+	+ ad hoc Sun system controller link database
+	+ list of available ports (on hosts and switches)
+	+ a count of all of these above for management reports
+
+Even less obvious:
+	+ a list of which hosts to backup in which order: we should backup
+	  hosts from different switches in parallel to avoid maxing any uplinks
+	+ a good way to find an NTP peer, the switch we are on, and a host
+	  on the same switch, mixed with a peer on another switch would be
+	  a nice start
+	+ a fine way to pick a DNS cache (one on our switch, for example)
+	+ uplink and VLAN balance analysis: is any switch too heavy on a
+	  VLAN or can we tune the uplinks for the VLANs we carry?
+
+
+--
+ksb

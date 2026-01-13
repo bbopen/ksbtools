@@ -1,0 +1,31 @@
+# $Id: README,v 1.5 1997/11/10 17:20:42 ksb Exp $
+
+The Purdue Engineering Computer Network had a few flavors of this
+program before I stole the idea.  They don't care in any event.
+
+You have to build a login called "terminal" that looks something like this:
+	terminal::2:2:Remote Access:/usr/local/lib/remote:/usr/local/etc/remote
+
+Edit the files "permok" and "motd" to allow what ever access you feel
+is cool, and put a contact name in (you, not me).
+
+Then install the shell (with make install) and the home direcrtory:
+	make install
+	make home
+
+On a Solaris host you have to trick passwd into making a passwd-less login:
+	passwd -d -l -x -1 terminal
+
+
+Login on a console or hardwired tty device as "terminal" and you can
+type in the name of an allowed host to gateway you.  On a bit mapped
+device use the host "-x" to start a guest X11 session.  Try -?.
+
+
+Because we have some "not so clever" mainframe people I have to lever
+/etc/services to find the port number for the 3270 gateway.
+Put this, or something like it, in your /etc/services:
+	tn3270		2321/tcp	# local gateway port
+
+--
+kayessbee

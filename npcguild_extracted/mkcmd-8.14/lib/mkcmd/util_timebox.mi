@@ -1,0 +1,7 @@
+/* the timebox type (from-to dates)					(ksb)
+ * $Id: util_timebox.mi,v 8.8 1999/06/14 14:37:48 ksb Exp $
+ */
+%static void %K<RangeCvt>1ev(/* char *, time_t *, time_t *, char * */)%;
+%@foreach "timebox_clients"
+%long %K<RangeDecls>/e/el%;	/*ZZZ why double eval here? */
+%@endfor

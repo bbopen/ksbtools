@@ -1,0 +1,12 @@
+# $Id: typenot,v 5.0 1999/02/26 17:43:03 ksb Exp $
+
+$Compile: MK=-t/dev/null %b -a%C%I%N%V -mType %f
+
+$Type(0): %Yf : is a plain file
+$Type(1): %Y~s : not a socket
+$Type(2): %Y~c : not a char special
+$Type(3): %Y~b : not a block special
+$Type(4): %Y~d : not a dir
+$Type(5): %Y~p : not a fifo
+$Type(6): %Y~l : not a symbolic link
+$Type(7): %Y~f : not a plain file ; exit 1

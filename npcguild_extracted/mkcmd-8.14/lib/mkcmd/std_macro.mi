@@ -1,0 +1,18 @@
+/* C interface to API array which contains the macros.			(ksb)
+ * Macros are four strings in a struct and are listed in this array.
+ * $Id: std_macro.mi,v 7.28 1999/06/14 14:37:48 ksb Exp $
+ */
+%%XroZK2v
+
+/* our unique "not found" default -- might be ignored if you provide one
+ * (gcc might complain this is not used)
+ */
+%%XroZK5v
+
+/* forwards we need
+ */
+extern void ListMacros();
+static struct MCnode *FindMacro();
+extern char *Macro();
+static void DoMacro();
+static void UndoMacro();

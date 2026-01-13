@@ -1,0 +1,154 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.or/TR/html4/loose.dtd">
+<HTML><HEAD>
+<TITLE>Indexed space of sparse integers</TITLE>
+<link rel="stylesheet" type="text/css" href="/msrc/css/code.css"/>
+</HEAD><BODY>
+Family: sp
+<BR>
+Authors: KSB Braunsdorf
+<BR>
+Mail: ksb@npcguild.org
+<BR>
+Version: 1.5
+<BR>
+Bugs: None known.
+<BR>
+<HR>
+
+<H1>Introduction</H1>
+
+We need to hold a list of integers in memory as we process an
+expensive operation.  At the end we need to traverse the list
+of the <strong>few</strong> integers which "hit" in the expensive search,
+and maybe recover a clue as to "how" it hit.
+<P>
+This module assumes that hits in the scan process are at random,
+and are very unlikely.
+
+<H1>Configuration</H1>
+
+Provide a standard <code class="path">machine.h</code> which optionally defines:
+
+<DL>
+<DT>#define SP_ALLOC_CACHE	2048
+<DD>
+Gather <code>sp_init</code> function calls to <code class="libc">calloc</code>(3) into larger cached
+slabs.  Since we never free the memory we allocate for the space this
+saves a lot of malloc headers and such.  Suggested value of 4096 for
+a medium application hit rate, smaller for very rare hit rates.
+<P>
+By default no cache is enabled.
+
+<DT>#define SP_ALLOC_TRIM	8
+<DD>
+Declare how much space you are willing to discard to avoid calling
+calloc(3).  Many of the calls we make to calloc are for 2 and 3
+element vectors (12 bytes or less), this cache reduces
+the overhead consumed by that pattern.
+By allowing the rare
+request for 20 to 44 element vectors to fall directory to calloc we
+can save the small "trim part" for the next request for a short vector.
+
+<DT>#define SP_RECURSE		0
+<DD>
+Use the recursive version of <code>sp_walk</code>, rather than
+the iterative one when set to non-zero.
+The recursive one is more complex and slower, as far as I can tell.
+
+<DT>#define SP_VERBOSE		0
+<DD>
+When set to a non-zero value each function
+outputs a trace of the major plays in the game.  Helps a new coder
+understand how this all works.  Of course a picture helps a lot more.
+</DL>
+
+<H1>Synopsis</H1>
+<BLOCKQUOTE class="file"><PRE><CODE>#include "machine.h"
+#include "sparse.h"
+</CODE></PRE></BLOCKQUOTE>
+<H1>Description</H1>
+
+Most of the configuration is done at run-time.  The compile-time
+options are limited at present.
+
+<P>
+These functions are limited to construction of the sparse space,
+not mechanism (short of calling <code class="libc">exit</code>) is provided to
+remove any allocated space.  This is fine for the use intended,
+and an implemenation via <acronym title="Adel'son-Vel'skii - Landis">AVL</acronym> trees would trivially
+provide a "clean" implementation.
+
+<P>
+More modern allocation system will also fix this issue.
+
+<H1>Provides</H1>
+<DL>
+<DT><CODE>extern sp_key sp_fibs[48];</CODE>
+<DD>
+The list of the unique 32 bit Fibonacci number, with a leading 0
+and a trailing value of (2**32-1).  This is used in the code
+to quickly lookup the next or previous Fibonacci number.
+
+<DT><CODE>extern size_t sp_unfib(sp_key wN);</CODE>
+<DD>
+Find the position in the <code>sp_key</code> array which
+contains the Fibonacci that is closest the <code class="param">wN</code> without
+going over.
+
+<DT><CODE>extern void **sp_init(sp_key wRange);</CODE>
+<DD>
+Return a <code class="markup">(void **)</code> which can represent unsigned integers
+upto and including <code class="param">wRange</code> (starting at zero).
+
+<DT><CODE>extern void **sp_index(void **ppvFrom, sp_key wFind);</CODE>
+<DD>
+Return a <code class="markup">(void **)</code> which is bound to
+the integer <code class="param">wFind</code>
+in the sparse space <code class="param">ppcFrom</code>.  To mark the value as
+used set the (void *) indexed by the return value to a non-NULL
+value (any one works).
+<P>
+Later, when <code>sp_walk</code>ing the space this
+<code class="markup">(void *)</code> is the second parameter passed to
+the <code>Map</code> function.
+
+<DT><CODE>extern int sp_walk(void **ppvFrom, sp_key wLow, sp_key wHi, int (*pfiMap)(sp_key, void *));</CODE>
+<DD>
+Walk the sparse space given by <code class="param">From</code> from <code class="markup">wLow</code> to
+<code class="param">wHi</code> calling <code class="param">Map</code> on each integer that
+has a non-NULL <code class="markup">(void *)</code> bound to it.
+<DT><I>YourMap</I><code>(sp_key wN, void *pvData)</code>
+<DD>
+The formal parameters that the <code class="param">Map</code> parameter to
+<code>sp_walk</code> expects.
+<DT><CODE>extern int sp_exists(void **ppvFrom, sp_key wTest);</CODE>
+<DD>
+Test fot the existence of <code class="param">Test</code> in the sparse space
+given by <code class="param">From</code>.  Return zero for "not in the space"
+and non-zero for "included".
+</DL>
+
+<H1>EXAMPLE</H1>
+See the test driver embedded in the module.
+<P>
+This test driver inserts a few (unsigned long) integers into a
+sparse space instance with alternating colors ("red" and "blue"),
+then walks the space to output each integer and the color it
+was recorded with.
+<P>
+The integers in the test data were selected to test the corner
+cases in the walk and index functions.
+
+
+<H1>Diagnostics</H1>
+None.
+
+<H1>See Also</H1>
+avl(3)
+
+<H1>To Do List</H1>
+None.
+<HR><PRE>
+$Id: sparse.html,v 1.9 2010/08/13 17:26:00 ksb Exp $
+</PRE>
+</BODY></HTML>

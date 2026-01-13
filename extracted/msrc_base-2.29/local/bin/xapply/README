@@ -1,0 +1,168 @@
+# $Id: README,v 3.7 2008/04/07 13:16:31 ksb Exp $
+
+The xapply.html in this directory is more up to date. -- ksb
+
+I needed "apply" to do a project under HPUX and HPUX 9.05 didn't have
+it.  So I went to get the FreeBSD one and it uses a _brain_ _damaged_
+err()/errx() hack in crt0.c and libc.  Eak!
+
+So I coded a better one and will just drag it around with me.  Runs
+under (at least) SunOS, Solaris, AIX, IRIX, HPUX, *BSD , and Linux.
+
+The -P option is stolen from the Dynix 3 system as I remember it:  if
+you don't give one you get 1 task, -P gives you $PARALLEL with a default
+3 if the variable is not set.  Or -Pn gives you n, of course.  Try -P10
+on most machines.  I also like about 3 times the number of CPUs.
+
+I use something like:
+	find /tmp $cruft_files_spec -print | xapply -fP5 -7 rm - - - - - - -
+to clean up /tmp.  This pumps as it keeps 5 /bin/rm's running and
+keeps reading files the whole time.  Even faster than xargs.  And
+will entomb (see my entomb package) unlike find's -delete.
+
+Xapply has a turbo charger, that once you grasp, you will use a lot.
+In filters like awk you get $1, $2, $3... for the columns in the input,
+that's pretty useful.  In xapply you get %1, %2, %3... one for each
+of the arguments passed to each command:
+	$ xapply -2 'diff %1 %2'  a.c a.c.orig b.c b.c.orig
+would run
+	diff a.c a.c.orig
+	diff b.c b.c.orig
+
+But that is just the start.  You can ask xapply to break the precent-strings
+up into columns on a single character (or white space), then select (remove)
+a column from that new list, wash-rinse-repeat.  For example
+	$ xapply 'echo %[1/3]' src/bin/xapply/RCS/TODO,v
+asked xapply to break %1 on the slash (/) character, and pick the 3rd
+element of that list which is the word "xapply".  If we change
+the character to spilt on to comma (,) and take the first one:
+	$ xapply 'echo %[1,1]' src/bin/xapply/RCS/TODO,v
+	src/bin/xapply/RCS/TODO
+if we want to remove "/RCS" we might use
+	$ xapply 'echo %[1,1/-4]' src/bin/xapply/RCS/TODO,v
+	src/bin/xapply/TODO
+That's a contrived example (because the "RCS" is not always "/4" in
+the common case, but it shows the power.  The general solution is below.
+
+
+To highlight that power here look at a common stream of
+	command_1
+	result_1
+	command_2
+	result_2
+	...
+	command_N
+	result_N
+
+Where we want to select part of command_X if result_X has some string
+(say "match") in it:
+	|grep -B 1 'match'
+is very close, but string might be in "command" too.  So try:
+	|xapply -f -2 "expr '%2' : '.*match.*' >/dev/null && echo %1" - -
+using the dicer to pull %2 and %1 apart makes this a lot more useful and
+powerful.  In fact the dicer is about 40% of the power here, -m/-P is the
+remainder, the hooks to ptbw are just a turbo charger.
+
+From the format of the input steam you might guess that xapply is
+quite often used to process the output of xapply.  Wow.
+
+
+Another one I like, not in the manpage:
+	find . -name \*,v -print |
+	xapply -fi /dev/null 'rcsdiff %[1/-$/-$]/%[1/$,1] %1' - 2>&1|
+	${PAGER:-less}
+to visualize the use of the dicer here think about `./lib/RCS/Notes,v',
+remove the last `/' comp twice (`./lib') and put `/' plus the last `/' comp
+on up to the first `,' (`Notes') on the end to get `./lib/Notes'.  I
+actually use more options to rcsdiff, but you get the idea.
+
+And lastly, "printenv" on Linux (going the long way around the barn) is:
+	xapply -nfz '' /proc/$$/environ
+
+
+Common aliases or usage
+-----------------------
+
+The 17 line script "dicer" might look like:
+	#!/bin/sh
+	# dicer - from the xapply source			(ksb)
+	COUNT=1
+	case _$1 in
+	_--)
+		shift ;;
+	_-[0-9]*)
+		COUNT=`expr _$1 : _'-\([0-9]*\)'`
+		shift ;;
+	-h)
+		echo "`basename $0`: usage [-count] dicing"
+		exit 0 ;;
+	*)	;;
+	esac
+	DASHES=`jot -b "-" $COUNT`
+	: ${1?'provide an xapply dicer expression'}
+	exec xapply -nf -$COUNT "$*" $DASHES
+
+So we can use it in a pipeline as a filter, w/o the dashes on the end:
+	...| dicer -2 '%[1 1] %[2/$]'
+which executes the more verbose command
+	...| xapply -nf -2 '%[1 1] %[2/$]' - -
+
+
+There is a need (once in a while) to limit the application to uniq
+parameters, but the input stream has duplicates.  Using "sort -u"
+to filter the input limits the throughput of your pipeline a lot,
+(because we must wait for _all_ the data before we run the first
+command) using the perl filter below is way faster (at the expense of
+some in-core perl hash space):
+	#!/usr/bin/perl
+	# Only Uniq Elements (oue) - from the xapply source	(ksb)
+	use strict;
+	use Getopt::Std;
+	my(%opts, %seen, @key, $line);
+	getopts("hF:", \%opts);
+	if ($opts{'h'}) {
+		print "$0: usage [-F split] [files]\n";
+		exit(0);
+	}
+	%seen = ();
+	while ($line = <>) {
+		@key = $opts{'F'} ? split($opts{'F'}, $line) : ($line);
+		next if exists($seen{$key[0]});
+		print $line;
+		$seen{$key[0]} = 1;
+	}
+	exit(0);
+
+For example:
+	$ jot -r 20 1 10  | ./oue.pl -  | xapply...
+	output-from-9
+	output-from-6
+	output-from-8
+	output-from-7
+	output-from-10
+	output-from-1
+	output-from-2
+	output-from-3
+	output-from-4
+Which is missing "5" because it never came up (from 1-10) in the first
+20 numbers, and we eliminated the duplicates.  Compare to
+	$ jot -r 20 1 10 | sort -u | xapply...
+	output-from-1
+	output-from-10
+	output-from-2
+	output-from-3
+	output-from-4
+	output-from-6
+	output-from-7
+	output-from-8
+	output-from-9
+Which must wait for all 20 numbers before it forks the first command
+to process "1".  I found "oue" to be so useful I enhanced it a bit an
+installed it as separate application.  It's in another package.
+
+See also xclate's notes on multiplexed output and ptbw for resource pools.
+
+--
+"He who will not reason, is a bigot; he who cannot is a fool;
+ and he who dares not is a slave."     -- Sir William Drummond
+ksb, Kevin Braunsdorf, xappy_at_ksb_dot_npcguild_org

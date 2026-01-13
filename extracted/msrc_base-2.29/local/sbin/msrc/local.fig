@@ -1,0 +1,68 @@
+#FIG 3.2  Produced by xfig version 3.2.5
+Portrait
+Center
+Inches
+Letter  
+97.60
+Single
+-2
+# $Id: local.fig,v 1.1 2008/09/18 22:48:27 ksb Exp $
+1200 2
+6 975 4425 7500 5925
+4 0 -1 50 -1 0 12 0.0000 4 195 1395 975 4575 the provision file\001
+4 0 -1 50 -1 0 12 0.0000 4 195 6510 975 4800 Run the inti hook, build the subdirectories, copy in the plain files from SEND,\001
+4 0 -1 50 -1 0 12 0.0000 4 195 6135 975 5055 copy in the mapped files (from MAP), run and pre hook, then cd into the\001
+4 0 -1 50 -1 0 12 0.0000 4 210 6285 975 5310 cache directory (${1}) source the entry definitions, run the command-line\001
+4 0 -1 50 -1 0 12 0.0000 4 195 6345 975 5565 untility (which must save anything it needs from this ephemeral directrory)\001
+4 0 -1 50 -1 0 12 0.0000 4 195 4575 975 5820 from the original directory run the post hook, and exit.\001
+-6
+6 975 6900 8100 8700
+4 0 -1 50 -1 0 12 0.0000 4 195 6870 975 7080 This might use ptbw, or not, to keep track of the cache directories.  The depends\001
+4 0 -1 50 -1 0 12 0.0000 4 195 6750 975 7335 on the -P factor (1 defeats the use of ptbw).  It needs to find a safe place to drop\001
+4 0 -1 50 -1 0 12 0.0000 4 195 6945 975 7590 the cached files for each host, run the provsion command, then remove the cache\001
+4 0 -1 50 -1 0 12 0.0000 4 195 6840 975 7845 directory.  The next itteration will recreate the same cache directory for another\001
+4 0 -1 50 -1 0 12 0.0000 4 195 6945 975 8100 host.  This process doesn't use INTO, ENTRY_LOGIN, or HOST explicitly.  It is\001
+4 0 -1 50 -1 0 12 0.0000 4 195 7080 975 8355 up to the logic in PRE_CMD, or utility, or POST_CMD to extract value from all this\001
+4 0 -1 50 -1 0 12 0.0000 4 195 1455 975 8610 file manipluation.\001
+-6
+2 1 0 1 5 7 50 -1 -1 0.000 0 0 -1 0 0 4
+	 600 1125 225 1125 225 4050 600 4050
+2 1 0 1 5 7 50 -1 -1 0.000 0 0 -1 0 0 4
+	 9000 1650 9375 1650 9375 3225 9000 3225
+3 2 0 1 0 7 50 -1 -1 0.000 0 1 0 3
+	2 1 1.00 60.00 120.00
+	 900 5250 450 4800 375 4050
+	 0.000 -1.000 0.000
+3 2 0 1 0 7 50 -1 -1 0.000 0 1 0 3
+	2 1 1.00 60.00 120.00
+	 7875 6900 9075 5775 9225 3300
+	 0.000 -1.000 0.000
+4 1 23 50 -1 0 14 0.0000 4 195 1170 2335 1396 INIT_CMD\001
+4 1 23 50 -1 0 14 0.0000 4 195 1140 2335 2696 PRE_CMD\001
+4 1 9 50 -1 0 14 0.0000 4 165 1950 2400 450 Master Source Host\001
+4 1 9 50 -1 0 14 0.0000 4 225 1725 2325 975 /usr/msrc/opt/ksb\001
+4 1 4 50 -1 0 14 0.0000 4 165 1440 4500 825 HXINCLUDE\001
+4 1 13 50 -1 0 18 0.0000 4 195 1905 4650 300 LOCAL MODE\001
+4 1 16 50 -1 0 14 0.0000 4 240 2865 7350 525 A directory under $TMPDIR\001
+4 1 16 50 -1 0 14 0.0000 4 225 2340 6900 975 /tmp/mtfc??????/??????\001
+4 1 4 50 -1 0 14 0.0000 4 165 900 1125 1725 SUBDIR\001
+4 1 -1 50 -1 0 12 0.0000 4 150 1245 2250 1725 mkdir for each\001
+4 1 23 50 -1 0 14 0.0000 4 195 1545 2250 3300 ENTRY_DEFS\001
+4 1 23 50 -1 0 14 0.0000 4 195 1290 2325 3600 POST_CMD\001
+4 1 -1 50 -1 0 12 0.0000 4 150 315 2175 3900 exit\001
+4 1 -1 50 -1 0 12 0.0000 4 15 150 1275 3300  . \001
+4 0 -1 50 -1 0 12 0.0000 4 195 2370 5850 2925 remove the cache directory\001
+4 0 -1 50 -1 0 12 0.0000 4 195 2160 5850 2400 Run provision with 5 args\001
+4 0 -1 50 -1 0 12 0.0000 4 195 1920 5850 1875 Find a directory cache\001
+4 2 -1 50 -1 0 12 0.0000 4 150 1260 7800 6825 host command\001
+4 1 4 50 -1 0 14 0.0000 4 165 645 1125 2025 SEND\001
+4 1 -1 50 -1 0 12 0.0000 4 195 1260 2250 2025 cp for each file\001
+4 1 -1 50 -1 0 12 0.0000 4 195 1260 2250 2325 cp for each file\001
+4 1 4 50 -1 0 14 0.0000 4 165 540 1125 2325 MAP\001
+4 0 -1 50 -1 0 12 0.0000 4 195 7170 975 9150 Use "msrc -l -d PX pwd" to see an example of the provision for local mode.  Remove\001
+4 0 -1 50 -1 0 12 0.0000 4 150 2580 975 9405 the "-l" for the standard mode.\001
+4 0 -1 50 -1 0 12 0.0000 4 195 7335 975 9915 The "mmsrc" program does only local mode.  It uses the INTO directory as the cache\001
+4 0 -1 50 -1 0 12 0.0000 4 210 7230 975 10170 rather than a directory under $TMPDIR.  That makes it look more like remote mode,\001
+4 0 -1 50 -1 0 12 0.0000 4 195 5475 975 10425 and allows the host to keep state in the filesystem between runs.\001
+4 1 -1 50 -1 0 12 0.0000 4 210 1170 2250 3000 ( cd ${1} &&\001
+4 1 -1 50 -1 0 12 0.0000 4 210 2175 4050 3300 && $SHELL -c "utility" )\001
